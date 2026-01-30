@@ -4,13 +4,14 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sparkles, User, Mic, Loader2, Play } from 'lucide-react';
 import { aiTutor } from '@/ai/flows/ai-tutor-flow';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 type Message = {
   role: 'user' | 'model';
@@ -127,7 +128,10 @@ export default function AiTutorPage() {
           </CardContent>
           <div className="p-4 border-t">
             <div className="relative">
+              <Label htmlFor="ai-tutor-input" className="sr-only">Type your question here</Label>
               <Input
+                id="ai-tutor-input"
+                name="ai-tutor-input"
                 placeholder="Type your question here..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

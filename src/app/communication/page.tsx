@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mail, Send, PlusCircle } from 'lucide-react';
@@ -12,6 +11,7 @@ import { mockConversations, mockMessages } from '@/lib/mock-data';
 import type { Conversation, Message } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 
 export default function CommunicationPage() {
   const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
@@ -116,7 +116,10 @@ export default function CommunicationPage() {
                 </CardContent>
                 <CardFooter className="p-4 border-t">
                     <div className="relative w-full">
+                        <Label htmlFor="communication-input" className="sr-only">Type your message</Label>
                         <Textarea
+                            id="communication-input"
+                            name="communication-input"
                             placeholder="Type your message..."
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}

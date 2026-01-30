@@ -32,7 +32,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/role-selection');
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         title: 'Login Failed',
@@ -48,6 +48,8 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     try {
         const provider = new GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
         await signInWithPopup(auth, provider);
         router.push('/role-selection');
     } catch (error: any) {

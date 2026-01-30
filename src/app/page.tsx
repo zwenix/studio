@@ -1,11 +1,12 @@
-import { Bot, ClipboardCheck, Mail, ScanText, Sparkles, BookOpen } from 'lucide-react';
+import { ClipboardCheck, Mail, ScanText, Sparkles, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 
 const features = [
   {
-    icon: <Bot className="h-8 w-8 text-primary" />,
+    icon: <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Content Generator" width={32} height={32} />,
     title: 'AI Content Generator',
     description: 'Generate CAPS-compliant lesson plans, exercises, assessments, and more in seconds.',
   },
@@ -42,7 +43,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-headline font-bold text-xl">
-            <Bot className="h-7 w-7 text-primary" />
+            <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={28} height={28} />
             <span>EduAI Companion</span>
           </Link>
           <div className="flex items-center gap-2">
@@ -99,7 +100,7 @@ export default function LandingPage() {
         <div className="container py-8 flex items-center justify-between text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} EduAI Companion. All rights reserved.</p>
            <div className="flex items-center gap-2 font-headline font-semibold">
-                <Bot className="h-5 w-5 text-primary" />
+                <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={20} height={20} />
                 <span>EduAI Companion</span>
             </div>
         </div>

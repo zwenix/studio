@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Bot, Loader2, Sparkles, Download } from 'lucide-react';
+import { Loader2, Sparkles, Download } from 'lucide-react';
+import Image from 'next/image';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentInput } from '@/ai/flows/generate-caps-content';
 import { useToast } from '@/hooks/use-toast';
@@ -97,7 +98,7 @@ export default function ContentGeneratorPage() {
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-            <Bot className="mr-3 h-8 w-8" />
+            <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Content Generator" width={32} height={32} className="mr-3" />
             AI Content Generator
           </h1>
         </div>
@@ -197,7 +198,7 @@ export default function ContentGeneratorPage() {
             <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none">
               {isLoading && (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <Bot className="h-12 w-12 animate-pulse" />
+                      <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="Generating content" width={48} height={48} className="animate-pulse" />
                       <p className="mt-4">Generating content, please wait...</p>
                   </div>
               )}

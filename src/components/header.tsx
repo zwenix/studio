@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { Bot } from "lucide-react"
+import Image from "next/image"
 import { UserNav } from "./user-nav"
 import type { ReactNode } from "react"
 
@@ -10,7 +10,7 @@ export function Header({children}: {children?: ReactNode}) {
       <div className="flex items-center gap-4">
         <div className="hidden items-center gap-2 font-headline font-semibold text-lg md:flex">
             <Link href="/" className="flex items-center gap-2">
-                <Bot className="h-6 w-6 text-primary" />
+                <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={24} height={24} />
                 <span>EduAI Companion</span>
             </Link>
         </div>

@@ -21,7 +21,7 @@ export const mockActivities: Activity[] = [
         timestamp: '1 hour ago',
     },
     {
-        user: { name: 'AI Assistant', avatarUrl: '/logo.svg' },
+        user: { name: 'AI Assistant', avatarUrl: 'https://i.ibb.co/bMw3gNSc/Main-Logo-512.png' },
         action: 'suggested a new lesson plan for',
         target: 'Grade 12 Physical Science',
         timestamp: '3 hours ago',

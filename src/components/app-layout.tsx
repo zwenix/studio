@@ -11,7 +11,7 @@ import {
 import { Header } from '@/components/header';
 import { MainNav } from '@/components/main-nav';
 import Link from 'next/link';
-import { Bot } from 'lucide-react';
+import Image from 'next/image';
 import AuthGuard from './auth-guard';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -22,7 +22,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <SidebarHeader>
             <div className="flex items-center gap-2 p-2 font-headline font-semibold text-lg">
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <Bot className="h-6 w-6 text-primary" />
+                        <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={24} height={24} />
                         <span>EduAI Companion</span>
                     </Link>
                 </div>

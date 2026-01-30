@@ -1,4 +1,5 @@
-import { Activity, ArrowUpRight, BookOpen, Bot, FileUp, PenSquare } from 'lucide-react';
+import { Activity, ArrowUpRight, BookOpen, FileUp, PenSquare } from 'lucide-react';
+import Image from 'next/image';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,7 +79,7 @@ export default function DashboardPage() {
               <CardTitle className="text-sm font-medium">
                 AI Content Generated
               </CardTitle>
-              <Bot className="h-4 w-4 text-muted-foreground" />
+              <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Icon" width={16} height={16} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">+72</div>
@@ -93,7 +94,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
                  <Button variant="secondary" size="sm" className="justify-start">
-                    <Bot className="mr-2 h-4 w-4" /> Generate Content
+                    <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Icon" width={16} height={16} className="mr-2" /> Generate Content
                  </Button>
                  <Button variant="secondary" size="sm" className="justify-start">
                     <PenSquare className="mr-2 h-4 w-4" /> New Assignment

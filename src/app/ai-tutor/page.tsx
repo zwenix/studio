@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sparkles, Bot, User, Mic, Loader2, Play } from 'lucide-react';
+import { Sparkles, User, Mic, Loader2, Play } from 'lucide-react';
 import { aiTutor } from '@/ai/flows/ai-tutor-flow';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +82,7 @@ export default function AiTutorPage() {
           <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <Bot className="h-12 w-12" />
+                <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Tutor" width={48} height={48} />
                 <p className="mt-4 text-center">Ask me anything about your school subjects!</p>
               </div>
             )}
@@ -89,7 +90,7 @@ export default function AiTutorPage() {
               <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                 {message.role === 'model' && (
                   <Avatar className="h-8 w-8 border">
-                    <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                    <AvatarFallback><Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Tutor" width={16} height={16} /></AvatarFallback>
                   </Avatar>
                 )}
                 <div className={`rounded-lg px-4 py-2 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -116,7 +117,7 @@ export default function AiTutorPage() {
              {isLoading && (
                  <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8 border">
-                        <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                        <AvatarFallback><Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Tutor" width={16} height={16} /></AvatarFallback>
                     </Avatar>
                     <div className="rounded-lg px-4 py-2 bg-muted">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

@@ -1,3 +1,4 @@
+// Re-triggering backend deployment to ensure Google Auth provider is enabled.
 /**
  * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model
  * for the EduAI Companion platform. Data access is strictly controlled based on the

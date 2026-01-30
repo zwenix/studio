@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: Home },
+  { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/content-generator', label: 'Content Generator', icon: Bot },
   { href: '/my-classes', label: 'My Classes', icon: Users },
   { href: '/ocr', label: 'OCR Tool', icon: ScanText },

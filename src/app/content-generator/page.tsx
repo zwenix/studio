@@ -21,10 +21,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Bot, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Loader2, Sparkles, Download } from 'lucide-react';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentInput } from '@/ai/flows/generate-caps-content';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
 
 type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster";
 
@@ -79,6 +80,16 @@ export default function ContentGeneratorPage() {
     } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleExportPdf = () => {
+    if (!generatedContent) return;
+    const doc = new jsPDF();
+    const margin = 15;
+    const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
+    const lines = doc.splitTextToSize(generatedContent, maxWidth);
+    doc.text(lines, margin, margin);
+    doc.save('eduai-content.pdf');
   };
 
   return (
@@ -199,8 +210,12 @@ export default function ContentGeneratorPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="pt-4">
+            <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4">
               <Button variant="outline" className="w-full" disabled={!generatedContent}>Assign to Students</Button>
+              <Button onClick={handleExportPdf} variant="secondary" className="w-full" disabled={!generatedContent}>
+                <Download className="mr-2 h-4 w-4" />
+                Export as PDF
+              </Button>
             </CardFooter>
           </Card>
         </div>

@@ -23,3 +23,18 @@ export interface Activity {
   target: string;
   timestamp: string;
 }
+
+export interface Conversation {
+  id: string;
+  participant: User;
+  lastMessage: string;
+  timestamp: string;
+  unread: boolean;
+}
+
+export interface Message {
+  id: string;
+  sender: 'me' | 'them';
+  content: string;
+  timestamp: string;
+}

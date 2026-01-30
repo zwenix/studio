@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Home, BookCopy, Users, ScanText } from 'lucide-react';
+import { Bot, Home, Users, ScanText, Sparkles, ClipboardCheck, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
@@ -15,6 +15,9 @@ const navItems = [
   { href: '/content-generator', label: 'Content Generator', icon: Bot },
   { href: '/my-classes', label: 'My Classes', icon: Users },
   { href: '/ocr', label: 'OCR Tool', icon: ScanText },
+  { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles },
+  { href: '/autograding', label: 'Autograding', icon: ClipboardCheck },
+  { href: '/communication', label: 'Communication', icon: Mail },
 ];
 
 export function MainNav() {

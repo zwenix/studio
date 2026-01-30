@@ -1,0 +1,150 @@
+'use client';
+
+import React, { useState, useRef } from 'react';
+import { AppLayout } from '@/components/app-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Sparkles, Bot, User, Mic, Loader2, Play } from 'lucide-react';
+import { aiTutor } from '@/ai/flows/ai-tutor-flow';
+import { textToSpeech } from '@/ai/flows/tts-flow';
+import { useToast } from '@/hooks/use-toast';
+
+type Message = {
+  role: 'user' | 'model';
+  content: string;
+};
+
+export default function AiTutorPage() {
+  const { toast } = useToast();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTtsLoading, setIsTtsLoading] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const result = await aiTutor({ query: input, history: messages });
+      const modelMessage: Message = { role: 'model', content: result.response };
+      setMessages((prev) => [...prev, modelMessage]);
+    } catch (error) {
+      console.error('AI Tutor failed:', error);
+      toast({
+        title: 'An error occurred',
+        description: 'Failed to get a response from the AI tutor.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayAudio = async (text: string, index: number) => {
+    setIsTtsLoading(index);
+    try {
+        const result = await textToSpeech({ text });
+        if (audioRef.current) {
+            audioRef.current.src = result.audio;
+            audioRef.current.play();
+        }
+    } catch (error) {
+        console.error('TTS failed:', error);
+        toast({
+            title: 'An error occurred',
+            description: 'Failed to generate audio.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsTtsLoading(null);
+    }
+  };
+
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col h-full p-4 sm:p-8 pt-6">
+        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center mb-4">
+          <Sparkles className="mr-3 h-8 w-8" />
+          AI Tutor
+        </h1>
+
+        <Card className="flex-1 flex flex-col">
+          <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Bot className="h-12 w-12" />
+                <p className="mt-4 text-center">Ask me anything about your school subjects!</p>
+              </div>
+            )}
+            {messages.map((message, index) => (
+              <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                {message.role === 'model' && (
+                  <Avatar className="h-8 w-8 border">
+                    <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={`rounded-lg px-4 py-2 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                   {message.role === 'model' && (
+                     <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 mt-2"
+                        onClick={() => handlePlayAudio(message.content, index)}
+                        disabled={isTtsLoading === index}
+                    >
+                        {isTtsLoading === index ? <Loader2 className="h-4 w-4 animate-spin"/> : <Play className="h-4 w-4" />}
+                     </Button>
+                   )}
+                </div>
+                 {message.role === 'user' && (
+                  <Avatar className="h-8 w-8">
+                     <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            ))}
+             {isLoading && (
+                 <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8 border">
+                        <AvatarFallback><Bot className="h-4 w-4"/></AvatarFallback>
+                    </Avatar>
+                    <div className="rounded-lg px-4 py-2 bg-muted">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                 </div>
+             )}
+          </CardContent>
+          <div className="p-4 border-t">
+            <div className="relative">
+              <Input
+                placeholder="Type your question here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                className="pr-20"
+                disabled={isLoading}
+              />
+              <div className="absolute top-1/2 right-2 transform -translate-y-1/2 flex gap-2">
+                 <Button variant="ghost" size="icon" disabled={isLoading}>
+                    <Mic className="h-4 w-4"/>
+                </Button>
+                <Button onClick={handleSend} disabled={isLoading}>Send</Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <audio ref={audioRef} className="hidden" />
+      </div>
+    </AppLayout>
+  );
+}

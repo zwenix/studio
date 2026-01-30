@@ -1,4 +1,4 @@
-import type { Class, Activity, Student } from './types';
+import type { Class, Activity, Student, Conversation, Message } from './types';
 
 export const mockClasses: Class[] = [
   { id: '1', name: 'Grade 10 Maths', grade: '10', studentCount: 32 },
@@ -41,3 +41,23 @@ export const mockStudents: Student[] = [
     { id: 's3', name: 'Cynthia Naidoo', avatarUrl: 'https://picsum.photos/seed/student3/40/40', overallGrade: 78 },
     { id: 's4', name: 'David Smith', avatarUrl: 'https://picsum.photos/seed/student4/40/40', overallGrade: 65 },
   ];
+
+export const mockConversations: Conversation[] = [
+  { id: 'conv1', participant: { name: 'Ayanda Dlamini (Parent)', avatarUrl: 'https://picsum.photos/seed/parent1/40/40' }, lastMessage: 'Thank you for the update on Ayanda\'s progress!', timestamp: '2 hours ago', unread: true },
+  { id: 'conv2', participant: { name: 'Bongani Mkhize (Student)', avatarUrl: 'https://picsum.photos/seed/student2/40/40' }, lastMessage: 'I have a question about the homework.', timestamp: '1 day ago', unread: false },
+  { id: 'conv3', participant: { name: 'Principal Thompson', avatarUrl: 'https://picsum.photos/seed/principal/40/40' }, lastMessage: 'Meeting reminder for tomorrow at 10 AM.', timestamp: '3 days ago', unread: false },
+];
+
+export const mockMessages: { [key: string]: Message[] } = {
+  conv1: [
+    { id: 'm1-1', sender: 'them', content: 'Good morning, I wanted to check on Ayanda\'s progress in Maths.', timestamp: '3 hours ago' },
+    { id: 'm1-2', sender: 'me', content: 'Good morning! Ayanda is doing very well. Her latest test score was 85%.', timestamp: '3 hours ago' },
+    { id: 'm1-3', sender: 'them', content: 'That\'s great to hear! Thank you for the update on Ayanda\'s progress!', timestamp: '2 hours ago' },
+  ],
+  conv2: [
+     { id: 'm2-1', sender: 'them', content: 'Hi teacher, I have a question about the homework.', timestamp: '1 day ago' },
+  ],
+  conv3: [
+    { id: 'm3-1', sender: 'them', content: 'Just a reminder about our staff meeting tomorrow at 10 AM in the main conference room.', timestamp: '3 days ago' },
+  ]
+};

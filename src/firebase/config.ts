@@ -1,11 +1,9 @@
-// This is a placeholder for your Firebase configuration.
-// Replace the values below with your project's configuration.
-// You can find this in your project's settings in the Firebase console.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  projectId: 'studio-4710648038-f5ed1',
+  appId: '1:839200363148:web:57c1944d28d714754461a9',
+  apiKey: 'AIzaSyD_kM4H_Q5OYsLUfAHfT75i97cIczt4bng',
+  authDomain: 'studio-4710648038-f5ed1.firebaseapp.com',
+  measurementId: '',
+  messagingSenderId: '839200363148',
+  storageBucket: 'studio-4710648038-f5ed1.appspot.com',
 };

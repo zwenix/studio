@@ -37,6 +37,7 @@ export default function MockAssessmentPage() {
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [assessmentFormat, setAssessmentFormat] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGrading, setIsGrading] = useState(false);
@@ -88,6 +89,7 @@ export default function MockAssessmentPage() {
         subject,
         topic,
         difficulty: difficulty || undefined,
+        assessmentFormat: assessmentFormat as any || undefined,
       };
       const result = await generateMockAssessment(input);
       setGeneratedAssessment(result);
@@ -169,52 +171,69 @@ export default function MockAssessmentPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="grade">Grade</Label>
-                        <Select value={grade} onValueChange={setGrade} disabled={isGenerating || isGrading}>
-                        <SelectTrigger id="grade"><SelectValue placeholder="Select a grade" /></SelectTrigger>
-                        <SelectContent>
-                            {Object.keys(educationalData).map((g) => (
-                            <SelectItem key={g} value={g}>Grade {g}</SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                            <Label htmlFor="grade">Grade</Label>
+                            <Select value={grade} onValueChange={setGrade} disabled={isGenerating || isGrading}>
+                                <SelectTrigger id="grade"><SelectValue placeholder="Select a grade" /></SelectTrigger>
+                                <SelectContent>
+                                    {Object.keys(educationalData).map((g) => (
+                                    <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                             <Label htmlFor="subject">Subject</Label>
+                            <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating || isGrading}>
+                                <SelectTrigger id="subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
+                                <SelectContent>
+                                {subjects?.map((s) => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
+
                     <div className="space-y-2">
-                        <Label htmlFor="difficulty">Difficulty (Optional)</Label>
-                        <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating || isGrading}>
-                            <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
+                        <Label htmlFor="topic">Topic</Label>
+                        <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating || isGrading}>
+                            <SelectTrigger id="topic"><SelectValue placeholder="Select a topic" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="easy">Easy</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="hard">Hard</SelectItem>
+                            {topics?.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
                             </SelectContent>
                         </Select>
                     </div>
-                    </div>
-
-                    <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating || isGrading}>
-                        <SelectTrigger id="subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
-                        <SelectContent>
-                        {subjects?.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                    <Label htmlFor="topic">Topic</Label>
-                    <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating || isGrading}>
-                        <SelectTrigger id="topic"><SelectValue placeholder="Select a topic" /></SelectTrigger>
-                        <SelectContent>
-                        {topics?.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="difficulty">Difficulty (Optional)</Label>
+                            <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating || isGrading}>
+                                <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="easy">Easy</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="hard">Hard</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="assessmentFormat">Format (Optional)</Label>
+                            <Select value={assessmentFormat} onValueChange={setAssessmentFormat} disabled={isGenerating || isGrading}>
+                                <SelectTrigger id="assessmentFormat"><SelectValue placeholder="Select format" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="multiple choice">Multiple Choice</SelectItem>
+                                    <SelectItem value="short answer">Short Answer</SelectItem>
+                                    <SelectItem value="essay">Essay</SelectItem>
+                                    <SelectItem value="fill in the blanks">Fill in the Blanks</SelectItem>
+                                    <SelectItem value="true or false">True / False</SelectItem>
+                                    <SelectItem value="worksheet">Worksheet</SelectItem>
+                                    <SelectItem value="mixed">Mixed</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
                 <CardFooter>

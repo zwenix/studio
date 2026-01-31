@@ -15,11 +15,22 @@ const GradeSchema = z.enum([
   'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
 ]);
 
+const AssessmentFormatSchema = z.enum([
+  'multiple choice',
+  'short answer',
+  'essay',
+  'fill in the blanks',
+  'true or false',
+  'worksheet',
+  'mixed',
+]);
+
 const GenerateMockAssessmentInputSchema = z.object({
   grade: GradeSchema.describe('The grade level for the practice assessment.'),
   subject: z.string().describe('The subject for the practice assessment.'),
   topic: z.string().describe('The specific topic within the subject.'),
   difficulty: z.string().optional().describe('The difficulty level for the assessment (e.g., Easy, Medium, Hard).'),
+  assessmentFormat: AssessmentFormatSchema.optional().describe('The format for the assessment.'),
 });
 
 export type GenerateMockAssessmentInput = z.infer<typeof GenerateMockAssessmentInputSchema>;
@@ -75,6 +86,9 @@ Subject: {{{subject}}}
 Topic: {{{topic}}}
 {{#if difficulty}}
 Difficulty: {{{difficulty}}}
+{{/if}}
+{{#if assessmentFormat}}
+Assessment Format: {{{assessmentFormat}}}
 {{/if}}
 
 You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear Markdown format.`,

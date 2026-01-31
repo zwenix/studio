@@ -1,17 +1,39 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useUser, useFirestore, useAuth } from '@/firebase';
-import { GraduationCap, School, User as UserIcon, Loader2 } from 'lucide-react';
+import { GraduationCap, School, Users, Loader2 } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
-import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 type Role = 'teacher' | 'student' | 'parent';
+
+const ROLES_CONFIG = [
+  {
+    role: 'teacher' as Role,
+    title: 'Teacher',
+    icon: GraduationCap,
+    color: 'from-purple-500 to-pink-500',
+    desc: 'Create lessons, grade homework, chat with AI',
+  },
+  {
+    role: 'student' as Role,
+    title: 'Student',
+    icon: School,
+    color: 'from-blue-500 to-cyan-500',
+    desc: 'Access learning materials, submit homework, AI tutor',
+  },
+  {
+    role: 'parent' as Role,
+    title: 'Parent',
+    icon: Users,
+    color: 'from-green-500 to-teal-500',
+    desc: 'View progress reports, communicate with teachers',
+  },
+];
 
 export default function RoleSelectionPage() {
   const router = useRouter();
@@ -28,7 +50,6 @@ export default function RoleSelectionPage() {
     try {
       const batch = writeBatch(firestore);
 
-      // 1. Create/update the main user profile document
       const userRef = doc(firestore, 'users', user.uid);
       const names = user.displayName?.split(' ') || ['', ''];
       const firstName = names[0];
@@ -42,7 +63,6 @@ export default function RoleSelectionPage() {
         role: role,
       }, { merge: true });
 
-      // 2. Create the role-specific document
       if (role === 'teacher') {
         const teacherRef = doc(firestore, 'teachers', user.uid);
         batch.set(teacherRef, {
@@ -68,10 +88,8 @@ export default function RoleSelectionPage() {
         });
       }
       
-      // Commit the batch
       await batch.commit();
 
-      // 3. Optionally update the auth user's display name if it's not set
       if (!user.displayName && firstName) {
         await updateProfile(auth.currentUser, {
             displayName: `${firstName} ${lastName}`.trim()
@@ -98,32 +116,49 @@ export default function RoleSelectionPage() {
 
   return (
     <AuthGuard>
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-headline">Welcome to EduAI!</CardTitle>
-              <CardDescription>
-                To get started, please select your role.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4">
-              <Button variant="outline" size="lg" className="h-20 text-lg" onClick={() => handleRoleSelect('teacher')} disabled={!!isLoading}>
-                {isLoading === 'teacher' ? <Loader2 className="mr-4 h-8 w-8 animate-spin" /> : <GraduationCap className="mr-4 h-8 w-8" />}
-                I'm a Teacher
-              </Button>
-              <Button variant="outline" size="lg" className="h-20 text-lg" onClick={() => handleRoleSelect('student')} disabled={!!isLoading}>
-                {isLoading === 'student' ? <Loader2 className="mr-4 h-8 w-8 animate-spin" /> : <School className="mr-4 h-8 w-8" />}
-                I'm a Student
-              </Button>
-              <Button variant="outline" size="lg" className="h-20 text-lg" onClick={() => handleRoleSelect('parent')} disabled={!!isLoading}>
-                {isLoading === 'parent' ? <Loader2 className="mr-4 h-8 w-8 animate-spin" /> : <UserIcon className="mr-4 h-8 w-8" />}
-                I'm a Parent
-              </Button>
-            </CardContent>
-             <CardFooter>
-                 <p className="text-xs text-muted-foreground text-center w-full">Your role helps us personalize your experience.</p>
-            </CardFooter>
-          </Card>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-100 p-6">
+            <div className="max-w-4xl w-full">
+                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 text-foreground font-headline">Choose Your Role</h1>
+                <p className="text-center text-lg text-muted-foreground mb-12">
+                  Select the role that best fits you to access your personalized dashboard.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {ROLES_CONFIG.map(({ role, title, icon: Icon, color, desc }) => (
+                    <button
+                      key={role}
+                      onClick={() => handleRoleSelect(role)}
+                      disabled={!!isLoading}
+                      className={`group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-60 bg-gradient-to-br ${color}`}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity"></div>
+                      <div className="p-8 text-center text-white relative z-10 flex flex-col items-center justify-center h-full">
+                          {isLoading === role ? (
+                              <Loader2 className="h-12 w-12 mb-4 animate-spin" />
+                          ) : (
+                              <Icon className="h-12 w-12 mb-4" />
+                          )}
+                          <h3 className="text-2xl font-bold mb-3 font-headline">{title}</h3>
+                          <p className="text-sm opacity-90 flex-grow">{desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {isLoading && (
+                  <div className="text-center mt-10">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Updating your access...</p>
+                  </div>
+                )}
+                
+                <div className="mt-12 text-center text-sm text-muted-foreground">
+                    {user?.email && (
+                        <p>Signed in as: <span className="font-medium text-foreground">{user.email}</span></p>
+                    )}
+                    <p className="text-xs mt-2 block">You can change your role later in settings.</p>
+                </div>
+            </div>
         </div>
     </AuthGuard>
   );

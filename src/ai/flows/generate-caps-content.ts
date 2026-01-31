@@ -85,7 +85,28 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateCAPSContentOutputSchema},
   prompt: `You are an expert educational content creator specializing in generating CAPS-compliant educational content for South African schools.
 
-Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. Use headings (#, ##), lists (* or -), bold text (**text**), and italics (*text*) to make the content clear and visually appealing. The output should be ready for direct use. Do not generate plain text that looks like a code block.
+Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. The output MUST be ready for direct use and look like a real, clean document.
+
+**CRITICAL FORMATTING INSTRUCTIONS:**
+1.  **Clarity for Kids:** Structure everything for a child to read. Use simple language. Number each question clearly (e.g., "Question 1", "Question 2").
+2.  **SPACING IS KEY:** Use horizontal rules (---) and ample vertical spacing (extra newlines) to visually separate questions. The layout must not be cramped.
+3.  **NO MARKDOWN TABLES:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using Markdown tables (e.g., | Column A | Column B |). This format is unusable for the target audience.
+    Instead, list the items from the first column with a number, and then provide a separate list of options (with letters) for the student to match from.
+    **Correct Example for a Matching Question:**
+    ---
+    **Question 5: Matching**
+    Match the animal to its sound. Write the letter of the correct sound next to the animal number in your answer.
+
+    **Animals:**
+    1.  Dog
+    2.  Cat
+    3.  Cow
+
+    **Sounds:**
+    a.  Moo
+    b.  Bark
+    c.  Meow
+    ---
 
 You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 
@@ -109,7 +130,7 @@ Additional Instructions: {{{additionalInstructions}}}
 
 Generate the following CAPS-compliant content.
 
-If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format. For these content types, it is critical that you structure the questions clearly for a child. Number each question (e.g., "Question 1", "Question 2"). Use horizontal rules (---) and ample spacing to visually separate questions to avoid a cramped layout. This is for kids, so readability is paramount.
+If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format.
 
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.`,
 });

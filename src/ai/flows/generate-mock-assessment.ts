@@ -44,7 +44,28 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateMockAssessmentOutputSchema},
   prompt: `You are an expert AI assistant that helps students prepare for their exams by creating practice assessments.
 
-Your audience is students who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. Use headings (#, ##), lists (* or -), and bold text (**text**) to make the content clear.
+Your audience is students who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. The output MUST be ready for direct use and look like a real, clean document.
+
+**CRITICAL FORMATTING INSTRUCTIONS:**
+1.  **Clarity for Kids:** Structure everything for a child to read. Use simple language. Number each question clearly (e.g., "Question 1", "Question 2").
+2.  **SPACING IS KEY:** Use horizontal rules (---) and ample vertical spacing (extra newlines) to visually separate questions. The layout must not be cramped.
+3.  **NO MARKDOWN TABLES:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using Markdown tables (e.g., | Column A | Column B |). This format is unusable for the target audience.
+    Instead, list the items from the first column with a number, and then provide a separate list of options (with letters) for the student to match from.
+    **Correct Example for a Matching Question:**
+    ---
+    **Question 5: Matching**
+    Match the animal to its sound. Write the letter of the correct sound next to the animal number in your answer.
+
+    **Animals:**
+    1.  Dog
+    2.  Cat
+    3.  Cow
+
+    **Sounds:**
+    a.  Moo
+    b.  Bark
+    c.  Meow
+    ---
 
 Generate a short practice assessment based on the grade, subject, and topic specified.
 The assessment should be designed to test the student's knowledge.

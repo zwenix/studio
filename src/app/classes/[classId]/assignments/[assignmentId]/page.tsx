@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
+import { autograde } from '@/ai/flows/autograder-flow';
 import { Loader2, Sparkles, FileCheck2, ArrowLeft } from 'lucide-react';
 import type { Assignment, Content } from '@/lib/types';
 import ReactMarkdown from 'react-markdown';
@@ -23,10 +23,12 @@ export default function AssignmentPage() {
 
   const classId = params.classId as string;
   const assignmentId = params.assignmentId as string;
-
-  const [submission, setSubmission] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
-
+  
+  // State for multiple answers
+  const [answers, setAnswers] = useState<string[]>([]);
+  
   const assignmentRef = useMemoFirebase(() => {
     if (!classId || !assignmentId) return null;
     return doc(firestore, 'classes', classId, 'assignments', assignmentId);
@@ -39,9 +41,30 @@ export default function AssignmentPage() {
   }, [firestore, assignment?.contentId]);
   const { data: content, isLoading: isContentLoaded } = useDoc<Content>(contentRef);
 
+  // Memoize question parsing and count
+  const questionCount = useMemo(() => {
+    if (!content?.content) return 0;
+    // Match "Question X", "Question X:", "QUESTION X" etc.
+    const count = (content.content.match(/question \d+/gi) || []).length;
+    if (count > 0 && answers.length !== count) {
+        setAnswers(Array(count).fill(''));
+    }
+    return count;
+  }, [content?.content, answers.length]);
+
+  const handleAnswerChange = (index: number, value: string) => {
+    const newAnswers = [...answers];
+    newAnswers[index] = value;
+    setAnswers(newAnswers);
+  };
+
   const handleSubmit = async () => {
-    if (!submission) {
-      toast({ title: "Submission is empty", variant: 'destructive' });
+    const submissionContent = answers
+        .map((ans, i) => `**Answer for Question ${i + 1}:**\n${ans || '(No answer provided)'}`)
+        .join('\n\n---\n\n');
+
+    if (answers.every(ans => ans.trim() === '')) {
+      toast({ title: "Submission is empty", description: "Please answer at least one question.", variant: 'destructive' });
       return;
     }
     if (!assignmentRef || !content?.rubric) {
@@ -54,7 +77,7 @@ export default function AssignmentPage() {
     try {
       // 1. Autograde the submission
       const gradingResult = await autograde({
-        assignmentContent: submission,
+        assignmentContent: submissionContent,
         gradingInstructions: content.rubric,
         subject: content.subject,
         grade: content.grade,
@@ -62,7 +85,7 @@ export default function AssignmentPage() {
 
       // 2. Update the assignment document in Firestore
       await updateDoc(assignmentRef, {
-        submissionContent: submission,
+        submissionContent: submissionContent,
         gradeReceived: gradingResult.grade,
         feedback: gradingResult.feedback,
         status: 'graded',
@@ -96,7 +119,7 @@ export default function AssignmentPage() {
         )}
 
         {!pageLoading && content && assignment && (
-          <div className="grid gap-8 md:grid-cols-2">
+          <div className="grid gap-8 md:grid-cols-1">
             <Card>
               <CardHeader>
                 <CardTitle>{content.topic}</CardTitle>
@@ -113,28 +136,51 @@ export default function AssignmentPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>My Submission</CardTitle>
-                        <CardDescription>Enter your response below and submit for grading.</CardDescription>
+                        <CardDescription>
+                            {questionCount > 0 
+                                ? "Enter your response for each question in the fields below."
+                                : "Enter your response below and submit for grading."
+                            }
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="submission-content">Your Answer</Label>
-                            <Textarea 
-                                id="submission-content" 
-                                value={submission}
-                                onChange={(e) => setSubmission(e.target.value)}
-                                rows={12}
-                                placeholder="Type your answer here..."
-                                disabled={isLoading}
-                            />
-                        </div>
+                    <CardContent className="space-y-6">
+                        {questionCount > 0 ? (
+                           [...Array(questionCount)].map((_, index) => (
+                                <div key={index} className="space-y-2">
+                                    <Label htmlFor={`submission-q-${index + 1}`}>Answer for Question {index + 1}</Label>
+                                    <Textarea 
+                                        id={`submission-q-${index + 1}`}
+                                        value={answers[index] || ''}
+                                        onChange={(e) => handleAnswerChange(index, e.target.value)}
+                                        rows={4}
+                                        placeholder={`Type your answer for question ${index + 1} here...`}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                            ))
+                        ) : (
+                             <div className="space-y-2">
+                                <Label htmlFor="submission-content">Your Answer</Label>
+                                <Textarea 
+                                    id="submission-content" 
+                                    value={answers[0] || ''}
+                                    onChange={(e) => handleAnswerChange(0, e.target.value)}
+                                    rows={12}
+                                    placeholder="Type your answer here..."
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter>
                          <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                             Submit & Autograde
                          </Button>
-                    </CardContent>
+                    </CardFooter>
                 </Card>
             )}
-
+            
             {assignment.status === 'graded' && (
                 <Card className="flex flex-col">
                     <CardHeader>
@@ -143,9 +189,11 @@ export default function AssignmentPage() {
                     </CardHeader>
                     <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none">
                         <div className="space-y-6">
-                             <div>
+                            <div>
                                 <h3 className="font-bold">Your Submission</h3>
-                                <pre className="whitespace-pre-wrap font-sans text-sm p-2 bg-white rounded-md">{assignment.submissionContent}</pre>
+                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black">
+                                    <ReactMarkdown>{assignment.submissionContent || ''}</ReactMarkdown>
+                                </div>
                             </div>
                             <div>
                                 <h3 className="font-bold">Grade/Score</h3>
@@ -153,7 +201,9 @@ export default function AssignmentPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold">Feedback</h3>
-                                <pre className="whitespace-pre-wrap font-sans text-sm">{assignment.feedback}</pre>
+                                <div className="whitespace-pre-wrap font-sans text-sm">
+                                  <ReactMarkdown>{assignment.feedback || ''}</ReactMarkdown>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

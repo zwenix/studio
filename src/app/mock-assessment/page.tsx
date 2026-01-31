@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, FlaskConical, FileCheck2 } from 'lucide-react';
-import Image from 'next/image';
 import { educationalData } from '@/lib/educational-data';
 import { generateMockAssessment, GenerateMockAssessmentOutput } from '@/ai/flows/generate-mock-assessment';
 import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
@@ -43,13 +42,29 @@ export default function MockAssessmentPage() {
   const [isGrading, setIsGrading] = useState(false);
   
   const [generatedAssessment, setGeneratedAssessment] = useState<GenerateMockAssessmentOutput | null>(null);
-  const [studentSubmission, setStudentSubmission] = useState('');
   const [gradingResult, setGradingResult] = useState<AutogradeOutput | null>(null);
-
   const [pageState, setPageState] = useState<AssessmentState>('generate');
+  
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [rawSubmission, setRawSubmission] = useState(''); // To store final formatted submission
 
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
   const topics = grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+
+  const questionCount = useMemo(() => {
+    if (!generatedAssessment?.content) return 0;
+    const count = (generatedAssessment.content.match(/question \d+/gi) || []).length;
+    if (count > 0 && answers.length !== count) {
+      setAnswers(Array(count).fill(''));
+    }
+    return count;
+  }, [generatedAssessment?.content, answers.length]);
+
+  const handleAnswerChange = (index: number, value: string) => {
+    const newAnswers = [...answers];
+    newAnswers[index] = value;
+    setAnswers(newAnswers);
+  };
 
   const handleGenerate = async () => {
     if (!grade || !subject || !topic) {
@@ -64,7 +79,8 @@ export default function MockAssessmentPage() {
     setIsGenerating(true);
     setGeneratedAssessment(null);
     setGradingResult(null);
-    setStudentSubmission('');
+    setAnswers([]);
+    setRawSubmission('');
 
     try {
       const input: GenerateMockAssessmentInput = {
@@ -89,7 +105,11 @@ export default function MockAssessmentPage() {
   };
 
   const handleGrade = async () => {
-    if (!studentSubmission || !generatedAssessment?.rubric) {
+    const submissionContent = answers
+        .map((ans, i) => `**Answer for Question ${i + 1}:**\n${ans || '(No answer provided)'}`)
+        .join('\n\n---\n\n');
+
+    if (answers.every(ans => ans.trim() === '') || !generatedAssessment?.rubric) {
       toast({
         title: "Missing Information",
         description: "Please enter your answer before submitting.",
@@ -100,10 +120,11 @@ export default function MockAssessmentPage() {
     
     setIsGrading(true);
     setGradingResult(null);
+    setRawSubmission(submissionContent);
 
     try {
       const result = await autograde({
-        assignmentContent: studentSubmission,
+        assignmentContent: submissionContent,
         gradingInstructions: generatedAssessment.rubric,
         subject,
         grade,
@@ -126,7 +147,8 @@ export default function MockAssessmentPage() {
     setPageState('generate');
     setGeneratedAssessment(null);
     setGradingResult(null);
-    setStudentSubmission('');
+    setAnswers([]);
+    setRawSubmission('');
   }
 
   return (
@@ -149,7 +171,7 @@ export default function MockAssessmentPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="grade">Grade</Label>
-                        <Select value={grade} onValueChange={setGrade} disabled={isGenerating}>
+                        <Select value={grade} onValueChange={setGrade} disabled={isGenerating || isGrading}>
                         <SelectTrigger id="grade"><SelectValue placeholder="Select a grade" /></SelectTrigger>
                         <SelectContent>
                             {Object.keys(educationalData).map((g) => (
@@ -160,7 +182,7 @@ export default function MockAssessmentPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="difficulty">Difficulty (Optional)</Label>
-                        <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
+                        <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating || isGrading}>
                             <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="easy">Easy</SelectItem>
@@ -173,7 +195,7 @@ export default function MockAssessmentPage() {
 
                     <div className="space-y-2">
                     <Label htmlFor="subject">Subject</Label>
-                    <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating}>
+                    <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating || isGrading}>
                         <SelectTrigger id="subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
                         <SelectContent>
                         {subjects?.map((s) => (
@@ -185,7 +207,7 @@ export default function MockAssessmentPage() {
 
                     <div className="space-y-2">
                     <Label htmlFor="topic">Topic</Label>
-                    <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating}>
+                    <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating || isGrading}>
                         <SelectTrigger id="topic"><SelectValue placeholder="Select a topic" /></SelectTrigger>
                         <SelectContent>
                         {topics?.map((t) => (
@@ -196,7 +218,7 @@ export default function MockAssessmentPage() {
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button onClick={handleGenerate} disabled={isGenerating} className="w-full">
+                    <Button onClick={handleGenerate} disabled={isGenerating || isGrading} className="w-full">
                         {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                         Generate Practice Test
                     </Button>
@@ -245,7 +267,9 @@ export default function MockAssessmentPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold">Your Answer</h3>
-                                <pre className="whitespace-pre-wrap font-sans text-sm p-2 bg-white rounded-md text-gray-800">{studentSubmission}</pre>
+                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black">
+                                    <ReactMarkdown>{rawSubmission}</ReactMarkdown>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -254,14 +278,30 @@ export default function MockAssessmentPage() {
                 
                 {pageState === 'practice' && (
                     <CardFooter className="flex-col items-stretch gap-4 pt-4 border-t">
-                        <Textarea 
-                            placeholder="Type your answer here..." 
-                            rows={6}
-                            value={studentSubmission}
-                            onChange={(e) => setStudentSubmission(e.target.value)}
-                            disabled={isGrading}
-                        />
-                        <Button onClick={handleGrade} disabled={isGrading} className="w-full">
+                        {questionCount > 0 ? (
+                            [...Array(questionCount)].map((_, index) => (
+                                <div key={index} className="space-y-2 w-full">
+                                    <Label htmlFor={`submission-q-${index + 1}`}>Answer for Question {index + 1}</Label>
+                                    <Textarea 
+                                        id={`submission-q-${index + 1}`}
+                                        value={answers[index] || ''}
+                                        onChange={(e) => handleAnswerChange(index, e.target.value)}
+                                        rows={3}
+                                        placeholder={`Type your answer for question ${index + 1}...`}
+                                        disabled={isGrading}
+                                    />
+                                </div>
+                            ))
+                        ) : (
+                             <Textarea 
+                                placeholder="Type your answer here..." 
+                                rows={6}
+                                value={answers[0] || ''}
+                                onChange={(e) => handleAnswerChange(0, e.target.value)}
+                                disabled={isGrading}
+                            />
+                        )}
+                        <Button onClick={handleGrade} disabled={isGrading || isGenerating} className="w-full">
                             {isGrading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
                             Submit & Grade
                         </Button>

@@ -12,11 +12,36 @@ import { aiTutor } from '@/ai/flows/ai-tutor-flow';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type Message = {
   role: 'user' | 'model';
   content: string;
 };
+
+const languages = [
+    { value: 'English', label: 'English' },
+    { value: 'Spanish', label: 'Spanish' },
+    { value: 'French', label: 'French' },
+    { value: 'German', label: 'German' },
+    { value: 'isiZulu', label: 'isiZulu' },
+    { value: 'Afrikaans', label: 'Afrikaans' },
+  ];
+  
+  const voices = [
+    { value: 'Algenib', label: 'Algenib (Female)' },
+    { value: 'Achernar', label: 'Achernar (Male)' },
+    { value: 'Enif', label: 'Enif (Female)' },
+    { value: 'Canopus', label: 'Canopus (Male)' },
+    { value: 'Arcturus', label: 'Arcturus (Male)' },
+    { value: 'Procyon', label: 'Procyon (Male)' },
+  ];
 
 export default function AiTutorPage() {
   const { toast } = useToast();
@@ -24,6 +49,8 @@ export default function AiTutorPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTtsLoading, setIsTtsLoading] = useState<number | null>(null);
+  const [language, setLanguage] = useState('English');
+  const [voice, setVoice] = useState('Algenib');
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleSend = async () => {
@@ -35,7 +62,7 @@ export default function AiTutorPage() {
     setIsLoading(true);
 
     try {
-      const result = await aiTutor({ query: input, history: messages });
+      const result = await aiTutor({ query: input, history: messages, language });
       const modelMessage: Message = { role: 'model', content: result.response };
       setMessages((prev) => [...prev, modelMessage]);
     } catch (error) {
@@ -53,7 +80,7 @@ export default function AiTutorPage() {
   const handlePlayAudio = async (text: string, index: number) => {
     setIsTtsLoading(index);
     try {
-        const result = await textToSpeech({ text });
+        const result = await textToSpeech({ text, voice });
         if (audioRef.current) {
             audioRef.current.src = result.audio;
             audioRef.current.play();
@@ -74,10 +101,37 @@ export default function AiTutorPage() {
   return (
     <AppLayout>
       <div className="flex flex-col h-full p-4 sm:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center mb-4">
-          <Sparkles className="mr-3 h-8 w-8" />
-          AI Tutor
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center mb-4 sm:mb-0">
+                <Sparkles className="mr-3 h-8 w-8" />
+                AI Tutor
+            </h1>
+            <div className='grid grid-cols-2 gap-4'>
+                 <div className="space-y-2">
+                    <Label htmlFor="language">Language</Label>
+                    <Select value={language} onValueChange={setLanguage}>
+                        <SelectTrigger id="language"><SelectValue placeholder="Language" /></SelectTrigger>
+                        <SelectContent>
+                        {languages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="voice">Voice</Label>
+                    <Select value={voice} onValueChange={setVoice}>
+                        <SelectTrigger id="voice"><SelectValue placeholder="Voice" /></SelectTrigger>
+                        <SelectContent>
+                        {voices.map((v) => (
+                            <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+            </div>
+        </div>
+
 
         <Card className="flex-1 flex flex-col">
           <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -132,6 +186,7 @@ export default function AiTutorPage() {
               <Input
                 id="ai-tutor-input"
                 name="ai-tutor-input"
+                autoComplete='off'
                 placeholder="Type your question here..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

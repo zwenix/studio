@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview An AI tutor flow.
+ * @fileOverview An AI tutor flow that supports multiple languages.
  *
  * - aiTutor - A function that handles the AI tutor chat.
  * - AiTutorInput - The input type for the aiTutor function.
@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user query to the AI tutor.'),
+  language: z.string().describe('The language for the AI tutor to respond in.'),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
@@ -34,6 +35,8 @@ const prompt = ai.definePrompt({
   input: {schema: AiTutorInputSchema},
   output: {schema: AiTutorOutputSchema},
   prompt: `You are an expert AI Tutor for students and teachers. Be helpful and answer questions clearly.
+
+  Respond in the following language: {{{language}}}
   
   {{#if history}}
   Conversation History:

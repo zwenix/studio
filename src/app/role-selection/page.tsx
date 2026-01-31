@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { GraduationCap, School, User as UserIcon, Loader2 } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -22,18 +22,19 @@ export default function RoleSelectionPage() {
   const [isLoading, setIsLoading] = useState<Role | null>(null);
 
   const handleRoleSelect = async (role: Role) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !auth.currentUser) return;
 
     setIsLoading(role);
     try {
-      // 1. Create a user profile document in Firestore
+      const batch = writeBatch(firestore);
+
+      // 1. Create/update the main user profile document
       const userRef = doc(firestore, 'users', user.uid);
-      
       const names = user.displayName?.split(' ') || ['', ''];
       const firstName = names[0];
       const lastName = names.length > 1 ? names.slice(1).join(' ') : '';
-
-      await setDoc(userRef, {
+      
+      batch.set(userRef, {
         id: user.uid,
         email: user.email,
         firstName: firstName,
@@ -41,10 +42,39 @@ export default function RoleSelectionPage() {
         role: role,
       }, { merge: true });
 
-      // 2. Optionally update the auth user's display name if it's not set
-      if (!user.displayName) {
-        await updateProfile(auth.currentUser!, {
-            displayName: `${firstName} ${lastName}`
+      // 2. Create the role-specific document
+      if (role === 'teacher') {
+        const teacherRef = doc(firestore, 'teachers', user.uid);
+        batch.set(teacherRef, {
+          id: user.uid,
+          userId: user.uid,
+          subjects: [],
+          classIds: [],
+        });
+      } else if (role === 'student') {
+        const learnerRef = doc(firestore, 'learners', user.uid);
+        batch.set(learnerRef, {
+            id: user.uid,
+            userId: user.uid,
+            grade: '',
+            learningPreferences: '',
+        });
+      } else if (role === 'parent') {
+        const parentRef = doc(firestore, 'parents', user.uid);
+        batch.set(parentRef, {
+            id: user.uid,
+            userId: user.uid,
+            childIds: [],
+        });
+      }
+      
+      // Commit the batch
+      await batch.commit();
+
+      // 3. Optionally update the auth user's display name if it's not set
+      if (!user.displayName && firstName) {
+        await updateProfile(auth.currentUser, {
+            displayName: `${firstName} ${lastName}`.trim()
         });
       }
 

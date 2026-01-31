@@ -1,13 +1,26 @@
 export interface User {
-  name: string;
-  avatarUrl: string;
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'teacher' | 'student' | 'parent';
+  avatarUrl?: string;
+}
+
+export interface Teacher {
+  id: string;
+  userId: string;
+  subjects: string[];
+  classIds: string[];
 }
 
 export interface Class {
   id: string;
   name: string;
   grade: string;
-  studentCount: number;
+  subject: string;
+  teacherId: string;
+  learnerIds: string[];
 }
 
 export interface Student {
@@ -18,7 +31,7 @@ export interface Student {
 }
 
 export interface Activity {
-  user: User;
+  user: { name: string; avatarUrl: string };
   action: string;
   target: string;
   timestamp: string;
@@ -26,7 +39,7 @@ export interface Activity {
 
 export interface Conversation {
   id: string;
-  participant: User;
+  participant: { name: string; avatarUrl: string };
   lastMessage: string;
   timestamp: string;
   unread: boolean;

@@ -89,12 +89,18 @@
           "items": {
             "type": "string"
           }
+        },
+        "classIds": {
+            "type": "array",
+            "description": "References to Classes taught by the teacher.",
+            "items": {
+                "type": "string"
+            }
         }
       },
       "required": [
         "id",
-        "userId",
-        "subjects"
+        "userId"
       ]
     },
     "Parent": {

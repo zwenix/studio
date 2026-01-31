@@ -1,12 +1,28 @@
+'use client';
+
 import { AppLayout } from '@/components/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockClasses, mockStudents } from '@/lib/mock-data';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, PlusCircle, ArrowUpRight } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Users, PlusCircle, ArrowUpRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { Class } from '@/lib/types';
+import Image from 'next/image';
 
 export default function MyClassesPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const classesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: classes, isLoading } = useCollection<Class>(classesQuery);
+
   return (
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
@@ -15,42 +31,54 @@ export default function MyClassesPage() {
             <Users className="mr-3 h-8 w-8" />
             My Classes
           </h1>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Class
+          <Button asChild>
+            <Link href="/my-classes/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add New Class
+            </Link>
           </Button>
         </div>
 
+        {isLoading && (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        )}
+
+        {!isLoading && classes?.length === 0 && (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <h3 className="text-xl font-medium">No classes found</h3>
+              <p className="text-muted-foreground mt-2">Get started by creating your first class.</p>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-6">
-          {mockClasses.map((cls) => (
+          {classes?.map((cls) => (
             <Card key={cls.id}>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>{cls.name}</CardTitle>
                   <CardDescription>
                     <Badge variant="secondary" className="mr-2">Grade {cls.grade}</Badge>
-                    {cls.studentCount} students
+                    {cls.subject}
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
-                  View Class <ArrowUpRight className="ml-2 h-4 w-4" />
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="#">
+                     View Class <ArrowUpRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </CardHeader>
               <CardContent>
-                <h4 className="text-sm font-semibold mb-2 text-muted-foreground">Students Overview</h4>
-                <div className="flex flex-wrap gap-4">
-                  {mockStudents.map(student => (
-                    <div key={student.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 w-full sm:w-auto">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={student.avatarUrl} alt={student.name} />
-                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{student.name}</p>
-                        <p className="text-xs text-muted-foreground">Overall: {student.overallGrade}%</p>
-                      </div>
-                    </div>
-                  ))}
+                <h4 className="text-sm font-semibold mb-2 text-muted-foreground">{cls.learnerIds?.length || 0} Students</h4>
+                <div className="flex flex-wrap gap-2">
+                  {cls.learnerIds?.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">Student avatars would be shown here.</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No students have been added to this class yet.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -146,7 +146,7 @@ service cloud.firestore {
      */
     match /classes/{classId} {
       allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds);
-      allow list: if false;
+      allow list: if isSignedIn() && request.query.where.teacherId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.teacherId);
       allow delete: if isExistingOwner(resource.data.teacherId);

@@ -157,13 +157,51 @@ export default function ContentGeneratorPage() {
   };
 
   const handleExportPdf = () => {
-    if (!generatedContent?.content) return;
+    if (!generatedContent) return;
+    
+    const finalTopic = topic === 'manual' ? manualTopic : topic;
+
     const doc = new jsPDF();
     const margin = 15;
     const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
-    const lines = doc.splitTextToSize(generatedContent.content, maxWidth);
-    doc.text(lines, margin, margin);
-    doc.save('eduai-content.pdf');
+
+    // --- Content Page ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(`${finalTopic} (${contentType})`, margin, margin);
+
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12);
+    const contentLines = doc.splitTextToSize(generatedContent.content, maxWidth);
+    doc.text(contentLines, margin, margin + 15);
+
+    // --- Memo Page ---
+    if (generatedContent.memo) {
+      doc.addPage();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Memo', margin, margin);
+      
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
+      const memoLines = doc.splitTextToSize(generatedContent.memo, maxWidth);
+      doc.text(memoLines, margin, margin + 15);
+    }
+
+    // --- Rubric Page ---
+    if (generatedContent.rubric) {
+      doc.addPage();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Rubric', margin, margin);
+
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
+      const rubricLines = doc.splitTextToSize(generatedContent.rubric, maxWidth);
+      doc.text(rubricLines, margin, margin + 15);
+    }
+
+    doc.save(`EduAI - ${finalTopic}.pdf`);
   };
 
   return (
@@ -265,7 +303,7 @@ export default function ContentGeneratorPage() {
             <CardHeader>
               <CardTitle>Generated Content</CardTitle>
               <CardDescription>
-                The AI-generated content will appear here. Select a class to assign it.
+                The AI-generated content will appear here. Review, export, or assign to a class.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose-sm max-w-none">
@@ -299,19 +337,31 @@ export default function ContentGeneratorPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4">
-                 <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={!generatedContent || isAssigning}>
-                    <SelectTrigger><SelectValue placeholder="Select a class to assign" /></SelectTrigger>
-                    <SelectContent>
-                        {teacherClasses?.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                 </Select>
-              <Button onClick={handleSaveAndAssign} variant="default" className="w-full" disabled={!generatedContent || !selectedClassId || isAssigning}>
-                {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save & Assign
-              </Button>
+             <CardFooter className="flex flex-col items-stretch gap-4 pt-4 border-t sm:flex-row sm:items-center">
+                <Button onClick={handleExportPdf} variant="outline" disabled={!generatedContent || isLoading}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
+                </Button>
+                <div className="flex-grow hidden sm:block" />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={!generatedContent || isAssigning}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Select a class to assign" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {teacherClasses && teacherClasses.length > 0 ? (
+                                teacherClasses.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))
+                            ) : (
+                                <div className="p-2 text-sm text-muted-foreground text-center">No classes found</div>
+                            )}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleSaveAndAssign} variant="default" disabled={!generatedContent || !selectedClassId || isAssigning}>
+                        {isAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save & Assign'}
+                    </Button>
+                </div>
             </CardFooter>
           </Card>
         </div>

@@ -163,17 +163,17 @@
           "type": "string",
           "description": "Specific topic the content covers."
         },
-        "contentUrl": {
+        "content": {
           "type": "string",
-          "description": "URL or path to the content file (e.g., PDF, video)."
+          "description": "The educational content itself (e.g., PDF, video)."
         },
-        "memoUrl": {
+        "memo": {
           "type": "string",
-          "description": "URL or path to the memo file (if applicable)."
+          "description": "The memo for the content (if applicable)."
         },
-        "rubricUrl": {
+        "rubric": {
           "type": "string",
-          "description": "URL or path to the rubric file (if applicable)."
+          "description": "The rubric for the content (if applicable)."
         }
       },
       "required": [
@@ -183,7 +183,7 @@
         "grade",
         "subject",
         "topic",
-        "contentUrl"
+        "content"
       ]
     },
     "Assignment": {
@@ -214,8 +214,12 @@
           "type": "string",
           "description": "Status of the assignment (e.g., assigned, submitted, graded)."
         },
+        "submissionContent": {
+          "type": "string",
+          "description": "The learner's submitted work for the assignment."
+        },
         "gradeReceived": {
-          "type": "number",
+          "type": "string",
           "description": "Grade received for the assignment."
         },
         "feedback": {

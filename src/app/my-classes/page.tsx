@@ -81,7 +81,7 @@ export default function MyClassesPage() {
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="#">
+                  <Link href={`/my-classes/${cls.id}`}>
                      View Class <ArrowUpRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>

@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export interface User {
   id: string;
   email: string;
@@ -21,6 +23,29 @@ export interface Class {
   subject: string;
   teacherId: string;
   learnerIds: string[];
+}
+
+export interface Content {
+    id: string;
+    teacherId: string;
+    contentType: string;
+    grade: string;
+    subject: string;
+    topic: string;
+    content: string;
+    memo?: string;
+    rubric?: string;
+}
+
+export interface Assignment {
+    id: string;
+    contentId: string;
+    learnerId: string;
+    dueDate: Timestamp;
+    status: 'assigned' | 'submitted' | 'graded';
+    submissionContent?: string;
+    gradeReceived?: string;
+    feedback?: string;
 }
 
 export interface Student {

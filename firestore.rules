@@ -21,8 +21,7 @@
  *   is governed by denormalized member lists (`teacherId`, `learnerIds`) on the parent document.
  *   This avoids slow and costly `get` calls in subcollection rules.
  * - No Public Listing of Mixed-Access Collections: To prevent data leakage, general `list`
- *   operations on the top-level `/classes` collection are disabled. Clients must query for
- *   specific classes they are members of, and access is granted on a per-document basis.
+ *   operations on the top-level `/classes` collection are disabled, unless queries are properly scoped.
  *
  * Denormalization for Authorization: To create performant and secure rules, authorization data
  * is denormalized. For example, the `classes` document contains a `teacherId` and a `learnerIds`
@@ -70,7 +69,7 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get, list, create, update, delete: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     /**
@@ -81,7 +80,7 @@ service cloud.firestore {
      * @principle Enforces document ownership and validates relational integrity.
      */
     match /learners/{learnerId} {
-      allow get, list, create, update, delete: if isOwner(learnerId);
+      allow read, write: if isOwner(learnerId);
     }
 
     /**
@@ -92,7 +91,7 @@ service cloud.firestore {
      * @principle Enforces document ownership and validates relational integrity.
      */
     match /teachers/{teacherId} {
-      allow get, list, create, update, delete: if isOwner(teacherId);
+      allow read, write: if isOwner(teacherId);
     }
 
     /**
@@ -103,7 +102,7 @@ service cloud.firestore {
      * @principle Enforces document ownership and validates relational integrity.
      */
     match /parents/{parentId} {
-      allow get, list, create, update, delete: if isOwner(parentId);
+      allow read, write: if isOwner(parentId);
     }
 
     /**
@@ -114,8 +113,7 @@ service cloud.firestore {
      * @principle Implements a "Public Read with Owner-Only Writes" security pattern.
      */
     match /content/{contentId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.teacherId);
       allow delete: if isExistingOwner(resource.data.teacherId);
@@ -130,6 +128,7 @@ service cloud.firestore {
      */
     match /classes/{classId} {
       allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds);
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.teacherId);
       allow delete: if isExistingOwner(resource.data.teacherId);

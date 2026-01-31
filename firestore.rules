@@ -144,7 +144,7 @@ service cloud.firestore {
         allow get: if isSignedIn() && (isClassTeacher(classId) || isOwner(resource.data.learnerId));
         allow list: if isClassTeacher(classId);
         allow create: if isClassTeacher(classId) && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds;
-        allow update: if isClassTeacher(classId) && documentExists();
+        allow update: if (isClassTeacher(classId) || isOwner(resource.data.learnerId)) && documentExists();
         allow delete: if isClassTeacher(classId) && documentExists();
       }
     }

@@ -54,8 +54,8 @@ export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSc
 
 const GenerateCAPSContentOutputSchema = z.object({
   content: z.string().describe('The generated CAPS-compliant content.'),
-  memo: z.string().optional().describe('A generated memo for the content, if applicable.'),
-  rubric: z.string().optional().describe('A generated rubric for the content, if applicable.'),
+  memo: z.string().describe('A generated memo for the content. Should be empty if not applicable.'),
+  rubric: z.string().describe('A generated rubric for the content. Should be empty if not applicable.'),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
@@ -85,7 +85,8 @@ Additional Instructions: {{{additionalInstructions}}}
 
 Generate the following CAPS-compliant content.
 
-If the Content Type is 'exercise' or 'assessment', you MUST also generate a detailed memo with answers and a comprehensive grading rubric.`,
+If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric.
+If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(

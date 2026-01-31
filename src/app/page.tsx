@@ -1,141 +1,144 @@
-import { ClipboardCheck, Mail, ScanText, Sparkles, BookOpen, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 
-const features = [
-  {
-    icon: <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Content Generator" width={32} height={32} />,
-    title: 'AI Content Generator',
-    description: 'Generate CAPS-compliant lesson plans, exercises, assessments, and more in seconds.',
-  },
-  {
-    icon: <ClipboardCheck className="h-8 w-8 text-primary" />,
-    title: 'AI Autograding',
-    description: 'Automatically grade assignments, provide detailed feedback, and apply rubrics.',
-  },
-  {
-    icon: <Sparkles className="h-8 w-8 text-primary" />,
-    title: 'AI Tutor',
-    description: 'An interactive AI tutor for students to ask questions and get help with their studies.',
-  },
-  {
-    icon: <ScanText className="h-8 w-8 text-primary" />,
-    title: 'OCR & Handwriting Tool',
-    description: 'Convert printed or handwritten text from images into editable digital text.',
-  },
-  {
-    icon: <Mail className="h-8 w-8 text-primary" />,
-    title: 'Communication Portal',
-    description: 'Seamlessly communicate with students and parents through an integrated messaging system.',
-  },
-   {
-    icon: <BookOpen className="h-8 w-8 text-primary" />,
-    title: 'Class Management',
-    description: 'Manage your classes, track student progress, and view performance analytics.',
-  },
-];
+const FeatureBox = ({ icon, title, description }: { icon: string; title: string; description: string; }) => (
+  <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1">
+    <div className="text-5xl mb-4">{icon}</div>
+    <h4 className="text-xl font-bold mb-2">{title}</h4>
+    <p className="text-gray-400">{description}</p>
+  </div>
+);
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-dvh bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-headline font-bold text-xl">
-            <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={28} height={28} />
-            <span>EduAI Companion</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 text-white">
+      {/* Navigation */}
+      <header className="fixed top-0 w-full bg-black/30 backdrop-blur-md z-50 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={40} height={40} />
+            <h1 className="text-2xl font-bold">EduAI Companion</h1>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log In</Link>
+          <div className="flex gap-4 items-center">
+             <Button variant="outline" asChild className="border-white/30 text-white hover:bg-white/10 hover:text-white hover:border-white/60 transition px-6 py-2">
+              <Link href="/login">
+                Sign In
+              </Link>
             </Button>
-            <Button asChild>
-              <Link href="/signup">Sign Up</Link>
+            <Button asChild className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition font-semibold">
+              <Link href="/signup">
+                Get Started
+              </Link>
             </Button>
           </div>
         </div>
       </header>
-      
-      <main className="flex-1">
-        <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32">
-           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/10 via-background to-background -z-10"></div>
-           <div className="container mx-auto text-center px-4">
-              <div className="bg-accent text-accent-foreground font-semibold rounded-full px-4 py-1 inline-block mb-4 text-sm">
-                The Future of Education is Here
-              </div>
-              <h1 className="font-headline text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter">
-                Supercharge Your Teaching with AI
-              </h1>
-              <p className="mt-6 max-w-3xl mx-auto text-lg text-muted-foreground">
-                EduAI Companion is an all-in-one platform that leverages artificial intelligence to streamline your workflow, engage students, and enhance learning outcomes. Spend less time on admin and more time inspiring young minds.
-              </p>
-              <div className="mt-8 flex justify-center gap-4">
-                <Button size="lg" asChild>
-                  <Link href="/signup">Get Started for Free <ChevronRight className="ml-2 h-4 w-4" /></Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="#features">Explore Features</Link>
-                </Button>
-              </div>
+
+      <main>
+        {/* Hero Section */}
+        <section className="pt-32 pb-20 px-4 text-center">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+              Personalized Learning Powered by <span className="text-indigo-400">AI</span>
+            </h2>
+            <p className="text-xl text-gray-300 mb-8">
+              EduAI Companion transforms education with AI-powered lesson planning, homework generation, and intelligent grading for teachers, parents, and students.
+            </p>
+            <div className="flex flex-col md:flex-row gap-4 justify-center mb-16">
+               <Button size="lg" asChild className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
+                <Link href="/signup">
+                  Start Free Trial
+                </Link>
+              </Button>
+               <Button size="lg" variant="outline" asChild className="px-8 py-4 border-2 text-white border-white hover:bg-white/10 rounded-xl font-semibold text-lg transition h-auto hover:text-white">
+                <Link href="/login">
+                  Sign In
+                </Link>
+              </Button>
             </div>
+          </div>
         </section>
 
-        <section id="features" className="w-full py-16 md:py-24 lg:py-32 bg-muted/50">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight font-headline">Everything You Need in One Platform</h2>
-              <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">From lesson planning to parent communication, we've got you covered. Here's how we help.</p>
+        {/* Features Grid */}
+        <section className="py-20 px-4 bg-black/20">
+          <div className="max-w-6xl mx-auto">
+            <h3 className="text-4xl font-bold text-center mb-16">Powerful Features</h3>
+            <div className="grid md:grid-cols-3 gap-8">
+              <FeatureBox
+                icon="🎓"
+                title="AI Lesson Planning"
+                description="Generate CAPS-aligned lesson plans in seconds with learning outcomes, activities, and assessments."
+              />
+              <FeatureBox
+                icon="✏️"
+                title="Smart Homework"
+                description="Auto-generate homework with difficulty levels, rubrics, and answer guides for any topic."
+              />
+              <FeatureBox
+                icon="📊"
+                title="Intelligent Grading"
+                description="Auto-grade assignments with detailed feedback and progress tracking for each student."
+              />
+              <FeatureBox
+                icon="📈"
+                title="Progress Reports"
+                description="Get comprehensive student analytics with strengths, areas for improvement, and recommendations."
+              />
+              <FeatureBox
+                icon="💬"
+                title="AI Tutor Chat"
+                description="24/7 AI-powered tutoring for students with instant explanations and personalized help."
+              />
+              <FeatureBox
+                icon="🔍"
+                title="OCR & Analysis"
+                description="Upload homework photos for instant text extraction, grading, and detailed feedback."
+              />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
-                <Card key={index} className="flex flex-col text-left p-6 transition-all hover:shadow-lg hover:-translate-y-1">
-                  <div className="mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-semibold font-headline mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm flex-1">{feature.description}</p>
-                </Card>
+          </div>
+        </section>
+
+        {/* Roles Section */}
+        <section className="py-20 px-4">
+          <div className="max-w-6xl mx-auto text-center">
+            <h3 className="text-4xl font-bold mb-16">Built for Everyone</h3>
+            <div className="grid md:grid-cols-4 gap-6">
+              {[
+                { role: '👨‍🏫', title: 'Teachers', desc: 'Plan lessons & grade work in minutes' },
+                { role: '👨‍🎓', title: 'Students', desc: 'Get personalized AI tutoring 24/7' },
+                { role: '👨‍👩‍👧', title: 'Parents', desc: 'Track progress & weekly AI reports' },
+                { role: '⚙️', title: 'Admins', desc: 'Manage system & user accounts' }
+              ].map((item, idx) => (
+                <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-6 hover:border-white/30 transition">
+                  <div className="text-5xl mb-4">{item.role}</div>
+                  <h4 className="text-xl font-bold mb-2">{item.title}</h4>
+                  <p className="text-gray-400">{item.desc}</p>
+                </div>
               ))}
             </div>
           </div>
         </section>
-        
-        <section className="w-full py-16 md:py-24 lg:py-32">
-            <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
-                <div className="order-2 md:order-1">
-                    <div className="bg-accent text-accent-foreground font-semibold rounded-full px-4 py-1 inline-block mb-4 text-sm">
-                        Built for Educators
-                    </div>
-                    <h2 className="text-3xl font-bold tracking-tight font-headline">Focus on What Matters Most: Teaching</h2>
-                    <p className="mt-4 text-muted-foreground">
-                        Our powerful AI tools are designed to be intuitive and easy to use, so you can integrate them into your classroom without a steep learning curve. Automate grading, generate creative lesson ideas, and communicate effortlessly, all from one central hub.
-                    </p>
-                     <Button size="lg" asChild className="mt-6">
-                        <Link href="/signup">Start Your Free Trial</Link>
-                    </Button>
-                </div>
-                <div className="order-1 md:order-2">
-                    <Image 
-                        src="https://picsum.photos/seed/landing-feature/600/500" 
-                        alt="Teacher using a laptop in a classroom"
-                        data-ai-hint="teacher classroom laptop"
-                        width={600} 
-                        height={500} 
-                        className="rounded-xl shadow-2xl" 
-                    />
-                </div>
-            </div>
-        </section>
 
+        {/* CTA Section */}
+        <section className="py-20 px-4 text-center border-t border-white/10">
+          <div className="max-w-4xl mx-auto">
+            <h3 className="text-4xl font-bold mb-6">Ready to Transform Education?</h3>
+            <p className="text-xl text-gray-300 mb-8">
+              Join thousands of educators revolutionizing the way they teach.
+            </p>
+            <Button size="lg" asChild className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
+              <Link href="/signup">
+                Get Started Free
+              </Link>
+            </Button>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t bg-background">
-        <div className="container py-8 flex flex-col sm:flex-row items-center justify-between text-sm text-muted-foreground gap-4">
-          <p>&copy; {new Date().getFullYear()} EduAI Companion. All rights reserved.</p>
-           <div className="flex items-center gap-2 font-headline font-semibold">
-                <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={20} height={20} />
-                <span>EduAI Companion</span>
-            </div>
-        </div>
+      {/* Footer */}
+      <footer className="border-t border-white/10 py-8 px-4 text-center text-gray-400">
+        <p>&copy; 2026 EduAI Companion. All rights reserved. | Product Owner & Developer: Zwelakhe Msuthu | Terms of Service</p>
       </footer>
     </div>
   );

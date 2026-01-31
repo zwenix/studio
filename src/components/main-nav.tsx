@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Home, Users, ScanText, Sparkles, ClipboardCheck, Mail } from 'lucide-react';
+import { Bot, Home, Users, ScanText, Sparkles, ClipboardCheck, Mail, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/ocr', label: 'OCR Tool', icon: ScanText },
   { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles },
   { href: '/autograding', label: 'Autograding', icon: ClipboardCheck },
+  { href: '/mock-assessment', label: 'Practice Test', icon: FlaskConical },
   { href: '/communication', label: 'Communication', icon: Mail },
 ];
 

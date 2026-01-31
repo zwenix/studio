@@ -48,14 +48,17 @@ const GenerateCAPSContentInputSchema = z.object({
     .string()
     .optional()
     .describe('Any specific instructions for content generation.'),
+  difficulty: z.string().optional().describe('The difficulty level for the content (e.g., Easy, Medium, Hard).'),
+  length: z.string().optional().describe('The desired length of the content (e.g., Short, Medium, Long).'),
+  assessmentFormat: z.string().optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).')
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
 const GenerateCAPSContentOutputSchema = z.object({
-  content: z.string().describe('The generated CAPS-compliant content.'),
-  memo: z.string().describe('A generated memo for the content. Should be empty if not applicable.'),
-  rubric: z.string().describe('A generated rubric for the content. Should be empty if not applicable.'),
+  content: z.string().describe('The generated CAPS-compliant content in Markdown format.'),
+  memo: z.string().describe('A generated memo for the content in Markdown format. Should be empty if not applicable.'),
+  rubric: z.string().describe('A generated rubric for the content in Markdown format. Should be empty if not applicable.'),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
@@ -72,6 +75,8 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateCAPSContentOutputSchema},
   prompt: `You are an expert educational content creator specializing in generating CAPS-compliant educational content for South African schools.
 
+Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. Use headings (#, ##), lists (* or -), bold text (**text**), and italics (*text*) to make the content clear and visually appealing. The output should be ready for direct use. Do not generate plain text that looks like a code block.
+
 You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 
 Grade: {{{grade}}}
@@ -79,13 +84,22 @@ Subject: {{{subject}}}
 Topic: {{{topic}}}
 Content Type: {{{contentType}}}
 
+{{#if difficulty}}
+Difficulty: {{{difficulty}}}
+{{/if}}
+{{#if length}}
+Length: {{{length}}}
+{{/if}}
+{{#if assessmentFormat}}
+Assessment Format: {{{assessmentFormat}}}
+{{/if}}
 {{#if additionalInstructions}}
 Additional Instructions: {{{additionalInstructions}}}
 {{/if}}
 
 Generate the following CAPS-compliant content.
 
-If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric.
+If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format.
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.`,
 });
 

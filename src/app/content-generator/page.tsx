@@ -25,16 +25,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Sparkles, Download } from 'lucide-react';
 import Image from 'next/image';
 import { educationalData } from '@/lib/educational-data';
-import { generateCAPSContent, GenerateCAPSContentInput, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
+import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
+import type { GenerateCAPSContentInput as CAPSInput } from '@/ai/flows/generate-caps-content';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
 import type { Class } from '@/lib/types';
+import ReactMarkdown from 'react-markdown';
 
 
 type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster";
+export type GenerateCAPSContentInput = CAPSInput;
 
 export default function ContentGeneratorPage() {
   const { toast } = useToast();
@@ -50,6 +53,11 @@ export default function ContentGeneratorPage() {
   const [additionalInstructions, setAdditionalInstructions] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  // New state for enhanced assessment options
+  const [difficulty, setDifficulty] = useState('');
+  const [length, setLength] = useState('');
+  const [assessmentFormat, setAssessmentFormat] = useState('');
   
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -86,6 +94,9 @@ export default function ContentGeneratorPage() {
         topic: finalTopic,
         contentType: contentType,
         additionalInstructions,
+        difficulty: difficulty || undefined,
+        length: length || undefined,
+        assessmentFormat: assessmentFormat || undefined,
       };
       const result = await generateCAPSContent(input);
       setGeneratedContent(result);
@@ -139,6 +150,8 @@ export default function ContentGeneratorPage() {
                 status: 'assigned',
                 dueDate,
                 createdAt: serverTimestamp(),
+                // Ensure rubric is saved for autograding
+                rubric: generatedContent.rubric || '' 
             });
         }
 
@@ -165,40 +178,32 @@ export default function ContentGeneratorPage() {
     const margin = 15;
     const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
 
-    // --- Content Page ---
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(`${finalTopic} (${contentType})`, margin, margin);
+    const addMarkdownToPdf = (title: string, markdown: string) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text(title, margin, margin);
 
-    doc.setFont('times', 'normal');
-    doc.setFontSize(12);
-    const contentLines = doc.splitTextToSize(generatedContent.content, maxWidth);
-    doc.text(contentLines, margin, margin + 15);
+        doc.setFont('times', 'normal');
+        doc.setFontSize(12);
+        // jspdf doesn't render markdown, so we split and print lines.
+        // This is a basic implementation. For full markdown, a library like html2canvas would be needed.
+        const lines = doc.splitTextToSize(markdown, maxWidth);
+        doc.text(lines, margin, margin + 15);
+    }
+
+    // --- Content Page ---
+    addMarkdownToPdf(`${finalTopic} (${contentType})`, generatedContent.content);
 
     // --- Memo Page ---
     if (generatedContent.memo) {
       doc.addPage();
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text('Memo', margin, margin);
-      
-      doc.setFont('times', 'normal');
-      doc.setFontSize(12);
-      const memoLines = doc.splitTextToSize(generatedContent.memo, maxWidth);
-      doc.text(memoLines, margin, margin + 15);
+      addMarkdownToPdf('Memo', generatedContent.memo);
     }
 
     // --- Rubric Page ---
     if (generatedContent.rubric) {
       doc.addPage();
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text('Rubric', margin, margin);
-
-      doc.setFont('times', 'normal');
-      doc.setFontSize(12);
-      const rubricLines = doc.splitTextToSize(generatedContent.rubric, maxWidth);
-      doc.text(rubricLines, margin, margin + 15);
+      addMarkdownToPdf('Rubric', generatedContent.rubric);
     }
 
     doc.save(`EduAI - ${finalTopic}.pdf`);
@@ -282,6 +287,48 @@ export default function ContentGeneratorPage() {
                 )}
               </div>
 
+              {(contentType === 'exercise' || contentType === 'assessment') && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <h4 className="font-medium text-sm">Assessment Options</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="difficulty">Difficulty</Label>
+                            <Select value={difficulty} onValueChange={setDifficulty}>
+                                <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="easy">Easy</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="hard">Hard</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="length">Length</Label>
+                            <Select value={length} onValueChange={setLength}>
+                                <SelectTrigger id="length"><SelectValue placeholder="Select length" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="short">Short (1-5 questions)</SelectItem>
+                                    <SelectItem value="medium">Medium (6-10 questions)</SelectItem>
+                                    <SelectItem value="long">Long (11+ questions)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="assessmentFormat">Format</Label>
+                            <Select value={assessmentFormat} onValueChange={setAssessmentFormat}>
+                                <SelectTrigger id="assessmentFormat"><SelectValue placeholder="Select format" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="multiple choice">Multiple Choice</SelectItem>
+                                    <SelectItem value="short answer">Short Answer</SelectItem>
+                                    <SelectItem value="essay">Essay Questions</SelectItem>
+                                    <SelectItem value="mixed">Mixed</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="instructions">Additional Instructions (Optional)</Label>
                 <Textarea id="instructions" placeholder="e.g., Focus on visual aids, include a group activity..." value={additionalInstructions} onChange={(e) => setAdditionalInstructions(e.target.value)} />
@@ -306,7 +353,7 @@ export default function ContentGeneratorPage() {
                 The AI-generated content will appear here. Review, export, or assign to a class.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose-sm max-w-none">
+            <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4">
               {isLoading && (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="Generating content" width={48} height={48} className="animate-pulse" />
@@ -320,14 +367,20 @@ export default function ContentGeneratorPage() {
                       {generatedContent.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
                       {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
                     </TabsList>
-                    <TabsContent value="content" className="mt-4 prose max-w-none">
-                        <pre className="whitespace-pre-wrap font-sans text-sm">{generatedContent.content}</pre>
+                    <TabsContent value="content" className="mt-4">
+                        <div className="bg-card text-card-foreground p-4 rounded-md">
+                           <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.content}</ReactMarkdown>
+                        </div>
                     </TabsContent>
-                    {generatedContent.memo && <TabsContent value="memo" className="mt-4 prose max-w-none">
-                         <pre className="whitespace-pre-wrap font-sans text-sm">{generatedContent.memo}</pre>
+                    {generatedContent.memo && <TabsContent value="memo" className="mt-4">
+                        <div className="bg-card text-card-foreground p-4 rounded-md">
+                           <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.memo}</ReactMarkdown>
+                        </div>
                     </TabsContent>}
-                     {generatedContent.rubric && <TabsContent value="rubric" className="mt-4 prose max-w-none">
-                         <pre className="whitespace-pre-wrap font-sans text-sm">{generatedContent.rubric}</pre>
+                     {generatedContent.rubric && <TabsContent value="rubric" className="mt-4">
+                         <div className="bg-card text-card-foreground p-4 rounded-md">
+                            <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.rubric}</ReactMarkdown>
+                         </div>
                     </TabsContent>}
                   </Tabs>
               ) : !isLoading && (

@@ -290,7 +290,7 @@ export default function ContentGeneratorPage() {
               {(contentType === 'exercise' || contentType === 'assessment') && (
                 <div className="space-y-4 p-4 border rounded-lg">
                     <h4 className="font-medium text-sm">Assessment Options</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="difficulty">Difficulty</Label>
                             <Select value={difficulty} onValueChange={setDifficulty}>
@@ -302,18 +302,7 @@ export default function ContentGeneratorPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="length">Length</Label>
-                            <Select value={length} onValueChange={setLength}>
-                                <SelectTrigger id="length"><SelectValue placeholder="Select length" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="short">Short (1-5 questions)</SelectItem>
-                                    <SelectItem value="medium">Medium (6-10 questions)</SelectItem>
-                                    <SelectItem value="long">Long (11+ questions)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
+                         <div className="space-y-2">
                             <Label htmlFor="assessmentFormat">Format</Label>
                             <Select value={assessmentFormat} onValueChange={setAssessmentFormat}>
                                 <SelectTrigger id="assessmentFormat"><SelectValue placeholder="Select format" /></SelectTrigger>
@@ -328,6 +317,23 @@ export default function ContentGeneratorPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="length">Number of Questions (10-100)</Label>
+                        <Input
+                            id="length"
+                            type="number"
+                            placeholder="10-100"
+                            value={length}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (e.target.value === '' || (val >= 10 && val <= 100)) {
+                                    setLength(e.target.value);
+                                }
+                            }}
+                            min="10"
+                            max="100"
+                        />
                     </div>
                 </div>
               )}

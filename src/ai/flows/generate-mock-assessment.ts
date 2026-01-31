@@ -31,6 +31,7 @@ const GenerateMockAssessmentInputSchema = z.object({
   topic: z.string().describe('The specific topic within the subject.'),
   difficulty: z.string().optional().describe('The difficulty level for the assessment (e.g., Easy, Medium, Hard).'),
   assessmentFormat: AssessmentFormatSchema.optional().describe('The format for the assessment.'),
+  length: z.string().optional().describe('The desired number of questions for the assessment (e.g., 10, 25, 50).'),
 });
 
 export type GenerateMockAssessmentInput = z.infer<typeof GenerateMockAssessmentInputSchema>;
@@ -89,6 +90,9 @@ Difficulty: {{{difficulty}}}
 {{/if}}
 {{#if assessmentFormat}}
 Assessment Format: {{{assessmentFormat}}}
+{{/if}}
+{{#if length}}
+Number of Questions: {{{length}}}
 {{/if}}
 
 You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear Markdown format.`,

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,9 @@ import { Camera, FileUp, Loader2, ScanText, ClipboardCopy } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 export default function OcrPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -15,6 +18,13 @@ export default function OcrPage() {
     const [extractedText, setExtractedText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+
+    // Camera state
+    const [isCameraOpen, setCameraOpen] = useState(false);
+    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
@@ -33,6 +43,69 @@ export default function OcrPage() {
         accept: { 'image/*': ['.jpeg', '.png', '.jpg', '.webp'] },
         multiple: false,
     });
+
+    useEffect(() => {
+        if (isCameraOpen) {
+            const getCameraPermission = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    setHasCameraPermission(true);
+                    streamRef.current = stream;
+
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    setHasCameraPermission(false);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Camera Access Denied',
+                        description: 'Please enable camera permissions in your browser settings.',
+                    });
+                }
+            };
+            getCameraPermission();
+        } else {
+            // Stop camera stream when dialog is closed
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+        }
+
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [isCameraOpen, toast]);
+
+    const handleCapture = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/png');
+            setPreview(dataUrl);
+
+            fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const capturedFile = new File([blob], "capture.png", { type: "image/png" });
+                    setFile(capturedFile);
+                });
+            
+            setCameraOpen(false);
+        }
+    };
 
     const handleExtract = async () => {
         if (!file || !preview) {
@@ -92,9 +165,33 @@ export default function OcrPage() {
                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanText className="mr-2 h-4 w-4" />}
                                     Extract Text
                                 </Button>
-                                <Button variant="outline" className="w-full">
-                                    <Camera className="mr-2 h-4 w-4" /> Use Camera
-                                </Button>
+                                <Dialog open={isCameraOpen} onOpenChange={setCameraOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="w-full">
+                                            <Camera className="mr-2 h-4 w-4" /> Use Camera
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Camera Upload</DialogTitle>
+                                            <DialogDescription>Position the document in the frame and capture.</DialogDescription>
+                                        </DialogHeader>
+                                        {hasCameraPermission === false ? (
+                                            <Alert variant="destructive">
+                                                <AlertTitle>Camera Access Required</AlertTitle>
+                                                <AlertDescription>Please allow camera access in your browser to use this feature.</AlertDescription>
+                                            </Alert>
+                                        ) : (
+                                            <>
+                                                <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+                                                <canvas ref={canvasRef} className="hidden" />
+                                            </>
+                                        )}
+                                        <DialogFooter>
+                                            <Button onClick={handleCapture} disabled={hasCameraPermission !== true}>Capture Photo</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </CardContent>
                     </Card>

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, FlaskConical, FileCheck2 } from 'lucide-react';
 import { educationalData } from '@/lib/educational-data';
@@ -38,6 +39,7 @@ export default function MockAssessmentPage() {
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [assessmentFormat, setAssessmentFormat] = useState('');
+  const [length, setLength] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGrading, setIsGrading] = useState(false);
@@ -90,6 +92,7 @@ export default function MockAssessmentPage() {
         topic,
         difficulty: difficulty || undefined,
         assessmentFormat: assessmentFormat as any || undefined,
+        length: length || undefined,
       };
       const result = await generateMockAssessment(input);
       setGeneratedAssessment(result);
@@ -207,7 +210,7 @@ export default function MockAssessmentPage() {
                         </Select>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="difficulty">Difficulty (Optional)</Label>
                             <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating || isGrading}>
@@ -233,6 +236,24 @@ export default function MockAssessmentPage() {
                                     <SelectItem value="mixed">Mixed</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="length">Number of Questions</Label>
+                          <Input
+                              id="length"
+                              type="number"
+                              placeholder="10-100"
+                              value={length}
+                              onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10);
+                                  if (e.target.value === '' || (val >= 10 && val <= 100)) {
+                                      setLength(e.target.value);
+                                  }
+                              }}
+                              min="10"
+                              max="100"
+                              disabled={isGenerating || isGrading}
+                          />
                         </div>
                     </div>
                 </CardContent>

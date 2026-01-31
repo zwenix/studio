@@ -59,7 +59,7 @@ const GenerateCAPSContentInputSchema = z.object({
     .optional()
     .describe('Any specific instructions for content generation.'),
   difficulty: z.string().optional().describe('The difficulty level for the content (e.g., Easy, Medium, Hard).'),
-  length: z.string().optional().describe('The desired length of the content (e.g., Short, Medium, Long).'),
+  length: z.string().optional().describe('The desired number of questions for the content (e.g., 10, 25, 50).'),
   assessmentFormat: AssessmentFormatSchema.optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).')
 });
 
@@ -119,7 +119,7 @@ Content Type: {{{contentType}}}
 Difficulty: {{{difficulty}}}
 {{/if}}
 {{#if length}}
-Length: {{{length}}}
+Number of Questions: {{{length}}}
 {{/if}}
 {{#if assessmentFormat}}
 Assessment Format: {{{assessmentFormat}}}

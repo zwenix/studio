@@ -39,6 +39,16 @@ const ContentTypeSchema = z.enum([
   'educational poster',
 ]);
 
+const AssessmentFormatSchema = z.enum([
+  'multiple choice',
+  'short answer',
+  'essay',
+  'fill in the blanks',
+  'true or false',
+  'worksheet',
+  'mixed',
+]);
+
 const GenerateCAPSContentInputSchema = z.object({
   grade: GradeSchema.describe('The grade level for which to generate content.'),
   subject: SubjectSchema.describe('The subject for which to generate content.'),
@@ -50,7 +60,7 @@ const GenerateCAPSContentInputSchema = z.object({
     .describe('Any specific instructions for content generation.'),
   difficulty: z.string().optional().describe('The difficulty level for the content (e.g., Easy, Medium, Hard).'),
   length: z.string().optional().describe('The desired length of the content (e.g., Short, Medium, Long).'),
-  assessmentFormat: z.string().optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).')
+  assessmentFormat: AssessmentFormatSchema.optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).')
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
@@ -99,7 +109,8 @@ Additional Instructions: {{{additionalInstructions}}}
 
 Generate the following CAPS-compliant content.
 
-If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format.
+If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format. For these content types, it is critical that you structure the questions clearly for a child. Number each question (e.g., "Question 1", "Question 2"). Use horizontal rules (---) and ample spacing to visually separate questions to avoid a cramped layout. This is for kids, so readability is paramount.
+
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.`,
 });
 

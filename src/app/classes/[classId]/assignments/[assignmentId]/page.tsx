@@ -13,6 +13,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
 import { Loader2, Sparkles, FileCheck2, ArrowLeft } from 'lucide-react';
 import type { Assignment, Content } from '@/lib/types';
+import ReactMarkdown from 'react-markdown';
 
 export default function AssignmentPage() {
   const params = useParams();
@@ -103,8 +104,8 @@ export default function AssignmentPage() {
                   Due by: {assignment.dueDate.toDate().toLocaleDateString()}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="prose prose-sm max-w-none">
-                 <pre className="whitespace-pre-wrap font-sans text-sm">{content.content}</pre>
+              <CardContent className="prose dark:prose-invert max-w-none p-6">
+                 <ReactMarkdown>{content.content}</ReactMarkdown>
               </CardContent>
             </Card>
 

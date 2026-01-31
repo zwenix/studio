@@ -96,7 +96,7 @@ export default function ContentGeneratorPage() {
         additionalInstructions,
         difficulty: difficulty || undefined,
         length: length || undefined,
-        assessmentFormat: assessmentFormat || undefined,
+        assessmentFormat: assessmentFormat as any || undefined,
       };
       const result = await generateCAPSContent(input);
       setGeneratedContent(result);
@@ -321,6 +321,9 @@ export default function ContentGeneratorPage() {
                                     <SelectItem value="multiple choice">Multiple Choice</SelectItem>
                                     <SelectItem value="short answer">Short Answer</SelectItem>
                                     <SelectItem value="essay">Essay Questions</SelectItem>
+                                    <SelectItem value="fill in the blanks">Fill in the Blanks</SelectItem>
+                                    <SelectItem value="true or false">True / False</SelectItem>
+                                    <SelectItem value="worksheet">Worksheet</SelectItem>
                                     <SelectItem value="mixed">Mixed</SelectItem>
                                 </SelectContent>
                             </Select>

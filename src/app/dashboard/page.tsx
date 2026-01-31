@@ -102,17 +102,17 @@ export default function DashboardPage() {
               <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                 <Button variant="secondary" size="sm" className="justify-start" asChild>
+                 <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>
                     <Link href="/content-generator">
                       <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Icon" width={16} height={16} className="mr-2" /> Generate Content
                     </Link>
                  </Button>
-                 <Button variant="secondary" size="sm" className="justify-start" asChild>
+                 <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>
                     <Link href="/my-classes/new">
                       <PenSquare className="mr-2 h-4 w-4" /> New Class
                     </Link>
                  </Button>
-                 <Button variant="secondary" size="sm" className="justify-start" asChild>
+                 <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>
                     <Link href="/ocr">
                       <FileUp className="mr-2 h-4 w-4" /> Upload Document
                     </Link>

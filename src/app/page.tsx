@@ -21,7 +21,7 @@ export default function LandingPage() {
             <h1 className="text-2xl font-bold">EduAI Companion</h1>
           </Link>
           <div className="flex gap-4 items-center">
-             <Button variant="outline" asChild className="border-white/30 text-white hover:bg-white/10 hover:text-white hover:border-white/60 transition px-6 py-2">
+             <Button asChild className="bg-white text-blue-900 hover:bg-slate-200 transition px-6 py-2 rounded-lg">
               <Link href="/login">
                 Sign In
               </Link>
@@ -51,7 +51,7 @@ export default function LandingPage() {
                   Start Free Trial
                 </Link>
               </Button>
-               <Button size="lg" variant="outline" asChild className="px-8 py-4 border-2 text-white border-white hover:bg-white/10 rounded-xl font-semibold text-lg transition h-auto hover:text-white">
+               <Button size="lg" asChild className="px-8 py-4 bg-white text-blue-900 hover:bg-slate-200 rounded-xl font-semibold text-lg transition h-auto">
                 <Link href="/login">
                   Sign In
                 </Link>

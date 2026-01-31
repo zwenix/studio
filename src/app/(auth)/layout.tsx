@@ -8,7 +8,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-       <div className="relative hidden lg:flex flex-col items-center justify-center p-8 text-white bg-gradient-to-br from-blue-950 to-slate-900">
+       <div className="relative hidden lg:flex flex-col items-center justify-center p-8 text-white bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
         <div className="absolute top-8 left-8 z-10">
             <Link href="/" className="flex items-center gap-2 font-headline font-bold text-2xl">
                 <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={32} height={32} />

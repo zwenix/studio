@@ -26,7 +26,7 @@ export default function LandingPage() {
                 Sign In
               </Link>
             </Button>
-            <Button asChild className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition font-semibold">
+            <Button asChild className="px-6 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 transition font-semibold">
               <Link href="/signup">
                 Get Started
               </Link>
@@ -46,7 +46,7 @@ export default function LandingPage() {
               EduAI Companion transforms education with AI-powered lesson planning, homework generation, and intelligent grading for teachers, parents, and students.
             </p>
             <div className="flex flex-col md:flex-row gap-4 justify-center mb-16">
-               <Button size="lg" asChild className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
+               <Button size="lg" asChild className="px-8 py-4 bg-blue-900 hover:bg-blue-800 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
                 <Link href="/signup">
                   Start Free Trial
                 </Link>
@@ -127,7 +127,7 @@ export default function LandingPage() {
             <p className="text-xl text-gray-300 mb-8">
               Join thousands of educators revolutionizing the way they teach.
             </p>
-            <Button size="lg" asChild className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
+            <Button size="lg" asChild className="px-8 py-4 bg-blue-900 hover:bg-blue-800 rounded-xl font-semibold text-lg transition transform hover:scale-105 h-auto">
               <Link href="/signup">
                 Get Started Free
               </Link>

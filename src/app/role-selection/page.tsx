@@ -116,10 +116,10 @@ export default function RoleSelectionPage() {
 
   return (
     <AuthGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-100 p-6">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-6">
             <div className="max-w-4xl w-full">
-                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 text-foreground font-headline">Choose Your Role</h1>
-                <p className="text-center text-lg text-muted-foreground mb-12">
+                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 text-white font-headline">Choose Your Role</h1>
+                <p className="text-center text-lg text-gray-300 mb-12">
                   Select the role that best fits you to access your personalized dashboard.
                 </p>
 
@@ -147,14 +147,14 @@ export default function RoleSelectionPage() {
 
                 {isLoading && (
                   <div className="text-center mt-10">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Updating your access...</p>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+                      <p className="text-gray-300">Updating your access...</p>
                   </div>
                 )}
                 
-                <div className="mt-12 text-center text-sm text-muted-foreground">
+                <div className="mt-12 text-center text-sm text-gray-400">
                     {user?.email && (
-                        <p>Signed in as: <span className="font-medium text-foreground">{user.email}</span></p>
+                        <p>Signed in as: <span className="font-medium text-white">{user.email}</span></p>
                     )}
                     <p className="text-xs mt-2 block">You can change your role later in settings.</p>
                 </div>

@@ -4,22 +4,33 @@ import { AppLayout } from '@/components/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, PlusCircle, ArrowUpRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { Class } from '@/lib/types';
-import Image from 'next/image';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
+import type { Class, User } from '@/lib/types';
 
 export default function MyClassesPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const classesQuery = useMemoFirebase(() => {
+  const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
+  const { data: userProfile } = useDoc<User>(userProfileRef);
+
+  const classesQuery = useMemoFirebase(() => {
+    if (!user || !userProfile) return null;
+
+    if (userProfile.role === 'teacher') {
+      return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+    }
+    if (userProfile.role === 'student') {
+      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
+    }
+    return null;
+  }, [firestore, user, userProfile]);
 
   const { data: classes, isLoading } = useCollection<Class>(classesQuery);
 
@@ -31,12 +42,14 @@ export default function MyClassesPage() {
             <Users className="mr-3 h-8 w-8" />
             My Classes
           </h1>
-          <Button asChild>
-            <Link href="/my-classes/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Class
-            </Link>
-          </Button>
+          {userProfile?.role === 'teacher' && (
+            <Button asChild>
+              <Link href="/my-classes/new">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add New Class
+              </Link>
+            </Button>
+          )}
         </div>
 
         {isLoading && (
@@ -49,7 +62,9 @@ export default function MyClassesPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <h3 className="text-xl font-medium">No classes found</h3>
-              <p className="text-muted-foreground mt-2">Get started by creating your first class.</p>
+              <p className="text-muted-foreground mt-2">
+                {userProfile?.role === 'teacher' ? 'Get started by creating your first class.' : 'You have not been enrolled in any classes yet.'}
+              </p>
             </CardContent>
           </Card>
         )}

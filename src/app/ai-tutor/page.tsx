@@ -135,7 +135,7 @@ export default function AiTutorPage() {
 
 
         <Card className="flex-1 flex flex-col">
-          <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+          <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Tutor" width={48} height={48} />
@@ -143,29 +143,29 @@ export default function AiTutorPage() {
               </div>
             )}
             {messages.map((message, index) => (
-              <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+              <div key={index} className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : ''}`}>
                 {message.role === 'model' && (
-                  <Avatar className="h-8 w-8 border">
+                  <Avatar className="h-8 w-8 border self-start shrink-0">
                     <AvatarFallback><Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Tutor" width={16} height={16} /></AvatarFallback>
                   </Avatar>
                 )}
                 <div className={`rounded-lg px-4 py-2 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                   {message.role === 'model' && (
-                     <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
+                </div>
+                 {message.role === 'model' && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
                         onClick={() => handlePlayAudio(message.content, index)}
                         disabled={isTtsLoading === index}
+                        aria-label="Play audio response"
                     >
-                        {isTtsLoading === index ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4" />}
-                        <span>Play Audio</span>
-                     </Button>
-                   )}
-                </div>
+                        {isTtsLoading === index ? <Loader2 className="h-5 w-5 animate-spin"/> : <Play className="h-5 w-5" />}
+                    </Button>
+                 )}
                  {message.role === 'user' && (
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 self-start shrink-0">
                      <AvatarFallback><User className="h-4 w-4"/></AvatarFallback>
                   </Avatar>
                 )}

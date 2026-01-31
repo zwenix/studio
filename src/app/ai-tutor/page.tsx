@@ -31,6 +31,7 @@ const languages = [
     { value: 'French', label: 'French' },
     { value: 'German', label: 'German' },
     { value: 'isiZulu', label: 'isiZulu' },
+    { value: 'isiXhosa', label: 'isiXhosa' },
     { value: 'Afrikaans', label: 'Afrikaans' },
   ];
   
@@ -152,13 +153,14 @@ export default function AiTutorPage() {
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                    {message.role === 'model' && (
                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 mt-2"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
                         onClick={() => handlePlayAudio(message.content, index)}
                         disabled={isTtsLoading === index}
                     >
-                        {isTtsLoading === index ? <Loader2 className="h-4 w-4 animate-spin"/> : <Play className="h-4 w-4" />}
+                        {isTtsLoading === index ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Play className="mr-2 h-4 w-4" />}
+                        <span>Play Audio</span>
                      </Button>
                    )}
                 </div>

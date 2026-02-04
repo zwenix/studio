@@ -12,7 +12,7 @@
  *
  * Key Security Decisions:
  * - Strict User Ownership: All personal profile documents (in `/users`, `/learners`, etc.)
- *   can only be read or written by the owner of that document. Listing of users is disabled.
+ *   can only be read or written by the owner of that document. Listing of users is disabled for non-teachers.
  * - Teacher-Controlled Content: Teachers have exclusive write access to the `content` and
  *   `classes` they create. Content is publicly readable, while classes are only visible
  *   to the teacher and enrolled learners.
@@ -45,6 +45,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isTeacher() {
+      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+
     function documentExists() {
       return resource != null;
     }
@@ -61,25 +65,38 @@ service cloud.firestore {
     }
 
     /**
-     * @description Enforces strict ownership. Only the authenticated user can access their own profile.
+     * @description Secures user profiles. A user can manage their own profile. A teacher can read any user profile.
      * @path /users/{userId}
-     * @allow A signed-in user (create) their own user document: /users/user_abc
-     * @deny A signed-in user (get) another user's document: /users/user_xyz
-     * @principle Restricts access to a user's own data tree.
+     * @allow A signed-in user (write) their own user document: /users/user_abc
+     * @allow A teacher (get) any user's document.
+     * @deny A non-teacher user (get) another user's document: /users/user_xyz
      */
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow get: if isOwner(userId) || isTeacher();
+      allow write: if isOwner(userId);
+    }
+    
+    /**
+     * @description Allows teachers to list users to find students to add to their class.
+     * @path /users
+     * @allow A teacher to list users.
+     * @deny A non-teacher to list users.
+     */
+    match /users {
+      allow list: if isTeacher();
     }
 
+
     /**
-     * @description Secures learner profiles. Only the associated user can access their own learner document.
+     * @description Secures learner profiles. The user or a teacher can read it, but only the user can write.
      * @path /learners/{learnerId}
      * @allow A signed-in user (get) their own learner profile: /learners/user_abc
+     * @allow A teacher (get) any learner's profile.
      * @deny A signed-in user (update) another learner's profile: /learners/user_xyz
-     * @principle Enforces document ownership and validates relational integrity.
      */
     match /learners/{learnerId} {
-      allow read, write: if isOwner(learnerId);
+      allow get: if isOwner(learnerId) || isTeacher();
+      allow write: if isOwner(learnerId);
     }
 
     /**

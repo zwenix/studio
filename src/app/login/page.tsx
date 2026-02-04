@@ -66,6 +66,7 @@ export default function LoginPage() {
 
 
   return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-6">
     <Card className="mx-auto max-w-sm">
       <CardHeader>
         <CardTitle className="text-2xl">Login</CardTitle>
@@ -134,5 +135,6 @@ export default function LoginPage() {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

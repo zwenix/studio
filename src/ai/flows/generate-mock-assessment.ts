@@ -78,6 +78,7 @@ Your audience is students who are not technical. Therefore, you MUST generate th
     b.  Bark
     c.  Meow
     ---
+4.  **INCLUDE VISUALS:** To make the content engaging and easy to understand, you MUST include relevant graphics and visual aids. Use placeholder image URLs from picsum.photos in the format \`https://picsum.photos/seed/UNIQUE_KEYWORD/600/400\`, where \`UNIQUE_KEYWORD\` is a relevant, single English word (e.g., 'dog', 'tree', 'cell'). Use standard Markdown syntax for images: \`![A descriptive caption for the image](https://picsum.photos/seed/keyword/600/400)\`.
 
 Generate a short practice assessment based on the grade, subject, and topic specified.
 The assessment should be designed to test the student's knowledge.

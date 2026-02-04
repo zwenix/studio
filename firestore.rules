@@ -15,7 +15,6 @@
  *   can only be read or written by the owner of that document. Listing of users is disabled.
  * - Teacher-Controlled Content: Teachers have exclusive write access to the `content` and
  *   `classes` they create. Content is publicly readable, while classes are only visible
-
  *   to the teacher and enrolled learners.
  * - Secure Collaboration: Access to shared documents like `/classes` and their subcollections
  *   is governed by denormalized member lists (`teacherId`, `learnerIds`) on the parent document.
@@ -92,6 +91,16 @@ service cloud.firestore {
      */
     match /teachers/{teacherId} {
       allow read, write: if isOwner(teacherId);
+
+      /**
+       * @description Secures a teacher's history of generated content. Only the teacher can manage their own content.
+       * @path /teachers/{teacherId}/generatedContent/{contentId}
+       * @allow A teacher to manage their own generated content history.
+       * @deny A teacher from accessing another teacher's generated content.
+       */
+      match /generatedContent/{contentId} {
+        allow read, write: if isOwner(teacherId);
+      }
     }
 
     /**
@@ -134,9 +143,9 @@ service cloud.firestore {
       allow delete: if isExistingOwner(resource.data.teacherId);
 
       /**
-       * @description Secures assignments within a class. The class teacher has full control. The assigned learner can read their own assignment.
+       * @description Secures assignments within a class. The class teacher has full control. The assigned learner can read their own assignment and submit their work.
        * @path /classes/{classId}/assignments/{assignmentId}
-       * @allow The assigned learner (get) their own assignment: /classes/class_abc/assignments/assign_123
+       * @allow The assigned learner (get, update) their own assignment: /classes/class_abc/assignments/assign_123
        * @deny A learner in the class (get) another learner's assignment: /classes/class_abc/assignments/assign_456
        * @principle Access is derived from the parent document and denormalized fields on the assignment itself.
        */

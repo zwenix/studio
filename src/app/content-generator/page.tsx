@@ -22,17 +22,17 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Sparkles, Download } from 'lucide-react';
+import { Loader2, Sparkles, Download, Save } from 'lucide-react';
 import Image from 'next/image';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import type { GenerateCAPSContentInput as CAPSInput } from '@/ai/flows/generate-caps-content';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
-import type { Class } from '@/lib/types';
+import type { Class, Teacher } from '@/lib/types';
 import ReactMarkdown from 'react-markdown';
 
 
@@ -64,6 +64,9 @@ export default function ContentGeneratorPage() {
 
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
   const topics = grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+  
+  const teacherRef = useMemoFirebase(() => user ? doc(firestore, 'teachers', user.uid) : null, [firestore, user]);
+  const { data: teacherData } = useDoc<Teacher>(teacherRef);
   
   const teacherClassesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -100,6 +103,26 @@ export default function ContentGeneratorPage() {
       };
       const result = await generateCAPSContent(input);
       setGeneratedContent(result);
+
+      if (result && user) {
+        try {
+          const generatedContentCollection = collection(firestore, 'teachers', user.uid, 'generatedContent');
+          await addDoc(generatedContentCollection, {
+            ...result,
+            teacherId: user.uid,
+            grade,
+            subject: finalSubject,
+            topic: finalTopic,
+            contentType,
+            createdAt: serverTimestamp(),
+          });
+          toast({ title: 'Content saved to your history for future reference.' });
+        } catch (e) {
+          console.error('Failed to save content history:', e);
+          toast({ title: 'Could not save content to history', variant: 'destructive'});
+        }
+      }
+
     } catch (error) {
         console.error("Failed to generate content:", error);
         toast({
@@ -350,7 +373,7 @@ export default function ContentGeneratorPage() {
                 ) : (
                   <Sparkles className="mr-2 h-4 w-4" />
                 )}
-                Generate Content
+                Generate & Save
               </Button>
             </CardFooter>
           </Card>
@@ -370,28 +393,36 @@ export default function ContentGeneratorPage() {
                   </div>
               )}
               {generatedContent ? (
-                  <Tabs defaultValue="content" className="w-full">
-                    <TabsList>
-                      <TabsTrigger value="content">Content</TabsTrigger>
-                      {generatedContent.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
-                      {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
-                    </TabsList>
-                    <TabsContent value="content" className="mt-4">
-                        <div className="bg-card text-card-foreground p-4 rounded-md">
-                           <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.content}</ReactMarkdown>
+                  <>
+                    <Tabs defaultValue="content" className="w-full">
+                      <TabsList>
+                        <TabsTrigger value="content">Content</TabsTrigger>
+                        {generatedContent.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
+                        {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
+                      </TabsList>
+                      <TabsContent value="content" className="mt-4">
+                          <div className="bg-card text-card-foreground p-4 rounded-md">
+                             <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.content}</ReactMarkdown>
+                          </div>
+                      </TabsContent>
+                      {generatedContent.memo && <TabsContent value="memo" className="mt-4">
+                          <div className="bg-card text-card-foreground p-4 rounded-md">
+                             <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.memo}</ReactMarkdown>
+                          </div>
+                      </TabsContent>}
+                       {generatedContent.rubric && <TabsContent value="rubric" className="mt-4">
+                           <div className="bg-card text-card-foreground p-4 rounded-md">
+                              <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.rubric}</ReactMarkdown>
+                           </div>
+                      </TabsContent>}
+                    </Tabs>
+                    {teacherData?.signatureUrl && (
+                        <div className="mt-6 p-4 border-t">
+                            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Signature/Stamp</h4>
+                            <img src={teacherData.signatureUrl} alt="Teacher's Signature" className="max-h-24 border rounded bg-white p-2" />
                         </div>
-                    </TabsContent>
-                    {generatedContent.memo && <TabsContent value="memo" className="mt-4">
-                        <div className="bg-card text-card-foreground p-4 rounded-md">
-                           <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.memo}</ReactMarkdown>
-                        </div>
-                    </TabsContent>}
-                     {generatedContent.rubric && <TabsContent value="rubric" className="mt-4">
-                         <div className="bg-card text-card-foreground p-4 rounded-md">
-                            <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.rubric}</ReactMarkdown>
-                         </div>
-                    </TabsContent>}
-                  </Tabs>
+                    )}
+                  </>
               ) : !isLoading && (
                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Sparkles className="h-12 w-12" />

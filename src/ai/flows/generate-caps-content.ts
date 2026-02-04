@@ -133,7 +133,9 @@ Generate the following CAPS-compliant content.
 
 If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format.
 
-If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.`,
+If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.
+
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (---) followed by the italicized footnote: _Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu_`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(

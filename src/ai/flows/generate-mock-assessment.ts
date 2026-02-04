@@ -96,7 +96,9 @@ Assessment Format: {{{assessmentFormat}}}
 Number of Questions: {{{length}}}
 {{/if}}
 
-You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear Markdown format.`,
+You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear Markdown format.
+
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (---) followed by the italicized footnote: _Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu_`,
 });
 
 const generateMockAssessmentFlow = ai.defineFlow(

@@ -14,6 +14,7 @@ export interface Teacher {
   userId: string;
   subjects: string[];
   classIds: string[];
+  signatureUrl?: string;
 }
 
 export interface Class {
@@ -35,6 +36,19 @@ export interface Content {
     content: string;
     memo?: string;
     rubric?: string;
+}
+
+export interface GeneratedContent {
+  id: string;
+  teacherId: string;
+  contentType: string;
+  grade: string;
+  subject: string;
+  topic: string;
+  content: string;
+  memo?: string;
+  rubric?: string;
+  createdAt: Timestamp;
 }
 
 export interface Assignment {

@@ -100,6 +100,18 @@
         "signatureUrl": {
           "type": "string",
           "description": "URL of the teacher's signature image."
+        },
+        "aiDifficultyAdaptation": {
+            "type": "boolean",
+            "description": "Automatically adjust content difficulty based on student performance."
+        },
+        "culturalContextIntegration": {
+            "type": "boolean",
+            "description": "Use local examples and familiar cultural contexts in lessons."
+        },
+        "parentNotifications": {
+            "type": "boolean",
+            "description": "Auto-notify parents of progress updates and attendance."
         }
       },
       "required": [

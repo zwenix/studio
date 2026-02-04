@@ -15,6 +15,9 @@ export interface Teacher {
   subjects: string[];
   classIds: string[];
   signatureUrl?: string;
+  aiDifficultyAdaptation?: boolean;
+  culturalContextIntegration?: boolean;
+  parentNotifications?: boolean;
 }
 
 export interface Class {

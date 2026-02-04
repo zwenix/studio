@@ -46,7 +46,7 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
 
     function documentExists() {
@@ -82,7 +82,7 @@ service cloud.firestore {
      * @allow A teacher to list users.
      * @deny A non-teacher to list users.
      */
-    match /users {
+    match /users/{path=**} {
       allow list: if isTeacher();
     }
 

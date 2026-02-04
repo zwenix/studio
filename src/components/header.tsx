@@ -3,6 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { UserNav } from "./user-nav"
 import type { ReactNode } from "react"
+import { ThemeToggle } from "./theme-toggle"
 
 export function Header({children}: {children?: ReactNode}) {
   return (
@@ -16,7 +17,8 @@ export function Header({children}: {children?: ReactNode}) {
         </div>
         {children}
       </div>
-      <div className="flex flex-1 items-center justify-end space-x-4">
+      <div className="flex flex-1 items-center justify-end space-x-2">
+        <ThemeToggle />
         <UserNav />
       </div>
     </header>

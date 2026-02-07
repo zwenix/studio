@@ -23,7 +23,6 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { History, Loader2, Eye } from 'lucide-react';
 import type { GeneratedContent } from '@/lib/types';
-import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 
 export default function ContentHistoryPage() {
@@ -103,18 +102,18 @@ export default function ContentHistoryPage() {
                             {item.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
                           </TabsList>
                           <TabsContent value="content" className="mt-4">
-                              <div className="bg-muted/50 p-4 rounded-md prose dark:prose-invert max-w-none">
-                                <ReactMarkdown>{item.content}</ReactMarkdown>
+                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                                <div dangerouslySetInnerHTML={{ __html: item.content }} />
                               </div>
                           </TabsContent>
                           {item.memo && <TabsContent value="memo" className="mt-4">
-                              <div className="bg-muted/50 p-4 rounded-md prose dark:prose-invert max-w-none">
-                                <ReactMarkdown>{item.memo}</ReactMarkdown>
+                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                                <div dangerouslySetInnerHTML={{ __html: item.memo }} />
                               </div>
                           </TabsContent>}
                           {item.rubric && <TabsContent value="rubric" className="mt-4">
-                              <div className="bg-muted/50 p-4 rounded-md prose dark:prose-invert max-w-none">
-                                <ReactMarkdown>{item.rubric}</ReactMarkdown>
+                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                                <div dangerouslySetInnerHTML={{ __html: item.rubric }} />
                               </div>
                           </TabsContent>}
                         </Tabs>

@@ -27,7 +27,6 @@ import { generateMockAssessment, GenerateMockAssessmentOutput } from '@/ai/flows
 import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
 import type { GenerateMockAssessmentInput } from '@/ai/flows/generate-mock-assessment';
 import { useToast } from '@/hooks/use-toast';
-import ReactMarkdown from 'react-markdown';
 
 type AssessmentState = 'generate' | 'practice' | 'result';
 
@@ -56,7 +55,7 @@ export default function MockAssessmentPage() {
 
   const questionCount = useMemo(() => {
     if (!generatedAssessment?.content) return 0;
-    const count = (generatedAssessment.content.match(/question \d+/gi) || []).length;
+    const count = (generatedAssessment.content.match(/<h[2-6]>\s*Question \d+/gi) || []).length;
     if (count > 0 && answers.length !== count) {
       setAnswers(Array(count).fill(''));
     }
@@ -111,8 +110,8 @@ export default function MockAssessmentPage() {
 
   const handleGrade = async () => {
     const submissionContent = answers
-        .map((ans, i) => `**Answer for Question ${i + 1}:**\n${ans || '(No answer provided)'}`)
-        .join('\n\n---\n\n');
+        .map((ans, i) => `<h3>Answer for Question ${i + 1}:</h3><p>${ans || '(No answer provided)'}</p>`)
+        .join('<hr>');
 
     if (answers.every(ans => ans.trim() === '') || !generatedAssessment?.rubric) {
       toast({
@@ -290,9 +289,7 @@ export default function MockAssessmentPage() {
                     )}
                     
                     {!isGenerating && pageState === 'practice' && generatedAssessment && (
-                        <div>
-                            <ReactMarkdown>{generatedAssessment.content}</ReactMarkdown>
-                        </div>
+                        <div dangerouslySetInnerHTML={{ __html: generatedAssessment.content }} />
                     )}
 
                     {!isGenerating && pageState === 'result' && gradingResult && (
@@ -303,12 +300,12 @@ export default function MockAssessmentPage() {
                             </div>
                              <div>
                                 <h3 className="font-bold">Feedback & Remarks</h3>
-                                <ReactMarkdown>{gradingResult.feedback}</ReactMarkdown>
+                                 <div dangerouslySetInnerHTML={{ __html: gradingResult.feedback }} />
                             </div>
                             <div>
                                 <h3 className="font-bold">Your Answer</h3>
-                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black">
-                                    <ReactMarkdown>{rawSubmission}</ReactMarkdown>
+                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black prose">
+                                    <div dangerouslySetInnerHTML={{ __html: rawSubmission }} />
                                 </div>
                             </div>
                         </div>

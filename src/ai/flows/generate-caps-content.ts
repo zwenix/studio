@@ -66,9 +66,9 @@ const GenerateCAPSContentInputSchema = z.object({
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
 const GenerateCAPSContentOutputSchema = z.object({
-  content: z.string().describe('The generated CAPS-compliant content in Markdown format.'),
-  memo: z.string().describe('A generated memo for the content in Markdown format. Should be empty if not applicable.'),
-  rubric: z.string().describe('A generated rubric for the content in Markdown format. Should be empty if not applicable.'),
+  content: z.string().describe('The generated CAPS-compliant content in HTML format.'),
+  memo: z.string().describe('A generated memo for the content in HTML format. Should be empty if not applicable.'),
+  rubric: z.string().describe('A generated rubric for the content in HTML format. Should be empty if not applicable.'),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
@@ -85,35 +85,37 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateCAPSContentOutputSchema},
   prompt: `You are an expert educational content creator specializing in generating CAPS-compliant educational content for South African schools.
 
-Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **Markdown** format. The output MUST be ready for direct use and look like a real, clean document.
+Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **HTML** format. The output MUST be ready for direct use and look like a real, clean document.
 
 **CRITICAL FORMATTING INSTRUCTIONS:**
-1.  **Clarity for Kids:** Structure everything for a child to read. Use simple language. Number each question clearly (e.g., "Question 1", "Question 2").
-2.  **SPACING IS KEY:** Use horizontal rules (---) and ample vertical spacing (extra newlines) to visually separate questions. The layout must not be cramped.
-3.  **NO MARKDOWN TABLES:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using Markdown tables (e.g., | Column A | Column B |). This format is unusable for the target audience.
-    Instead, list the items from the first column with a number, and then provide a separate list of options (with letters) for the student to match from.
+1.  **Clarity for Kids:** Structure everything for a child to read. Use simple language and clear headings (e.g., <h2>Question 1</h2>, <h2>Question 2</h2>).
+2.  **SPACING IS KEY:** Use horizontal rules (<hr>) and ample vertical spacing (<br>) to visually separate questions. The layout must not be cramped.
+3.  **NO HTML TABLES for Matching:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using HTML tables. This format is unusable for the target audience.
+    Instead, list the items from the first column in an ordered or unordered list, and then provide a separate list of options for the student to match from.
     **Correct Example for a Matching Question:**
-    ---
-    **Question 5: Matching**
-    Match the animal to its sound. Write the letter of the correct sound next to the animal number in your answer.
-
-    **Animals:**
-    1.  Dog
-    2.  Cat
-    3.  Cow
-
-    **Sounds:**
-    a.  Moo
-    b.  Bark
-    c.  Meow
-    ---
+    <hr>
+    <h2>Question 5: Matching</h2>
+    <p>Match the animal to its sound. Write the letter of the correct sound next to the animal number in your answer.</p>
+    <h3>Animals:</h3>
+    <ol>
+      <li>Dog</li>
+      <li>Cat</li>
+      <li>Cow</li>
+    </ol>
+    <h3>Sounds:</h3>
+    <ol type="a">
+      <li>Moo</li>
+      <li>Bark</li>
+      <li>Meow</li>
+    </ol>
+    <hr>
 4.  **ABSOLUTELY CRITICAL: IMAGE INSTRUCTIONS:** You MUST include at least one relevant image in your response to make it visually engaging. Failure to follow these image rules precisely will result in an incorrect output.
     *   **Source:** All images MUST come from Unsplash. No other image source is permitted.
     *   **URL Format:** The URL format is non-negotiable. It MUST be exactly: \`https://source.unsplash.com/600x400/?KEYWORD\`
     *   **Keyword:** The \`KEYWORD\` in the URL MUST be a SINGLE, relevant, English word. For example, if the topic is "The Solar System", a valid keyword is \`solar\`, \`planet\`, or \`space\`. A keyword like \`solar-system\` or \`solarsystem\` is INVALID.
-    *   **Markdown:** The image must be embedded using standard Markdown syntax: \`![A descriptive caption for the image](https://source.unsplash.com/600x400/?keyword)\`.
-    *   **Example of a CORRECT image:** \`![A diagram of a plant cell](https://source.unsplash.com/600x400/?cell)\`
-    *   **Example of an INCORRECT image:** \`![The solar system](https://source.unsplash.com/600x400/?solar,system)\` - This is WRONG because it uses multiple keywords.
+    *   **HTML:** The image must be embedded using a standard HTML <img> tag: \`<img src="https://source.unsplash.com/600x400/?keyword" alt="A descriptive caption for the image" />\`.
+    *   **Example of a CORRECT image:** \`<img src="https://source.unsplash.com/600x400/?cell" alt="A diagram of a plant cell" />\`
+    *   **Example of an INCORRECT image:** \`<img src="https://source.unsplash.com/600x400/?solar,system" alt="The solar system" />\` - This is WRONG because it uses multiple keywords.
 
 You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 
@@ -137,11 +139,11 @@ Additional Instructions: {{{additionalInstructions}}}
 
 Generate the following CAPS-compliant content.
 
-If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear Markdown format.
+If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear HTML format.
 
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.
 
-Finally, you MUST conclude the entire 'content' output with a single horizontal rule (---) followed by the italicized footnote: _Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu_`,
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the italicized footnote: <em>Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu</em>`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(

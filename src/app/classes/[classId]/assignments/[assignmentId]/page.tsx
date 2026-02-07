@@ -13,7 +13,6 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { autograde } from '@/ai/flows/autograder-flow';
 import { Loader2, Sparkles, FileCheck2, ArrowLeft } from 'lucide-react';
 import type { Assignment, Content } from '@/lib/types';
-import ReactMarkdown from 'react-markdown';
 
 export default function AssignmentPage() {
   const params = useParams();
@@ -44,8 +43,8 @@ export default function AssignmentPage() {
   // Memoize question parsing and count
   const questionCount = useMemo(() => {
     if (!content?.content) return 0;
-    // Match "Question X", "Question X:", "QUESTION X" etc.
-    const count = (content.content.match(/question \d+/gi) || []).length;
+    // Match "<h2>Question X", "<h3>Question X" etc.
+    const count = (content.content.match(/<h[2-6]>\s*Question \d+/gi) || []).length;
     if (count > 0 && answers.length !== count) {
         setAnswers(Array(count).fill(''));
     }
@@ -60,8 +59,8 @@ export default function AssignmentPage() {
 
   const handleSubmit = async () => {
     const submissionContent = answers
-        .map((ans, i) => `**Answer for Question ${i + 1}:**\n${ans || '(No answer provided)'}`)
-        .join('\n\n---\n\n');
+        .map((ans, i) => `<h3>Answer for Question ${i + 1}:</h3><p>${ans || '(No answer provided)'}</p>`)
+        .join('<hr>');
 
     if (answers.every(ans => ans.trim() === '')) {
       toast({ title: "Submission is empty", description: "Please answer at least one question.", variant: 'destructive' });
@@ -128,7 +127,7 @@ export default function AssignmentPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="prose dark:prose-invert max-w-none p-6">
-                 <ReactMarkdown>{content.content}</ReactMarkdown>
+                 <div dangerouslySetInnerHTML={{ __html: content.content }} />
               </CardContent>
             </Card>
 
@@ -191,8 +190,8 @@ export default function AssignmentPage() {
                         <div className="space-y-6">
                             <div>
                                 <h3 className="font-bold">Your Submission</h3>
-                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black">
-                                    <ReactMarkdown>{assignment.submissionContent || ''}</ReactMarkdown>
+                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black prose">
+                                    <div dangerouslySetInnerHTML={{ __html: assignment.submissionContent || '' }} />
                                 </div>
                             </div>
                             <div>
@@ -201,8 +200,8 @@ export default function AssignmentPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold">Feedback</h3>
-                                <div className="whitespace-pre-wrap font-sans text-sm">
-                                  <ReactMarkdown>{assignment.feedback || ''}</ReactMarkdown>
+                                <div className="whitespace-pre-wrap font-sans text-sm prose">
+                                  <div dangerouslySetInnerHTML={{ __html: assignment.feedback || '' }} />
                                 </div>
                             </div>
                         </div>

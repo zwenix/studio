@@ -33,7 +33,6 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@
 import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
 import type { Class, Teacher } from '@/lib/types';
-import ReactMarkdown from 'react-markdown';
 
 
 type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster";
@@ -200,33 +199,34 @@ export default function ContentGeneratorPage() {
     const doc = new jsPDF();
     const margin = 15;
     const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
-
-    const addMarkdownToPdf = (title: string, markdown: string) => {
+    
+    const addHtmlAsTextToPdf = (title: string, html: string) => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         doc.text(title, margin, margin);
 
         doc.setFont('times', 'normal');
         doc.setFontSize(12);
-        // jspdf doesn't render markdown, so we split and print lines.
-        // This is a basic implementation. For full markdown, a library like html2canvas would be needed.
-        const lines = doc.splitTextToSize(markdown, maxWidth);
+
+        // Strip HTML tags to get plain text
+        const text = html.replace(/<[^>]*>?/gm, '');
+        const lines = doc.splitTextToSize(text, maxWidth);
         doc.text(lines, margin, margin + 15);
     }
 
     // --- Content Page ---
-    addMarkdownToPdf(`${finalTopic} (${contentType})`, generatedContent.content);
+    addHtmlAsTextToPdf(`${finalTopic} (${contentType})`, generatedContent.content);
 
     // --- Memo Page ---
     if (generatedContent.memo) {
       doc.addPage();
-      addMarkdownToPdf('Memo', generatedContent.memo);
+      addHtmlAsTextToPdf('Memo', generatedContent.memo);
     }
 
     // --- Rubric Page ---
     if (generatedContent.rubric) {
       doc.addPage();
-      addMarkdownToPdf('Rubric', generatedContent.rubric);
+      addHtmlAsTextToPdf('Rubric', generatedContent.rubric);
     }
 
     doc.save(`EduAI - ${finalTopic}.pdf`);
@@ -401,18 +401,18 @@ export default function ContentGeneratorPage() {
                         {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
                       </TabsList>
                       <TabsContent value="content" className="mt-4">
-                          <div className="bg-card text-card-foreground p-4 rounded-md">
-                             <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.content}</ReactMarkdown>
+                          <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                             <div dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
                           </div>
                       </TabsContent>
                       {generatedContent.memo && <TabsContent value="memo" className="mt-4">
-                          <div className="bg-card text-card-foreground p-4 rounded-md">
-                             <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.memo}</ReactMarkdown>
+                          <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                             <div dangerouslySetInnerHTML={{ __html: generatedContent.memo }} />
                           </div>
                       </TabsContent>}
                        {generatedContent.rubric && <TabsContent value="rubric" className="mt-4">
-                           <div className="bg-card text-card-foreground p-4 rounded-md">
-                              <ReactMarkdown className="prose dark:prose-invert max-w-none">{generatedContent.rubric}</ReactMarkdown>
+                           <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                              <div dangerouslySetInnerHTML={{ __html: generatedContent.rubric }} />
                            </div>
                       </TabsContent>}
                     </Tabs>

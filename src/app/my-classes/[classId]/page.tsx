@@ -285,7 +285,7 @@ export default function ClassDetailsPage() {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<User>(userProfileRef);
   
-  const classRef = useMemoFirebase(() => doc(firestore, 'classes', classId), [firestore, classId]);
+  const classRef = useMemoFirebase(() => (user && classId ? doc(firestore, 'classes', classId) : null), [firestore, classId, user]);
   const { data: classData, isLoading: isClassLoading } = useDoc<Class>(classRef);
 
   const isLoading = isUserLoading || isUserProfileLoading || isClassLoading;

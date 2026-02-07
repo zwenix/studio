@@ -5,7 +5,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'teacher' | 'student' | 'parent';
+  role: 'teacher' | 'student' | 'parent' | 'admin';
   avatarUrl?: string;
 }
 

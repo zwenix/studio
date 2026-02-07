@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
-import { GraduationCap, School, Users, Loader2 } from 'lucide-react';
+import { GraduationCap, School, Users, Loader2, Shield } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
 import { doc, writeBatch } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
-type Role = 'teacher' | 'student' | 'parent';
+type Role = 'teacher' | 'student' | 'parent' | 'admin';
 
 const ROLES_CONFIG = [
   {
@@ -32,6 +32,13 @@ const ROLES_CONFIG = [
     icon: Users,
     color: 'from-green-500 to-teal-500',
     desc: 'View progress reports, communicate with teachers',
+  },
+  {
+    role: 'admin' as Role,
+    title: 'Admin',
+    icon: Shield,
+    color: 'from-slate-500 to-gray-700',
+    desc: 'Manage users, data, and system settings',
   },
 ];
 

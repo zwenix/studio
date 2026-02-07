@@ -26,7 +26,13 @@
         },
         "role": {
           "type": "string",
-          "description": "Role of the user (e.g., teacher, parent, student)."
+          "description": "Role of the user (e.g., teacher, parent, student, admin).",
+          "enum": [
+            "teacher",
+            "parent",
+            "student",
+            "admin"
+          ]
         }
       },
       "required": [

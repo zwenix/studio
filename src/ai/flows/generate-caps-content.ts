@@ -107,7 +107,7 @@ Your audience is teachers, parents, and children who are not technical. Therefor
     b.  Bark
     c.  Meow
     ---
-4.  **INCLUDE VISUALS:** To make the content engaging and easy to understand, you MUST include relevant graphics and visual aids. Use placeholder image URLs from picsum.photos in the format \`https://picsum.photos/seed/UNIQUE_KEYWORD/600/400\`, where \`UNIQUE_KEYWORD\` is a relevant, single English word (e.g., 'dog', 'tree', 'cell'). Use standard Markdown syntax for images: \`![A descriptive caption for the image](https://picsum.photos/seed/keyword/600/400)\`.
+4.  **INCLUDE VISUALS:** To make the content engaging and easy to understand, you MUST include relevant graphics and visual aids. Use image URLs from Unsplash that are relevant to the content. Use the format \`https://source.unsplash.com/600x400/?KEYWORD\`, where \`KEYWORD\` is a relevant, single English word or hyphenated phrase that describes the image (e.g., 'plant-cell', 'solar-system', 'map-of-africa'). Use standard Markdown syntax for images: \`![A descriptive caption for the image](https://source.unsplash.com/600x400/?keyword)\`.
 
 You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 

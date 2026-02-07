@@ -199,34 +199,54 @@ export default function ContentGeneratorPage() {
     const doc = new jsPDF();
     const margin = 15;
     const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
-    
-    const addHtmlAsTextToPdf = (title: string, html: string) => {
-        doc.setFont('helvetica', 'bold');
+    let yPosition = margin;
+
+    const addTextToPdf = (title: string, text: string) => {
         doc.setFontSize(16);
-        doc.text(title, margin, margin);
+        doc.setFont('helvetica', 'bold');
+        yPosition = margin; // Reset for new page
+        doc.text(title, margin, yPosition);
+        yPosition += 10;
 
-        doc.setFont('times', 'normal');
         doc.setFontSize(12);
-
-        // Strip HTML tags to get plain text
-        const text = html.replace(/<[^>]*>?/gm, '');
+        doc.setFont('times', 'normal');
+        
         const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, margin, margin + 15);
+        
+        lines.forEach((line: string) => {
+            if (yPosition > 280) { // Check if new page is needed
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(line, margin, yPosition);
+            yPosition += 7; // Line height
+        });
+    };
+
+    const convertHtmlToText = (html: string) => {
+      let text = html;
+      text = text.replace(/<br\s*\/?>/gi, '\n');
+      text = text.replace(/<hr\s*\/?>/gi, '\n------------------------------------\n');
+      text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n$1\n\n');
+      text = text.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n');
+      text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '  - $1\n');
+      text = text.replace(/<[^>]+>/g, ''); // Strip remaining tags
+      return text;
     }
 
     // --- Content Page ---
-    addHtmlAsTextToPdf(`${finalTopic} (${contentType})`, generatedContent.content);
+    addTextToPdf(`${finalTopic} (${contentType})`, convertHtmlToText(generatedContent.content));
 
     // --- Memo Page ---
     if (generatedContent.memo) {
       doc.addPage();
-      addHtmlAsTextToPdf('Memo', generatedContent.memo);
+      addTextToPdf('Memo', convertHtmlToText(generatedContent.memo));
     }
 
     // --- Rubric Page ---
     if (generatedContent.rubric) {
       doc.addPage();
-      addHtmlAsTextToPdf('Rubric', generatedContent.rubric);
+      addTextToPdf('Rubric', convertHtmlToText(generatedContent.rubric));
     }
 
     doc.save(`EduAI - ${finalTopic}.pdf`);

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Home, Users, ScanText, Sparkles, ClipboardCheck, Mail, FlaskConical, Cog } from 'lucide-react';
+import { Bot, Home, Users, ScanText, Sparkles, ClipboardCheck, Mail, FlaskConical, Cog, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
@@ -13,6 +13,7 @@ import {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/content-generator', label: 'Content Generator', icon: Bot },
+  { href: '/content-history', label: 'Content History', icon: History },
   { href: '/my-classes', label: 'My Classes', icon: Users },
   { href: '/ocr', label: 'OCR Tool', icon: ScanText },
   { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles },

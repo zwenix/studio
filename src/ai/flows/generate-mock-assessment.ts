@@ -78,7 +78,7 @@ Your audience is students who are not technical. Therefore, you MUST generate th
     b.  Bark
     c.  Meow
     ---
-4.  **INCLUDE VISUALS:** To make the content engaging and easy to understand, you MUST include relevant graphics and visual aids. Use image URLs from Unsplash that are relevant to the content. Use the format \`https://source.unsplash.com/600x400/?KEYWORD\`, where \`KEYWORD\` is a relevant, single English word or hyphenated phrase that describes the image (e.g., 'plant-cell', 'solar-system', 'map-of-africa'). Use standard Markdown syntax for images: \`![A descriptive caption for the image](https://source.unsplash.com/600x400/?keyword)\`.
+4.  **INCLUDE VISUALS:** To make the content engaging and easy to understand, you MUST include relevant graphics and visual aids. Use image URLs from Unsplash that are relevant to the content. Use the format \`https://source.unsplash.com/600x400/?KEYWORD\`, where \`KEYWORD\` is a relevant, single English word that describes the image (e.g., 'cell', 'solar', 'africa'). Do not use phrases or multiple words. Use standard Markdown syntax for images: \`![A descriptive caption for the image](https://source.unsplash.com/600x400/?keyword)\`.
 
 Generate a short practice assessment based on the grade, subject, and topic specified.
 The assessment should be designed to test the student's knowledge.

@@ -22,7 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Sparkles, Download, Save } from 'lucide-react';
+import { Loader2, Sparkles, Download, Save, Printer } from 'lucide-react';
 import Image from 'next/image';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
@@ -252,6 +252,52 @@ export default function ContentGeneratorPage() {
     doc.save(`EduAI - ${finalTopic}.pdf`);
   };
 
+  const handlePrint = () => {
+    if (!generatedContent) return;
+    const finalTopic = topic === 'manual' ? manualTopic : topic;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print - ${finalTopic}</title>
+            <style>
+              body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
+              img { max-width: 100%; height: auto; border-radius: 0.5rem; display: block; margin: 1rem 0; }
+              hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
+              h1, h2, h3, h4 { font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+              h1 { font-size: 2em; }
+              h2 { font-size: 1.5em; }
+              h3 { font-size: 1.25em; }
+              ol, ul { padding-left: 1.5rem; }
+              em { font-style: italic; color: #555; }
+            </style>
+          </head>
+          <body>
+            <h1>${finalTopic}</h1>
+            <h2>${contentType}</h2>
+            <hr />
+            ${generatedContent.content}
+            ${generatedContent.memo ? `
+              <hr style="margin-top: 3rem;" />
+              <h2>Memo</h2>
+              ${generatedContent.memo}
+            ` : ''}
+            ${generatedContent.rubric ? `
+              <hr style="margin-top: 3rem;" />
+              <h2>Rubric</h2>
+              ${generatedContent.rubric}
+            ` : ''}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
+
   return (
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
@@ -451,10 +497,16 @@ export default function ContentGeneratorPage() {
               )}
             </CardContent>
              <CardFooter className="flex flex-col items-stretch gap-4 pt-4 border-t sm:flex-row sm:items-center">
-                <Button onClick={handleExportPdf} variant="outline" disabled={!generatedContent || isLoading}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export PDF
-                </Button>
+                <div className="flex gap-2">
+                    <Button onClick={handleExportPdf} variant="outline" disabled={!generatedContent || isLoading}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export PDF
+                    </Button>
+                     <Button onClick={handlePrint} variant="outline" disabled={!generatedContent || isLoading}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
+                    </Button>
+                </div>
                 <div className="flex-grow hidden sm:block" />
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={!generatedContent || isAssigning}>

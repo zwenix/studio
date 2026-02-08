@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FlaskConical, FileCheck2 } from 'lucide-react';
+import { Loader2, Sparkles, FlaskConical, FileCheck2, Printer } from 'lucide-react';
 import { educationalData } from '@/lib/educational-data';
 import { generateMockAssessment, GenerateMockAssessmentOutput } from '@/ai/flows/generate-mock-assessment';
 import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
@@ -153,7 +153,52 @@ export default function MockAssessmentPage() {
     setGradingResult(null);
     setAnswers([]);
     setRawSubmission('');
-  }
+  };
+
+  const handlePrint = () => {
+    if (!generatedAssessment || !gradingResult || !rawSubmission) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print - Practice Assessment Result</title>
+            <style>
+              body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
+              img { max-width: 100%; height: auto; border-radius: 0.5rem; display: block; margin: 1rem 0; }
+              hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
+              h1, h2, h3, h4 { font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+              h1 { font-size: 2em; }
+              h2 { font-size: 1.5em; }
+              pre { white-space: pre-wrap; font-family: sans-serif; }
+              .submission { background-color: #f9f9f9; border: 1px solid #ddd; padding: 1rem; border-radius: 0.5rem; }
+            </style>
+          </head>
+          <body>
+            <h1>Practice Assessment: ${topic}</h1>
+            <h2>Grade ${grade} - ${subject}</h2>
+            <hr />
+            ${generatedAssessment.content}
+
+            <hr style="margin-top: 3rem;" />
+            <h2>Your Submission</h2>
+            <div class="submission">${rawSubmission}</div>
+            
+            <hr style="margin-top: 3rem;" />
+            <h2>Grading Result</h2>
+            <h3>Grade/Score</h3>
+            <pre>${gradingResult.grade}</pre>
+            <h3>Feedback</h3>
+            <div>${gradingResult.feedback}</div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
 
   return (
     <AppLayout>
@@ -346,9 +391,13 @@ export default function MockAssessmentPage() {
                 )}
 
                 {pageState === 'result' && (
-                    <CardFooter className="pt-4 border-t">
+                    <CardFooter className="flex-col sm:flex-row items-stretch gap-2 pt-4 border-t">
                          <Button onClick={handleTryAnother} variant="outline" className="w-full">
                             Create Another Practice Test
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" className="w-full">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Result
                         </Button>
                     </CardFooter>
                 )}

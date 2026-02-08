@@ -109,13 +109,15 @@ Your audience is teachers, parents, and children who are not technical. Therefor
       <li>Meow</li>
     </ol>
     <hr>
-4.  **ABSOLUTELY CRITICAL: IMAGE INSTRUCTIONS:** You MUST include at least one relevant image in your response to make it visually engaging. Failure to follow these image rules precisely will result in an incorrect output.
-    *   **Source:** All images MUST come from Unsplash. No other image source is permitted.
-    *   **URL Format:** The URL format is non-negotiable. It MUST be exactly: \`https://source.unsplash.com/600x400/?KEYWORD\`
-    *   **Keyword:** The \`KEYWORD\` in the URL MUST be a SINGLE, relevant, English word. For example, if the topic is "The Solar System", a valid keyword is \`solar\`, \`planet\`, or \`space\`. A keyword like \`solar-system\` or \`solarsystem\` is INVALID.
-    *   **HTML:** The image must be embedded using a standard HTML <img> tag: \`<img src="https://source.unsplash.com/600x400/?keyword" alt="A descriptive caption for the image" />\`.
-    *   **Example of a CORRECT image:** \`<img src="https://source.unsplash.com/600x400/?cell" alt="A diagram of a plant cell" />\`
-    *   **Example of an INCORRECT image:** \`<img src="https://source.unsplash.com/600x400/?solar,system" alt="The solar system" />\` - This is WRONG because it uses multiple keywords.
+4.  **IMAGE REQUIREMENT (NON-NEGOTIABLE):**
+    - You MUST include one, and only one, image in your response.
+    - The image MUST be from Unsplash.
+    - The image URL MUST follow this exact format: \`https://source.unsplash.com/600x400/?<keyword>\`
+    - The \`<keyword>\` MUST be a SINGLE, relevant English word. Do not use multiple words, hyphens, or underscores.
+    - Embed the image using a standard HTML \`<img>\` tag.
+    - **FAILURE TO FOLLOW THIS RULE WILL RENDER THE OUTPUT USELESS.**
+    - **Correct Example:** For a topic on "Photosynthesis", use \`<img src="https://source.unsplash.com/600x400/?plant" alt="A green plant" />\`
+    - **Incorrect Example:** \`<img src="https://source.unsplash.com/600x400/?plant-cell" />\` (uses hyphen)
 
 You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 

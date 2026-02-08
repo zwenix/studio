@@ -16,12 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { History, Loader2, Eye } from 'lucide-react';
+import { History, Loader2, Eye, Printer } from 'lucide-react';
 import type { GeneratedContent } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -39,6 +40,51 @@ export default function ContentHistoryPage() {
   }, [firestore, user]);
 
   const { data: contentHistory, isLoading } = useCollection<GeneratedContent>(contentHistoryQuery);
+  
+  const handlePrint = (item: GeneratedContent) => {
+    if (!item) return;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print - ${item.topic}</title>
+            <style>
+              body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
+              img { max-width: 100%; height: auto; border-radius: 0.5rem; display: block; margin: 1rem 0; }
+              hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
+              h1, h2, h3, h4 { font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+              h1 { font-size: 2em; }
+              h2 { font-size: 1.5em; }
+              h3 { font-size: 1.25em; }
+              ol, ul { padding-left: 1.5rem; }
+              em { font-style: italic; color: #555; }
+            </style>
+          </head>
+          <body>
+            <h1>${item.topic}</h1>
+            <h2>${item.contentType}</h2>
+            <hr />
+            ${item.content}
+            ${item.memo ? `
+              <hr style="margin-top: 3rem;" />
+              <h2>Memo</h2>
+              ${item.memo}
+            ` : ''}
+            ${item.rubric ? `
+              <hr style="margin-top: 3rem;" />
+              <h2>Rubric</h2>
+              ${item.rubric}
+            ` : ''}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
 
   return (
     <AppLayout>
@@ -94,7 +140,7 @@ export default function ContentHistoryPage() {
                     <DialogHeader>
                       <DialogTitle>{item.topic}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 overflow-auto">
+                    <div className="flex-1 overflow-auto p-4">
                         <Tabs defaultValue="content" className="w-full">
                           <TabsList>
                             <TabsTrigger value="content">Content</TabsTrigger>
@@ -118,6 +164,12 @@ export default function ContentHistoryPage() {
                           </TabsContent>}
                         </Tabs>
                     </div>
+                     <DialogFooter className="p-4 pt-2 border-t">
+                        <Button variant="outline" onClick={() => handlePrint(item)}>
+                          <Printer className="mr-2 h-4 w-4" />
+                          Print
+                        </Button>
+                      </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </CardContent>

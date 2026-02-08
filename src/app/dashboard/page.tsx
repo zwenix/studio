@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, BookOpen, FileUp, PenSquare, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, FileUp, PenSquare, Users, BarChart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AppLayout } from '@/components/app-layout';
@@ -113,8 +113,8 @@ export default function DashboardPage() {
                     </Link>
                  </Button>
                  <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>
-                    <Link href="/ocr">
-                      <FileUp className="mr-2 h-4 w-4" /> Upload Document
+                    <Link href="/progress-reports">
+                      <BarChart className="mr-2 h-4 w-4" /> View Reports
                     </Link>
                  </Button>
             </CardContent>

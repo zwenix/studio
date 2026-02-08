@@ -164,6 +164,18 @@ service cloud.firestore {
       allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
 
       /**
+       * @description Secures announcements within a class. The class teacher can create them, and all members can read them.
+       * @path /classes/{classId}/announcements/{announcementId}
+       * @allow The class teacher to create announcements.
+       * @allow Enrolled learners and the teacher to read announcements.
+       */
+      match /announcements/{announcementId} {
+        allow get, list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isAdmin());
+        allow create: if (isClassTeacher(classId) && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+        allow update, delete: if isClassTeacher(classId) || isAdmin();
+      }
+
+      /**
        * @description Secures assignments within a class. The class teacher or admin has full control. The assigned learner can read their own assignment and submit their work.
        * @path /classes/{classId}/assignments/{assignmentId}
        * @allow The assigned learner (get, update) their own assignment: /classes/class_abc/assignments/assign_123

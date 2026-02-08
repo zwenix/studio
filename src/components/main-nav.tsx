@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Cog,
   History,
+  BarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +30,7 @@ const allNavItems = [
   { href: '/content-generator', label: 'Content Generator', icon: Bot, roles: ['teacher', 'admin'] },
   { href: '/content-history', label: 'Content History', icon: History, roles: ['teacher', 'admin'] },
   { href: '/my-classes', label: 'My Classes', icon: Users, roles: ['teacher', 'student', 'admin'] },
+  { href: '/progress-reports', label: 'Progress Reports', icon: BarChart, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/ocr', label: 'OCR Tool', icon: ScanText, roles: ['teacher', 'student', 'admin'] },
   { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/autograding', label: 'Autograding', icon: ClipboardCheck, roles: ['teacher', 'admin'] },

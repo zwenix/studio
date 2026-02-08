@@ -63,6 +63,8 @@ export interface Assignment {
     submissionContent?: string;
     gradeReceived?: string;
     feedback?: string;
+    submittedAt?: Timestamp;
+    contentTopic?: string;
 }
 
 export interface Student {
@@ -92,4 +94,12 @@ export interface Message {
   sender: 'me' | 'them';
   content: string;
   timestamp: string;
+}
+
+export interface Announcement {
+  id: string;
+  classId: string;
+  teacherId: string;
+  message: string;
+  createdAt: Timestamp;
 }

@@ -12,6 +12,9 @@ export default {
       fontFamily: {
         body: ['var(--font-inter)', 'sans-serif'],
         headline: ['var(--font-space-grotesk)', 'sans-serif'],
+        'patrick-hand': ['var(--font-patrick-hand)', 'cursive'],
+        'comic-neue': ['var(--font-comic-neue)', 'cursive'],
+        'schoolbell': ['var(--font-schoolbell)', 'cursive'],
       },
       colors: {
         background: 'hsl(var(--background))',

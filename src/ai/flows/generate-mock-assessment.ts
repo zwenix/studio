@@ -86,6 +86,7 @@ Your audience is students who are not technical. Therefore, you MUST generate th
     -   **For Grades R, 1, 2, 3, 4, 5, 6, and 7:** You MUST make the assessment highly visual and engaging for young children.
         -   **Use Emojis and Icons FREQUENTLY** (e.g., ✏️, 🤔, 👍, 🧐, 🎉). Add them to headings and next to questions to make the test feel more like a fun activity.
         -   **Use BIG, FRIENDLY FONTS** by using '<h2>' for question titles.
+        -   **Use a playful, handwritten-style font** for the entire content. The content MUST be wrapped in \`<div class="font-patrick-hand">\`.
     -   **For Grades 8-12:** You can use a more formal tone, but the content must still be well-structured and clear.
 
 Generate a short practice assessment based on the grade, subject, and topic specified.
@@ -106,7 +107,7 @@ Number of Questions: {{{length}}}
 
 You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear HTML format.
 
-Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the italicized footnote: <em>Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu</em>`,
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created with EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026</em>`,
 });
 
 const generateMockAssessmentFlow = ai.defineFlow(

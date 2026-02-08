@@ -38,6 +38,13 @@ import type { Class, Teacher } from '@/lib/types';
 type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster";
 export type GenerateCAPSContentInput = CAPSInput;
 
+const fonts = [
+    { value: 'font-patrick-hand', label: "Teacher's Pet" },
+    { value: 'font-comic-neue', label: 'Comic Neue' },
+    { value: 'font-schoolbell', label: 'Schoolbell' },
+    { value: 'font-sans', label: 'Default Sans-Serif' },
+];
+
 export default function ContentGeneratorPage() {
   const { toast } = useToast();
   const { user } = useUser();
@@ -61,8 +68,17 @@ export default function ContentGeneratorPage() {
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [selectedClassId, setSelectedClassId] = useState('');
 
+  // New state for customization
+  const [fontFamily, setFontFamily] = useState('');
+  const [customHeading, setCustomHeading] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
+
+
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
   const topics = grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+  
+  const foundationPhaseGrades = ['R', '1', '2', '3'];
+  const isFoundationPhase = foundationPhaseGrades.includes(grade);
   
   const teacherRef = useMemoFirebase(() => user ? doc(firestore, 'teachers', user.uid) : null, [firestore, user]);
   const { data: teacherData } = useDoc<Teacher>(teacherRef);
@@ -89,6 +105,11 @@ export default function ContentGeneratorPage() {
     setIsLoading(true);
     setGeneratedContent(null);
 
+    let finalFont = fontFamily;
+    if (isFoundationPhase && !finalFont) {
+        finalFont = 'font-patrick-hand';
+    }
+
     try {
       const input: GenerateCAPSContentInput = {
         grade: grade as any,
@@ -99,6 +120,10 @@ export default function ContentGeneratorPage() {
         difficulty: difficulty || undefined,
         length: length || undefined,
         assessmentFormat: assessmentFormat as any || undefined,
+        fontFamily: finalFont,
+        customHeading,
+        customSubject,
+        teacherName: user?.displayName || 'Educator',
       };
       const result = await generateCAPSContent(input);
       setGeneratedContent(result);
@@ -271,23 +296,28 @@ export default function ContentGeneratorPage() {
               h2 { font-size: 1.5em; }
               h3 { font-size: 1.25em; }
               ol, ul { padding-left: 1.5rem; }
-              em { font-style: italic; color: #555; }
+              em { font-style: italic; color: #555; font-size: 9px; }
+              .font-patrick-hand { font-family: 'Patrick Hand', cursive; }
+              .font-comic-neue { font-family: 'Comic Neue', cursive; }
+              .font-schoolbell { font-family: 'Schoolbell', cursive; }
+              .font-sans { font-family: sans-serif; }
             </style>
           </head>
           <body>
-            <h1>${finalTopic}</h1>
-            <h2>${contentType}</h2>
-            <hr />
             ${generatedContent.content}
             ${generatedContent.memo ? `
               <hr style="margin-top: 3rem;" />
               <h2>Memo</h2>
-              ${generatedContent.memo}
+              <div class="${isFoundationPhase ? (fontFamily || 'font-patrick-hand') : 'font-sans'}">
+                ${generatedContent.memo}
+              </div>
             ` : ''}
             ${generatedContent.rubric ? `
               <hr style="margin-top: 3rem;" />
               <h2>Rubric</h2>
-              ${generatedContent.rubric}
+              <div class="${isFoundationPhase ? (fontFamily || 'font-patrick-hand') : 'font-sans'}">
+                ${generatedContent.rubric}
+              </div>
             ` : ''}
           </body>
         </html>
@@ -317,6 +347,15 @@ export default function ContentGeneratorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                  <Label htmlFor="custom-heading">Custom Heading (Optional)</Label>
+                  <Input id="custom-heading" placeholder="e.g., Mid-Term Assessment" value={customHeading} onChange={(e) => setCustomHeading(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="custom-subject">Custom Subject/Sub-heading (Optional)</Label>
+                  <Input id="custom-subject" placeholder="e.g., Term 2 - Algebraic Expressions" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="grade">Grade</Label>
@@ -343,6 +382,20 @@ export default function ContentGeneratorPage() {
                   </Select>
                 </div>
               </div>
+
+              {isFoundationPhase && (
+                <div className="space-y-2">
+                  <Label htmlFor="font-family">Font Style</Label>
+                  <Select value={fontFamily} onValueChange={setFontFamily}>
+                    <SelectTrigger id="font-family"><SelectValue placeholder="Default (Teacher's Pet)" /></SelectTrigger>
+                    <SelectContent>
+                      {fonts.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
@@ -467,17 +520,17 @@ export default function ContentGeneratorPage() {
                         {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
                       </TabsList>
                       <TabsContent value="content" className="mt-4">
-                          <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                          <div className={`prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md ${isFoundationPhase ? (fontFamily || 'font-patrick-hand') : 'font-sans'}`}>
                              <div dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
                           </div>
                       </TabsContent>
                       {generatedContent.memo && <TabsContent value="memo" className="mt-4">
-                          <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                          <div className={`prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md ${isFoundationPhase ? (fontFamily || 'font-patrick-hand') : 'font-sans'}`}>
                              <div dangerouslySetInnerHTML={{ __html: generatedContent.memo }} />
                           </div>
                       </TabsContent>}
                        {generatedContent.rubric && <TabsContent value="rubric" className="mt-4">
-                           <div className="prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md">
+                           <div className={`prose dark:prose-invert max-w-none bg-card text-card-foreground p-4 rounded-md ${isFoundationPhase ? (fontFamily || 'font-patrick-hand') : 'font-sans'}`}>
                               <div dangerouslySetInnerHTML={{ __html: generatedContent.rubric }} />
                            </div>
                       </TabsContent>}

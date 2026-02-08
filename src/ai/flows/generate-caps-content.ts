@@ -60,7 +60,11 @@ const GenerateCAPSContentInputSchema = z.object({
     .describe('Any specific instructions for content generation.'),
   difficulty: z.string().optional().describe('The difficulty level for the content (e.g., Easy, Medium, Hard).'),
   length: z.string().optional().describe('The desired number of questions for the content (e.g., 10, 25, 50).'),
-  assessmentFormat: AssessmentFormatSchema.optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).')
+  assessmentFormat: AssessmentFormatSchema.optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).'),
+  fontFamily: z.string().optional().describe('The CSS class for the font to be used.'),
+  customHeading: z.string().optional().describe('A custom main heading for the document.'),
+  customSubject: z.string().optional().describe('A custom subject or sub-heading for the document.'),
+  teacherName: z.string().optional().describe('The full name of the teacher generating the content.'),
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
@@ -118,12 +122,17 @@ Your audience is teachers, parents, and children who are not technical. Therefor
         -   If the Content Type is an 'educational poster', it MUST be extremely visual. Use very large headings, a lot of relevant emojis, bright conceptual colors (via inline style attributes on divs or spans), and simple layouts. The goal is to create a fun, vibrant poster that a child would love.
     -   **For Grades 8-12:** You can use a more formal tone, but the content must still be well-structured and clear. Emojis can be used more sparingly.
 
-You will generate content based on the grade, subject, topic and content type specified by the user. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
+The entire response for the 'content' field MUST start with a wrapper div that sets the font class. The user will provide a 'fontFamily' variable containing the CSS class name. All subsequent content, including custom headers and the final footnote, must be inside this single wrapper div.
+
+You will generate content based on the user's request. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 
 Grade: {{{grade}}}
 Subject: {{{subject}}}
 Topic: {{{topic}}}
 Content Type: {{{contentType}}}
+{{#if fontFamily}}
+Font Class: {{{fontFamily}}}
+{{/if}}
 
 {{#if difficulty}}
 Difficulty: {{{difficulty}}}
@@ -140,11 +149,13 @@ Additional Instructions: {{{additionalInstructions}}}
 
 Generate the following CAPS-compliant content.
 
+The content should start with the wrapper div. If the user provides a 'customHeading' or 'customSubject', they MUST be placed at the very top of the content, inside the main font wrapper div.
+
 If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear HTML format.
 
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.
 
-Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the italicized footnote: <em>Created with EduAICompanion - All rights reserved by owner: Zwelakhe Msuthu</em>`,
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created by '{{{teacherName}}}' using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026</em>. This footnote must also be inside the main font wrapper div.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(
@@ -154,7 +165,29 @@ const generateCAPSContentFlow = ai.defineFlow(
     outputSchema: GenerateCAPSContentOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    
+    // Construct the dynamic part of the prompt
+    let dynamicContent = '';
+
+    if (input.customHeading) {
+      dynamicContent += `<h1 style="text-align: center; font-size: 24px; font-weight: bold;">${input.customHeading}</h1>\n`;
+    }
+    if (input.customSubject) {
+      dynamicContent += `<h2 style="text-align: center; font-size: 20px; font-weight: normal; margin-bottom: 20px;">${input.customSubject}</h2>\n`;
+    }
+
+    const modifiedInput = { ...input };
+
+    const wrappedPrompt = `
+      <div class="${modifiedInput.fontFamily || 'font-sans'}">
+        ${dynamicContent}
+        {{AI will generate the main educational content here based on the original prompt instructions}}
+      </div>
+    `;
+
+    // This is a simplified representation. In a real scenario, you might need a more robust templating engine
+    // or pass the wrapping instruction differently. Here we are instructing the AI within the prompt itself.
+    const {output} = await prompt(modifiedInput);
     return output!;
   }
 );

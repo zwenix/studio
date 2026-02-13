@@ -1,4 +1,4 @@
-// Forcing a full backend and rules redeployment to resolve silent publishing failure and dependency downgrade.
+// Forcing a full backend and rules redeployment to resolve silent publishing failure and dependency drift.
 /**
  * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model
  * for the EduAI Companion platform. Data access is strictly controlled based on the

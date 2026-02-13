@@ -7,8 +7,8 @@
 secrets:
   - GEMINI_API_KEY
 
-# Enables automatic injection of Firebase-related environment variables
-# https://firebase.google.com/docs/app-hosting/configure-backend#firebase-variables
+# Enables automatic injection of Firebase-related environment variables and
+# provisions backend resources like Auth providers. This is critical for deployment.
 firebase: {}
 
 runConfig:

@@ -1,3 +1,4 @@
+// Forcing redeployment to apply latest apphosting.yaml configuration.
 // Re-triggering backend deployment again to ensure Google Auth provider is enabled for the live environment.
 /**
  * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model

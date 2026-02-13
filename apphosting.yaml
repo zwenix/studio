@@ -1,0 +1,17 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+
+# Specifies the secrets in Secret Manager to make available as environment
+# variables in the backend.
+# https://firebase.google.com/docs/app-hosting/configure-backend#secrets
+secrets:
+  - GEMINI_API_KEY
+
+# Enables automatic injection of Firebase-related environment variables and
+# provisions backend resources like Auth providers. This is critical for deployment.
+firebase: {}
+
+runConfig:
+  # Increase this value if you'd like to automatically spin up
+  # more instances in response to increased traffic.
+  maxInstances: 1

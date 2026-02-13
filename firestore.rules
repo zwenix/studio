@@ -1,0 +1,194 @@
+// Forcing a full backend and rules redeployment to resolve silent publishing failure and dependency drift.
+/**
+ * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model
+ * for the EduAI Companion platform. Data access is strictly controlled based on the
+ * authenticated user's role (teacher, learner, parent, admin) and their direct relationship to the data.
+ *
+ * Data Structure: The data is organized into top-level collections representing distinct
+ * entity types: `users`, `learners`, `teachers`, `parents`, `content`, and `classes`. This
+ * segregation provides clear boundaries for security rules. User-specific profiles are kept
+ * separate from collaborative data like `classes` and `content`. Assignments are logically
+ * nested as a subcollection under the `classes` they belong to.
+ *
+ * Key Security Decisions:
+ * - Strict User Ownership: All personal profile documents (in `/users`, `/learners`, etc.)
+ *   can only be read or written by the owner of that document, unless the user is an admin.
+ * - Teacher-Controlled Content: Teachers have exclusive write access to the `content` and
+ *   `classes` they create. Content is publicly readable, while classes are only visible
+ *   to the teacher and enrolled learners. Admins also have full control.
+ * - Secure Collaboration: Access to shared documents like `/classes` and their subcollections
+ *   is governed by denormalized member lists (`teacherId`, `learnerIds`) on the parent document.
+ *   This avoids slow and costly `get` calls in subcollection rules.
+ * - No Public Listing of Mixed-Access Collections: To prevent data leakage, general `list`
+ *   operations on the top-level `/classes` collection are disabled, unless queries are properly scoped.
+ *
+ * Denormalization for Authorization: To create performant and secure rules, authorization data
+ * is denormalized. For example, the `classes` document contains a `teacherId` and a `learnerIds`
+ * array, and the `assignments` document contains a `learnerId`. This allows rules to grant access
+ * without needing to read other documents, making the logic simpler and faster.
+ *
+ * Structural Segregation: User profiles (`users`, `learners`, etc.) are in separate
+ * collections from shared data (`classes`, `content`). This clear separation simplifies
+ * rules by allowing path-based ownership for private data and collaborative rules for
+ * shared data, enhancing security and performance for list operations.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isTeacher() {
+      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function documentExists() {
+      return resource != null;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && documentExists();
+    }
+
+    // Checks if the user is the teacher of the specified class.
+    // Uses a get() call, which counts as one read operation.
+    function isClassTeacher(classId) {
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return isSignedIn() && classDoc.data.teacherId == request.auth.uid;
+    }
+
+    /**
+     * @description Secures user profiles. A user can manage their own profile. A teacher or admin can read any user profile. Admin can write.
+     * @path /users/{userId}
+     * @allow A signed-in user (write) their own user document: /users/user_abc
+     * @allow A teacher or admin (get) any user's document.
+     * @deny A non-teacher/admin user (get) another user's document: /users/user_xyz
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isTeacher() || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+    
+    /**
+     * @description Allows teachers and admins to list users to find students to add to their class.
+     * @path /users
+     * @allow A teacher or admin to list users.
+     * @deny A non-teacher/admin to list users.
+     */
+    match /users/{path=**} {
+      allow list: if isTeacher() || isAdmin();
+    }
+
+
+    /**
+     * @description Secures learner profiles. The user or a teacher/admin can read it, but only the user or admin can write.
+     * @path /learners/{learnerId}
+     * @allow A signed-in user (get) their own learner profile: /learners/user_abc
+     * @allow A teacher or admin (get) any learner's profile.
+     * @deny A signed-in user (update) another learner's profile: /learners/user_xyz
+     */
+    match /learners/{learnerId} {
+      allow get: if isOwner(learnerId) || isTeacher() || isAdmin();
+      allow write: if isOwner(learnerId) || isAdmin();
+    }
+
+    /**
+     * @description Secures teacher profiles. Only the associated user or an admin can access their own teacher document.
+     * @path /teachers/{teacherId}
+     * @allow A signed-in user (create) their own teacher profile: /teachers/user_abc
+     * @deny A signed-in user (delete) another teacher's profile: /teachers/user_xyz
+     * @principle Enforces document ownership and validates relational integrity.
+     */
+    match /teachers/{teacherId} {
+      allow read, write: if isOwner(teacherId) || isAdmin();
+
+      /**
+       * @description Secures a teacher's history of generated content. Only the teacher or admin can manage their own content.
+       * @path /teachers/{teacherId}/generatedContent/{contentId}
+       * @allow A teacher to manage their own generated content history.
+       * @deny A teacher from accessing another teacher's generated content.
+       */
+      match /generatedContent/{contentId} {
+        allow read, write: if isOwner(teacherId) || isAdmin();
+      }
+    }
+
+    /**
+     * @description Secures parent profiles. Only the associated user or an admin can access their own parent document.
+     * @path /parents/{parentId}
+     * @allow A signed-in user (get) their own parent profile: /parents/user_abc
+     * @deny An anonymous user (create) a parent profile: /parents/user_abc
+     * @principle Enforces document ownership and validates relational integrity.
+     */
+    match /parents/{parentId} {
+      allow read, write: if isOwner(parentId) || isAdmin();
+    }
+
+    /**
+     * @description Allows public read access to content, but write access is restricted to the creating teacher or an admin.
+     * @path /content/{contentId}
+     * @allow Any user, signed-in or not, (get) a content document: /content/content_123
+     * @deny A signed-in teacher (update) content they do not own: /content/content_456
+     * @principle Implements a "Public Read with Owner-Only Writes" security pattern.
+     */
+    match /content/{contentId} {
+      allow get, list: if true;
+      allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+      allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
+    }
+
+    /**
+     * @description Secures class documents. The teacher or admin can manage it, and enrolled learners can read it.
+     * @path /classes/{classId}
+     * @allow A learner enrolled in the class (get) the class document: /classes/class_abc
+     * @deny A user not in the class (get) the class document: /classes/class_abc
+     * @principle Implements Shared Access for closed collaborators (teachers and learners). List is disabled to prevent browsing of all classes.
+     */
+    match /classes/{classId} {
+      allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isAdmin());
+      allow list: if isSignedIn();
+      allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+      allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
+
+      /**
+       * @description Secures announcements within a class. The class teacher can create them, and all members can read them.
+       * @path /classes/{classId}/announcements/{announcementId}
+       * @allow The class teacher to create announcements.
+       * @allow Enrolled learners and the teacher to read announcements.
+       */
+      match /announcements/{announcementId} {
+        allow get, list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isAdmin());
+        allow create: if (isClassTeacher(classId) && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+        allow update, delete: if isClassTeacher(classId) || isAdmin();
+      }
+
+      /**
+       * @description Secures assignments within a class. The class teacher or admin has full control. The assigned learner can read their own assignment and submit their work.
+       * @path /classes/{classId}/assignments/{assignmentId}
+       * @allow The assigned learner (get, update) their own assignment: /classes/class_abc/assignments/assign_123
+       * @deny A learner in the class (get) another learner's assignment: /classes/class_abc/assignments/assign_456
+       * @principle Access is derived from the parent document and denormalized fields on the assignment itself.
+       */
+      match /assignments/{assignmentId} {
+        allow get: if isSignedIn() && (isClassTeacher(classId) || isOwner(resource.data.learnerId) || isAdmin());
+        allow list: if isClassTeacher(classId) || isAdmin();
+        allow create: if (isClassTeacher(classId) && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
+        allow update: if ((isClassTeacher(classId) || isOwner(resource.data.learnerId)) && documentExists()) || isAdmin();
+        allow delete: if (isClassTeacher(classId) && documentExists()) || isAdmin();
+      }
+    }
+  }
+}

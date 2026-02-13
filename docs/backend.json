@@ -1,0 +1,499 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the EduAI Companion platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (e.g., teacher, parent, student, admin).",
+          "enum": [
+            "teacher",
+            "parent",
+            "student",
+            "admin"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "role"
+      ]
+    },
+    "Learner": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Learner",
+      "type": "object",
+      "description": "Represents a learner (student) in the EduAI Companion platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the learner.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Learner)"
+        },
+        "grade": {
+          "type": "string",
+          "description": "Grade level of the learner (e.g., R, 1, 2, ..., 12)."
+        },
+        "learningPreferences": {
+          "type": "string",
+          "description": "Learning preferences of the learner (e.g., visual, auditory, kinesthetic)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "grade",
+        "learningPreferences"
+      ]
+    },
+    "Teacher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Teacher",
+      "type": "object",
+      "description": "Represents a teacher in the EduAI Companion platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the teacher.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Teacher)"
+        },
+        "subjects": {
+          "type": "array",
+          "description": "Subjects that the teacher is qualified to teach.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "classIds": {
+          "type": "array",
+          "description": "References to Classes taught by the teacher.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "signatureUrl": {
+          "type": "string",
+          "description": "URL of the teacher's signature image."
+        },
+        "aiDifficultyAdaptation": {
+            "type": "boolean",
+            "description": "Automatically adjust content difficulty based on student performance."
+        },
+        "culturalContextIntegration": {
+            "type": "boolean",
+            "description": "Use local examples and familiar cultural contexts in lessons."
+        },
+        "parentNotifications": {
+            "type": "boolean",
+            "description": "Auto-notify parents of progress updates and attendance."
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    },
+    "Parent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Parent",
+      "type": "object",
+      "description": "Represents a parent in the EduAI Companion platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the parent.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Parent)"
+        },
+        "childIds": {
+          "type": "array",
+          "description": "References to Learners. (Relationship: Parent 1:N Learner)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "childIds"
+      ]
+    },
+    "Content": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Content",
+      "type": "object",
+      "description": "Represents educational content (lesson plans, exercises, assessments, etc.).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the content.",
+          "format": "uuid"
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to Teacher. (Relationship: Teacher 1:N Content)"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "Type of content (e.g., lesson plan, exercise, assessment)."
+        },
+        "grade": {
+          "type": "string",
+          "description": "Grade level the content is designed for."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject the content is related to."
+        },
+        "topic": {
+          "type": "string",
+          "description": "Specific topic the content covers."
+        },
+        "content": {
+          "type": "string",
+          "description": "The educational content itself (e.g., PDF, video)."
+        },
+        "memo": {
+          "type": "string",
+          "description": "The memo for the content (if applicable)."
+        },
+        "rubric": {
+          "type": "string",
+          "description": "The rubric for the content (if applicable)."
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "contentType",
+        "grade",
+        "subject",
+        "topic",
+        "content"
+      ]
+    },
+    "GeneratedContent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Generated Content",
+      "type": "object",
+      "description": "Represents educational content generated by the AI for a teacher for history/editing purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the generated content."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "ID of the teacher who generated it."
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "memo": {
+          "type": "string"
+        },
+        "rubric": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "contentType",
+        "grade",
+        "subject",
+        "topic",
+        "content",
+        "createdAt"
+      ]
+    },
+    "Assignment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Assignment",
+      "type": "object",
+      "description": "Represents an assignment given to a learner.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the assignment.",
+          "format": "uuid"
+        },
+        "contentId": {
+          "type": "string",
+          "description": "Reference to Content. (Relationship: Content 1:N Assignment)"
+        },
+        "learnerId": {
+          "type": "string",
+          "description": "Reference to Learner. (Relationship: Learner 1:N Assignment)"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Due date for the assignment.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the assignment (e.g., assigned, submitted, graded)."
+        },
+        "submissionContent": {
+          "type": "string",
+          "description": "The learner's submitted work for the assignment."
+        },
+        "gradeReceived": {
+          "type": "string",
+          "description": "Grade received for the assignment."
+        },
+        "feedback": {
+          "type": "string",
+          "description": "Teacher's feedback on the assignment."
+        }
+      },
+      "required": [
+        "id",
+        "contentId",
+        "learnerId",
+        "dueDate",
+        "status"
+      ]
+    },
+    "Class": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Class",
+      "type": "object",
+      "description": "Represents a class or group of learners.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the class.",
+          "format": "uuid"
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to Teacher. (Relationship: Teacher 1:N Class)"
+        },
+        "grade": {
+          "type": "string",
+          "description": "Grade level of the class."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject taught in the class."
+        },
+        "learnerIds": {
+          "type": "array",
+          "description": "References to Learners in the class. (Relationship: Class 1:N Learner)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "grade",
+        "subject",
+        "learnerIds"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Only the authenticated user can access their own profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/learners/{learnerId}",
+        "definition": {
+          "entityName": "Learner",
+          "schema": {
+            "$ref": "#/backend/entities/Learner"
+          },
+          "description": "Stores learner profiles. Only learners (or authorized users) can access learner profile data. This is linked 1:1 with the User.",
+          "params": [
+            {
+              "name": "learnerId",
+              "description": "The unique identifier of the learner."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teachers/{teacherId}",
+        "definition": {
+          "entityName": "Teacher",
+          "schema": {
+            "$ref": "#/backend/entities/Teacher"
+          },
+          "description": "Stores teacher profiles. Only teachers can access their profile data. This is linked 1:1 with the User.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The unique identifier of the teacher."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/teachers/{teacherId}/generatedContent/{contentId}",
+        "definition": {
+          "entityName": "GeneratedContent",
+          "schema": {
+            "$ref": "#/backend/entities/GeneratedContent"
+          },
+          "description": "Stores a history of AI-generated content for each teacher. Only the teacher can access their own history.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The teacher's ID."
+            },
+            {
+              "name": "contentId",
+              "description": "The generated content's ID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/parents/{parentId}",
+        "definition": {
+          "entityName": "Parent",
+          "schema": {
+            "$ref": "#/backend/entities/Parent"
+          },
+          "description": "Stores parent profiles. Only parents can access their profile data. This is linked 1:1 with the User.",
+          "params": [
+            {
+              "name": "parentId",
+              "description": "The unique identifier of the parent."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/content/{contentId}",
+        "definition": {
+          "entityName": "Content",
+          "schema": {
+            "$ref": "#/backend/entities/Content"
+          },
+          "description": "Stores educational content. Authorization is based on the 'teacherId' field.",
+          "params": [
+            {
+              "name": "contentId",
+              "description": "The unique identifier of the content."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}",
+        "definition": {
+          "entityName": "Class",
+          "schema": {
+            "$ref": "#/backend/entities/Class"
+          },
+          "description": "Stores class information. Authorization is based on the 'teacherId' field. Includes 'learnerIds' for secure listing.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier of the class."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/classes/{classId}/assignments/{assignmentId}",
+        "definition": {
+          "entityName": "Assignment",
+          "schema": {
+            "$ref": "#/backend/entities/Assignment"
+          },
+          "description": "Stores assignments for a specific class. Includes denormalized 'learnerId' and 'contentId' for authorization independence.",
+          "params": [
+            {
+              "name": "classId",
+              "description": "The unique identifier of the class."
+            },
+            {
+              "name": "assignmentId",
+              "description": "The unique identifier of the assignment."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the EduAI Companion platform, focusing on secure and scalable data access with clear authorization rules. The design prioritizes authorization independence by denormalizing data and leveraging path-based ownership where appropriate.  The key collections are structured to support the user roles (teacher, parent, learner) and their associated data. \n\n*   `/users/{userId}`: Stores user profiles. Path-based ownership is used, meaning only the authenticated user can access their own profile data.\n*   `/teachers/{teacherId}`: Stores teacher-specific data, linked 1:1 to User. Path-based ownership, as only teachers can create/modify their own documents. This could be merged with users.\n*   `/teachers/{teacherId}/generatedContent/{contentId}`: Stores a history of content generated by a teacher, allowing them to view and edit it later. Path-based ownership ensures privacy.\n*   `/learners/{learnerId}`: Stores learner profiles, linked 1:1 to User. Path-based ownership, as learners (or parents/teachers with delegated permissions) can access their own data.  This could be merged with users.\n*   `/parents/{parentId}`: Stores parent profiles, including the list of child IDs. Path-based ownership.  This could be merged with users.\n*   `/classes/{classId}`: Stores class information, including teacher ID and learner IDs. Teacher owns the class, and the 'learnerIds' array facilitates listing all learners in a class, which enables secure `list` operations.\n*   `/classes/{classId}/assignments/{assignmentId}`: Assignments are stored as subcollections of Classes, making it easy to query all assignments for a given class. Includes denormalized 'learnerId' and 'contentId' to avoid `get()` calls.\n*   `/content/{contentId}`: Stores educational content that has been assigned to a class. Access is controlled via the 'teacherId' field and class membership.\n\n**Authorization Independence (CRITICAL):**\n\n*   To achieve authorization independence, the 'Assignment' subcollection denormalizes 'learnerId' and 'contentId'.  This eliminates the need for `get()` calls to parent documents (Class, Content) during security rule evaluation, improving atomic operations and debuggability.\n\n**QAPs (Rules are not Filters):**\n\n*   Path-based ownership for users, learners, teachers, and parents enables secure list operations. Only the authenticated user can access their own profile data.\n*   The `learnerIds` array in the `Class` document allows listing all learners in a class without filtering based on data content, thus adhering to QAPs.\n*   Segregation is used by separating user profiles from content.  Content access is controlled via the 'teacherId' field and membership in classes.\n\n**Denormalization**: LearnerId is copied into assignment documents to avoid fetching data from learner documents.\n"
+  }
+}

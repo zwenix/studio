@@ -104,7 +104,7 @@ export default function DashboardPage() {
             <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                  <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>
                     <Link href="/content-generator">
-                      <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="AI Icon" width={16} height={16} className="mr-2" /> Generate Content
+                      <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="AI Icon" width={16} height={16} className="mr-2" /> Generate Content
                     </Link>
                  </Button>
                  <Button variant="secondary" size="sm" className="justify-start h-auto whitespace-normal py-1" asChild>

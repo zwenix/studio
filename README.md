@@ -1,7 +1,7 @@
 # 🎓 EduAI Companion
 
 <div align="center">
-  <img src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width="120px" />
+  <img src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="EduAI Companion Logo" width="120px" />
   <p>
     <strong>Personalized Learning, Powered by AI.</strong>
   </p>

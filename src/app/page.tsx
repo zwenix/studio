@@ -17,7 +17,7 @@ export default function LandingPage() {
       <header className="fixed top-0 w-full bg-black/30 backdrop-blur-md z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="https://i.ibb.co/bMw3gNSc/Main-Logo-512.png" alt="EduAI Companion Logo" width={40} height={40} />
+            <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="EduAI Companion Logo" width={40} height={40} />
             <h1 className="text-2xl font-bold">EduAI Companion</h1>
           </Link>
           <div className="flex gap-4 items-center">

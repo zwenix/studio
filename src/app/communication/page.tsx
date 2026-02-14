@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Textarea } from '@/components/ui/textarea';
 import { Mail, Send, Loader2, Megaphone } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import type { Class, User, Announcement } from '@/lib/types';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc } from 'firebase/firestore';
+import type { Class, User, Announcement, Parent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,16 +25,34 @@ export default function CommunicationPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile } = useDoc<User>(userProfileRef);
 
+  // For Parents: Get their children
+  const parentRef = useMemoFirebase(() => {
+    if (userProfile?.role === 'parent' && user) {
+      return doc(firestore, 'parents', user.uid);
+    }
+    return null;
+  }, [firestore, user, userProfile]);
+  const { data: parentData } = useDoc<Parent>(parentRef);
+
   const classesQuery = useMemoFirebase(() => {
     if (!user || !userProfile) return null;
 
     if (userProfile.role === 'teacher') {
       return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
     }
-    // For parents/students, find classes they are in
-    return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
+    if (userProfile.role === 'student') {
+      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
+    }
+    // For parents, find classes their children are in
+    if (userProfile.role === 'parent' && parentData?.childIds && parentData.childIds.length > 0) {
+      // Firestore queries are limited to 30 elements for 'array-contains-any'
+      const childIds = parentData.childIds.length > 30 ? parentData.childIds.slice(0, 30) : parentData.childIds;
+      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains-any', childIds));
+    }
     
-  }, [firestore, user, userProfile]);
+    return null; // Return null if parent has no children yet or data is still loading
+    
+  }, [firestore, user, userProfile, parentData]);
 
   const { data: classes, isLoading: areClassesLoading } = useCollection<Class>(classesQuery);
 
@@ -85,7 +103,7 @@ export default function CommunicationPage() {
             <CardContent className="flex-1 overflow-y-auto">
               {areClassesLoading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> : (
                 <div className="space-y-2">
-                  {classes?.map(cls => (
+                  {(classes && classes.length > 0) ? classes.map(cls => (
                     <Button 
                       key={cls.id} 
                       variant={selectedClass?.id === cls.id ? 'default' : 'ghost'} 
@@ -94,7 +112,7 @@ export default function CommunicationPage() {
                     >
                       {cls.name}
                     </Button>
-                  ))}
+                  )) : <p className="text-sm text-muted-foreground text-center">No classes found.</p>}
                 </div>
               )}
             </CardContent>

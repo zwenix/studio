@@ -62,11 +62,17 @@ service cloud.firestore {
     }
 
     // Checks if the user is the teacher of the specified class.
-    // Uses a get() call, which counts as one read operation.
     function isClassTeacher(classId) {
       let classDoc = get(/databases/$(database)/documents/classes/$(classId));
       return isSignedIn() && classDoc.data.teacherId == request.auth.uid;
     }
+
+    // Checks if the user is a parent of a student enrolled in the class.
+    function isParentOfEnrolledStudent(classId) {
+      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+      return classDoc.data.parentIds != null && request.auth.uid in classDoc.data.parentIds;
+    }
+
 
     /**
      * @description Secures user profiles. A user can manage their own profile. A teacher or admin can read any user profile. Admin can write.
@@ -157,7 +163,7 @@ service cloud.firestore {
      * @principle Implements Shared Access for closed collaborators (teachers and learners). List is disabled to prevent browsing of all classes.
      */
     match /classes/{classId} {
-      allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isAdmin());
+      allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isParentOfEnrolledStudent(classId) || isAdmin());
       allow list: if isSignedIn();
       allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
       allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
@@ -170,7 +176,7 @@ service cloud.firestore {
        * @allow Enrolled learners and the teacher to read announcements.
        */
       match /announcements/{announcementId} {
-        allow get, list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isAdmin());
+        allow get, list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isParentOfEnrolledStudent(classId) || isAdmin());
         allow create: if (isClassTeacher(classId) && request.resource.data.teacherId == request.auth.uid) || isAdmin();
         allow update, delete: if isClassTeacher(classId) || isAdmin();
       }
@@ -184,7 +190,7 @@ service cloud.firestore {
        */
       match /assignments/{assignmentId} {
         allow get: if isSignedIn() && (isClassTeacher(classId) || isOwner(resource.data.learnerId) || isAdmin());
-        allow list: if isClassTeacher(classId) || isAdmin();
+        allow list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isAdmin());
         allow create: if (isClassTeacher(classId) && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
         allow update: if ((isClassTeacher(classId) || isOwner(resource.data.learnerId)) && documentExists()) || isAdmin();
         allow delete: if (isClassTeacher(classId) && documentExists()) || isAdmin();

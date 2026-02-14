@@ -337,6 +337,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "parentIds": {
+          "type": "array",
+          "description": "References to Parents of learners in the class for communication access.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [

@@ -27,6 +27,7 @@ export interface Class {
   subject: string;
   teacherId: string;
   learnerIds: string[];
+  parentIds?: string[];
 }
 
 export interface Content {
@@ -102,4 +103,10 @@ export interface Announcement {
   teacherId: string;
   message: string;
   createdAt: Timestamp;
+}
+
+export interface Parent {
+  id: string;
+  userId: string;
+  childIds: string[];
 }

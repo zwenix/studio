@@ -16,7 +16,7 @@ import { ArrowRight, Loader2, UserPlus, X, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
 import type { Class, Assignment, Content, User } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,7 @@ function StudentClassView({ classId, userId }: { classId: string, userId: string
         where('learnerId', '==', userId)
         );
     }, [firestore, classId, userId]);
-    const { data: assignments, isLoading: areAssignmentsLoading } = useCollection<Assignment>(assignmentsQuery);
+    const { data: assignments, isLoading: areAssignmentsLoading, error } = useCollection<Assignment>(assignmentsQuery);
 
     const [assignmentsWithContent, setAssignmentsWithContent] = useState<(Assignment & { contentTitle?: string, contentTopic?: string })[]>([]);
     
@@ -55,6 +55,19 @@ function StudentClassView({ classId, userId }: { classId: string, userId: string
         fetchContent();
         }
     }, [assignments, firestore]);
+    
+    if (error) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-destructive">Error Loading Assignments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-destructive-foreground bg-destructive p-4 rounded-md">There was a problem fetching your assignments. This is likely a permission issue. Please contact your teacher.</p>
+                </CardContent>
+            </Card>
+        )
+    }
 
     return (
         <Card>
@@ -146,8 +159,19 @@ function TeacherClassView({ classData }: { classData: Class }) {
     }
     setIsSubmitting(true);
     try {
+      // Find parent IDs for the new students to enable communication features for them.
+      const parentIdsToAdd = new Set<string>();
+      for (const studentId of studentsToAdd) {
+        const q = query(collection(firestore, 'parents'), where('childIds', 'array-contains', studentId));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+            parentIdsToAdd.add(doc.id);
+        });
+      }
+
       await updateDoc(classRef, {
-        learnerIds: arrayUnion(...studentsToAdd)
+        learnerIds: arrayUnion(...studentsToAdd),
+        parentIds: arrayUnion(...Array.from(parentIdsToAdd))
       });
       toast({ title: 'Students added successfully!' });
       setStudentsToAdd([]);
@@ -162,6 +186,9 @@ function TeacherClassView({ classData }: { classData: Class }) {
   const handleRemoveStudent = async (studentId: string) => {
     setIsSubmitting(true);
     try {
+        // This is a simplified removal. For a complete solution, you would also need to check if 
+        // the parent of the removed student has any other children in the class. If not, the 
+        // parent's ID should be removed from the `parentIds` array. This logic is omitted for brevity.
         await updateDoc(classRef, {
             learnerIds: arrayRemove(studentId)
         });

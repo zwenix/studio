@@ -1,169 +1,352 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Mail, Send, Loader2, Megaphone } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc } from 'firebase/firestore';
-import type { Class, User, Announcement, Parent } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Mail, Send, Loader2, Plus, Users, School } from 'lucide-react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDocs, writeBatch, limit } from 'firebase/firestore';
+import type { Class, User, Parent, Conversation, ChatMessage } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNowStrict } from 'date-fns';
 
+const getInitials = (firstName: string = '', lastName: string = '') => {
+    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
+};
+
+// --- New Message Dialog Component ---
+function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (conversationId: string) => void }) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { data: userProfile } = useDoc<User>(useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]));
+
+    const [open, setOpen] = useState(false);
+    const [recipients, setRecipients] = useState<User[]>([]);
+    const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (!open || !userProfile) return;
+
+        const fetchRecipients = async () => {
+            setIsLoadingRecipients(true);
+            let fetched: User[] = [];
+            const userMap = new Map<string, User>();
+            
+            try {
+                if (userProfile.role === 'teacher') {
+                    // Fetch all students and parents from all teacher's classes
+                    const classesQuery = query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+                    const classSnap = await getDocs(classesQuery);
+                    const learnerIds = classSnap.docs.flatMap(d => (d.data() as Class).learnerIds);
+                    if (learnerIds.length > 0) {
+                         const learnersQuery = query(collection(firestore, 'users'), where('id', 'in', learnerIds.slice(0, 30)));
+                         const learnersSnap = await getDocs(learnersQuery);
+                         learnersSnap.forEach(d => userMap.set(d.id, d.data() as User));
+
+                         const parentsQuery = query(collection(firestore, 'parents'), where('childIds', 'array-contains-any', learnerIds.slice(0, 30)));
+                         const parentsSnap = await getDocs(parentsQuery);
+                         const parentUserIds = parentsSnap.docs.map(d => d.id);
+                         if (parentUserIds.length > 0) {
+                             const parentUsersQuery = query(collection(firestore, 'users'), where('id', 'in', parentUserIds.slice(0, 30)));
+                             const parentUsersSnap = await getDocs(parentUsersQuery);
+                             parentUsersSnap.forEach(d => userMap.set(d.id, d.data() as User));
+                         }
+                    }
+                } else if (userProfile.role === 'student') {
+                    // Fetch all teachers of the student's classes
+                    const classesQuery = query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
+                    const classSnap = await getDocs(classesQuery);
+                    const teacherIds = [...new Set(classSnap.docs.map(d => (d.data() as Class).teacherId))];
+                    if (teacherIds.length > 0) {
+                        const teachersQuery = query(collection(firestore, 'users'), where('id', 'in', teacherIds.slice(0, 30)));
+                        const teachersSnap = await getDocs(teachersQuery);
+                        teachersSnap.forEach(d => userMap.set(d.id, d.data() as User));
+                    }
+                } else if (userProfile.role === 'parent') {
+                    // Fetch all teachers of the parent's children's classes
+                    const parentSnap = await getDocs(query(collection(firestore, 'parents'), where('userId', '==', user.uid)));
+                    const childIds = parentSnap.docs.flatMap(d => (d.data() as Parent).childIds);
+                     if (childIds.length > 0) {
+                        const classesQuery = query(collection(firestore, 'classes'), where('learnerIds', 'array-contains-any', childIds.slice(0, 30)));
+                        const classSnap = await getDocs(classesQuery);
+                        const teacherIds = [...new Set(classSnap.docs.map(d => (d.data() as Class).teacherId))];
+                         if (teacherIds.length > 0) {
+                            const teachersQuery = query(collection(firestore, 'users'), where('id', 'in', teacherIds.slice(0, 30)));
+                            const teachersSnap = await getDocs(teachersQuery);
+                            teachersSnap.forEach(d => userMap.set(d.id, d.data() as User));
+                        }
+                    }
+                }
+                fetched = Array.from(userMap.values());
+            } catch (e: any) {
+                console.error("Failed to fetch recipients:", e);
+                toast({ title: "Error", description: "Could not load recipients.", variant: "destructive" });
+            }
+            
+            setRecipients(fetched);
+            setIsLoadingRecipients(false);
+        };
+
+        fetchRecipients();
+    }, [open, userProfile, firestore, user, toast]);
+
+    const handleSelectRecipient = async (recipient: User) => {
+        if (!user || !userProfile) return;
+
+        const participantIds = [user.uid, recipient.id].sort();
+        const q = query(collection(firestore, 'conversations'), where('participantIds', '==', participantIds), limit(1));
+        const existingConvoSnap = await getDocs(q);
+
+        let convoId: string;
+        if (!existingConvoSnap.empty) {
+            convoId = existingConvoSnap.docs[0].id;
+        } else {
+            const newConvoRef = doc(collection(firestore, 'conversations'));
+            const participantInfo = {
+                [user.uid]: { firstName: userProfile.firstName, lastName: userProfile.lastName, role: userProfile.role },
+                [recipient.id]: { firstName: recipient.firstName, lastName: recipient.lastName, role: recipient.role },
+            };
+            await setDoc(newConvoRef, {
+                participantIds,
+                participantInfo,
+                lastMessage: null,
+                updatedAt: serverTimestamp(),
+            });
+            convoId = newConvoRef.id;
+        }
+        
+        onConversationStarted(convoId);
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <Plus className="mr-2" /> New Message
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Start a new conversation</DialogTitle>
+                    <DialogDescription>Select a person to message.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-72">
+                    <div className="p-4 space-y-3">
+                    {isLoadingRecipients && <div className="flex justify-center"><Loader2 className="animate-spin" /></div>}
+                    {!isLoadingRecipients && recipients.length === 0 && <p className="text-center text-sm text-muted-foreground">No recipients found.</p>}
+                    {recipients.map(r => (
+                        <div key={r.id} onClick={() => handleSelectRecipient(r)} className="flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer">
+                            <Avatar>
+                                <AvatarImage src={r.avatarUrl} />
+                                <AvatarFallback>{getInitials(r.firstName, r.lastName)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{r.firstName} {r.lastName}</p>
+                                <p className="text-sm text-muted-foreground capitalize">{r.role}</p>
+                            </div>
+                        </div>
+                    ))}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+// --- Main Communication Page Component ---
 export default function CommunicationPage() {
-  const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   
-  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile } = useDoc<User>(userProfileRef);
-
-  // For Parents: Get their children
-  const parentRef = useMemoFirebase(() => {
-    if (userProfile?.role === 'parent' && user) {
-      return doc(firestore, 'parents', user.uid);
-    }
-    return null;
-  }, [firestore, user, userProfile]);
-  const { data: parentData } = useDoc<Parent>(parentRef);
-
-  const classesQuery = useMemoFirebase(() => {
-    if (!user || !userProfile) return null;
-
-    if (userProfile.role === 'teacher') {
-      return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
-    }
-    if (userProfile.role === 'student') {
-      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
-    }
-    // For parents, find classes their children are in
-    if (userProfile.role === 'parent' && parentData?.childIds && parentData.childIds.length > 0) {
-      // Firestore queries are limited to 30 elements for 'array-contains-any'
-      const childIds = parentData.childIds.length > 30 ? parentData.childIds.slice(0, 30) : parentData.childIds;
-      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains-any', childIds));
-    }
-    
-    return null; // Return null if parent has no children yet or data is still loading
-    
-  }, [firestore, user, userProfile, parentData]);
-
-  const { data: classes, isLoading: areClassesLoading } = useCollection<Class>(classesQuery);
-
-  const announcementsQuery = useMemoFirebase(() => {
-    if (!selectedClass) return null;
+  const conversationsQuery = useMemoFirebase(() => {
+    if (!user) return null;
     return query(
-        collection(firestore, 'classes', selectedClass.id, 'announcements'),
-        orderBy('createdAt', 'desc')
+      collection(firestore, 'conversations'), 
+      where('participantIds', 'array-contains', user.uid),
+      orderBy('updatedAt', 'desc')
     );
-  }, [firestore, selectedClass]);
+  }, [firestore, user]);
+  const { data: conversations, isLoading: areConversationsLoading } = useCollection<Conversation>(conversationsQuery);
   
-  const { data: announcements, isLoading: areAnnouncementsLoading } = useCollection<Announcement>(announcementsQuery);
+  const messagesQuery = useMemoFirebase(() => {
+    if (!selectedConversationId) return null;
+    return query(
+      collection(firestore, 'conversations', selectedConversationId, 'messages'),
+      orderBy('createdAt', 'asc'),
+      limit(50)
+    );
+  }, [firestore, selectedConversationId]);
+  const { data: messages, isLoading: areMessagesLoading } = useCollection<ChatMessage>(messagesQuery);
+
+  const selectedConversation = useMemo(() => {
+      return conversations?.find(c => c.id === selectedConversationId);
+  }, [conversations, selectedConversationId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedClass || !user) return;
+    if (!newMessage.trim() || !selectedConversationId || !user) return;
     
     setIsSending(true);
     try {
-        const announcementsCollection = collection(firestore, 'classes', selectedClass.id, 'announcements');
-        await addDoc(announcementsCollection, {
-            classId: selectedClass.id,
-            teacherId: user.uid,
-            message: newMessage,
-            createdAt: serverTimestamp(),
+        const batch = writeBatch(firestore);
+        const conversationRef = doc(firestore, 'conversations', selectedConversationId);
+        const messageRef = doc(collection(firestore, 'conversations', selectedConversationId, 'messages'));
+        
+        const timestamp = serverTimestamp();
+        
+        batch.set(messageRef, {
+            senderId: user.uid,
+            text: newMessage,
+            createdAt: timestamp,
         });
+
+        batch.update(conversationRef, {
+            lastMessage: {
+                text: newMessage,
+                senderId: user.uid,
+                timestamp: new Date(), // Use client-side date for immediate update
+            },
+            updatedAt: timestamp,
+        });
+
+        await batch.commit();
         setNewMessage('');
-        toast({ title: 'Announcement sent!' });
     } catch(error: any) {
-        toast({ title: 'Failed to send announcement', description: error.message, variant: 'destructive' });
+        toast({ title: 'Failed to send message', description: error.message, variant: 'destructive' });
     } finally {
         setIsSending(false);
     }
   };
 
+  const getOtherParticipant = (convo: Conversation) => {
+      if (!user) return null;
+      const otherId = convo.participantIds.find(id => id !== user.uid);
+      return otherId ? convo.participantInfo[otherId] : null;
+  }
+
   return (
     <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6 h-full">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center mb-4">
-          <Mail className="mr-3 h-8 w-8" />
-          Communication Portal
-        </h1>
+      <div className="flex-1 p-0 h-full">
+         <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] h-full">
+            {/* Left Panel: Conversation List */}
+            <div className="flex flex-col border-r h-full bg-muted/50">
+                 <div className="p-4 border-b">
+                     <NewMessageDialog onConversationStarted={setSelectedConversationId} />
+                 </div>
+                 <ScrollArea className="flex-1">
+                     {areConversationsLoading && <div className="p-4 text-center"><Loader2 className="animate-spin mx-auto"/></div>}
+                     {conversations?.map(convo => {
+                         const otherParticipant = getOtherParticipant(convo);
+                         return (
+                            <div 
+                                key={convo.id} 
+                                onClick={() => setSelectedConversationId(convo.id)}
+                                className={`p-4 border-b cursor-pointer hover:bg-accent ${selectedConversationId === convo.id ? 'bg-accent' : ''}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={otherParticipant?.avatarUrl} />
+                                        <AvatarFallback>{getInitials(otherParticipant?.firstName, otherParticipant?.lastName)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 overflow-hidden">
+                                        <div className="flex justify-between">
+                                            <p className="font-semibold truncate">{otherParticipant?.firstName} {otherParticipant?.lastName}</p>
+                                            {convo.updatedAt && <p className="text-xs text-muted-foreground">{formatDistanceToNowStrict(convo.updatedAt.toDate())}</p>}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground truncate">
+                                          {convo.lastMessage?.senderId === user?.uid && 'You: '}
+                                          {convo.lastMessage?.text}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                         )
+                     })}
+                     {!areConversationsLoading && conversations?.length === 0 && (
+                         <div className="p-8 text-center text-muted-foreground">
+                            <Mail className="mx-auto h-10 w-10 mb-2"/>
+                            <p>No conversations yet. Start a new message.</p>
+                         </div>
+                     )}
+                 </ScrollArea>
+            </div>
+            
+            {/* Right Panel: Chat Window */}
+            <div className="flex flex-col h-full">
+                {selectedConversation ? (
+                    <>
+                    <CardHeader className="flex flex-row items-center gap-3 p-4 border-b">
+                         <Avatar>
+                            <AvatarImage src={getOtherParticipant(selectedConversation)?.avatarUrl} />
+                            <AvatarFallback>{getInitials(getOtherParticipant(selectedConversation)?.firstName, getOtherParticipant(selectedConversation)?.lastName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <CardTitle>{getOtherParticipant(selectedConversation)?.firstName} {getOtherParticipant(selectedConversation)?.lastName}</CardTitle>
+                            <CardDescription className="capitalize">{getOtherParticipant(selectedConversation)?.role}</CardDescription>
+                        </div>
+                    </CardHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100%-6rem)]">
-          <Card className="md:col-span-1 flex flex-col">
-            <CardHeader>
-              <CardTitle>My Classes</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto">
-              {areClassesLoading ? <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> : (
-                <div className="space-y-2">
-                  {(classes && classes.length > 0) ? classes.map(cls => (
-                    <Button 
-                      key={cls.id} 
-                      variant={selectedClass?.id === cls.id ? 'default' : 'ghost'} 
-                      className="w-full justify-start"
-                      onClick={() => setSelectedClass(cls)}
-                    >
-                      {cls.name}
-                    </Button>
-                  )) : <p className="text-sm text-muted-foreground text-center">No classes found.</p>}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2 flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Megaphone className="mr-2"/>
-                {selectedClass ? `${selectedClass.name} - Announcements` : 'Select a Class'}
-              </CardTitle>
-              <CardDescription>
-                {selectedClass ? 'View announcements or post a new one.' : 'Select a class from the list to see announcements.'}
-              </CardDescription>
-            </CardHeader>
-            <ScrollArea className="flex-1">
-              <CardContent className="space-y-4">
-                {areAnnouncementsLoading && <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div>}
-
-                {!areAnnouncementsLoading && announcements && announcements.length === 0 && (
-                    <div className="text-center text-muted-foreground p-8">No announcements for this class yet.</div>
-                )}
-                
-                {!areAnnouncementsLoading && announcements?.map(announcement => (
-                    <div key={announcement.id} className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm whitespace-pre-wrap">{announcement.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                           Posted on {announcement.createdAt ? format(announcement.createdAt.toDate(), 'PPP p') : '...'}
-                        </p>
+                    <ScrollArea className="flex-1 p-4">
+                        <div className="space-y-4">
+                        {areMessagesLoading && <div className="p-4 text-center"><Loader2 className="animate-spin mx-auto"/></div>}
+                        {messages?.map(message => (
+                            <div key={message.id} className={`flex items-end gap-2 ${message.senderId === user?.uid ? 'justify-end' : ''}`}>
+                                {message.senderId !== user?.uid && (
+                                    <Avatar className="h-8 w-8 self-start">
+                                        <AvatarImage src={getOtherParticipant(selectedConversation)?.avatarUrl} />
+                                        <AvatarFallback>{getInitials(getOtherParticipant(selectedConversation)?.firstName, getOtherParticipant(selectedConversation)?.lastName)}</AvatarFallback>
+                                    </Avatar>
+                                )}
+                                <div className={`rounded-lg px-4 py-2 max-w-[80%] ${message.senderId === user?.uid ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                    <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                        </div>
+                    </ScrollArea>
+                    <CardFooter className="p-4 border-t">
+                        <div className="w-full flex items-center gap-2">
+                          <Input 
+                            placeholder="Type your message..."
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
+                            disabled={isSending}
+                          />
+                          <Button onClick={handleSendMessage} disabled={isSending || !newMessage.trim()}>
+                            {isSending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4"/>}
+                          </Button>
+                        </div>
+                    </CardFooter>
+                    </>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+                        <Mail className="h-16 w-16 mb-4" />
+                        <h2 className="text-xl font-semibold">Select a conversation</h2>
+                        <p>Or start a new one to begin chatting.</p>
                     </div>
-                ))}
-              </CardContent>
-            </ScrollArea>
-            {userProfile?.role === 'teacher' && selectedClass && (
-              <CardFooter className="pt-4 border-t">
-                <div className="w-full space-y-2">
-                  <Textarea 
-                    placeholder="Type your announcement here..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    disabled={isSending}
-                  />
-                  <Button onClick={handleSendMessage} disabled={isSending || !newMessage.trim()} className="w-full">
-                    {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                    Post Announcement
-                  </Button>
-                </div>
-              </CardFooter>
-            )}
-          </Card>
-        </div>
+                )}
+            </div>
+         </div>
       </div>
     </AppLayout>
   );

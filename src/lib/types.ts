@@ -27,7 +27,7 @@ export interface Class {
   subject: string;
   teacherId: string;
   learnerIds: string[];
-  parentIds?: string[];
+  parentIds: string[];
 }
 
 export interface Content {
@@ -82,31 +82,34 @@ export interface Activity {
   timestamp: string;
 }
 
-export interface Conversation {
-  id: string;
-  participant: { name: string; avatarUrl: string };
-  lastMessage: string;
-  timestamp: string;
-  unread: boolean;
-}
-
-export interface Message {
-  id: string;
-  sender: 'me' | 'them';
-  content: string;
-  timestamp: string;
-}
-
-export interface Announcement {
-  id: string;
-  classId: string;
-  teacherId: string;
-  message: string;
-  createdAt: Timestamp;
-}
-
 export interface Parent {
   id: string;
   userId: string;
   childIds: string[];
+}
+
+export interface Conversation {
+  id: string;
+  participantIds: string[];
+  participantInfo: {
+    [key: string]: {
+      firstName: string;
+      lastName: string;
+      role: 'teacher' | 'student' | 'parent' | 'admin';
+      avatarUrl?: string;
+    }
+  };
+  lastMessage: {
+    text: string;
+    senderId: string;
+    timestamp: Timestamp;
+  } | null;
+  updatedAt: Timestamp;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: Timestamp;
 }

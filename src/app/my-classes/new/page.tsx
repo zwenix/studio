@@ -59,6 +59,7 @@ export default function NewClassPage() {
         subject,
         teacherId: user.uid,
         learnerIds: [],
+        parentIds: [],
       });
 
       // 2. Add the new class ID to the teacher's list of classes

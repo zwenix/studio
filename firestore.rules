@@ -157,14 +157,21 @@ service cloud.firestore {
      */
     match /conversations/{conversationId} {
       // A user can read or list conversations they are a participant in.
-      // The `list` is secured by a required `array-contains` query on the client.
-      allow get, list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      // The rule is defensive, checking that participantIds exists and is a list.
+      // The `list` operation is secured by a required `array-contains` query on the client.
+      allow get, list: if isSignedIn() 
+                       && 'participantIds' in resource.data 
+                       && resource.data.participantIds is list 
+                       && request.auth.uid in resource.data.participantIds;
       
       // A user can create a conversation if they are one of the participants.
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
       
       // A user can update a conversation (e.g., the lastMessage field) if they are a participant.
-      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow update: if isSignedIn() 
+                    && 'participantIds' in resource.data 
+                    && resource.data.participantIds is list 
+                    && request.auth.uid in resource.data.participantIds;
 
       /**
        * @description Secures messages within a conversation.

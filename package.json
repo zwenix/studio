@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:genkit": "dotenv -e .env -- genkit start --port 10001",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_ENV=production next build",
@@ -38,6 +39,7 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "date-fns": "3.6.0",
+    "dotenv": "16.4.5",
     "embla-carousel-react": "8.6.0",
     "firebase": "11.9.1",
     "genkit": "1.17.0",

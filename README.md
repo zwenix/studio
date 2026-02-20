@@ -61,12 +61,17 @@ To get this project running locally, follow these steps.
 - Node.js (v20 or later recommended)
 - `npm` or a compatible package manager
 - A Firebase project with Firestore and Authentication enabled.
-- If developing locally, you will need to authenticate with Google Cloud:
-  ```bash
-  gcloud auth application-default login
-  ```
+- A Google AI Gemini API key.
 
-### 1. Install Dependencies
+### 1. Set Up Environment Variables
+
+Create a `.env` file in the root of your project and add your Gemini API key:
+
+```
+GEMINI_API_KEY=YOUR_API_KEY_HERE
+```
+
+### 2. Install Dependencies
 
 Install all the required packages using npm:
 
@@ -74,7 +79,7 @@ Install all the required packages using npm:
 npm install
 ```
 
-### 2. Run the Development Server
+### 3. Run the Development Server
 
 Start the Next.js development server:
 
@@ -87,6 +92,7 @@ The application will be available at `http://localhost:3000`.
 ## 📜 Available Scripts
 
 - `npm run dev`: Starts the application in development mode.
+- `npm run dev:genkit`: Starts the Genkit development UI locally (requires `dotenv-cli`).
 - `npm run build`: Creates a production-ready build of the application.
 - `npm run start`: Starts the production server.
 - `npm run lint`: Lints the codebase for potential errors.

@@ -61,21 +61,12 @@ To get this project running locally, follow these steps.
 - Node.js (v20 or later recommended)
 - `npm` or a compatible package manager
 - A Firebase project with Firestore and Authentication enabled.
+- If developing locally, you will need to authenticate with Google Cloud:
+  ```bash
+  gcloud auth application-default login
+  ```
 
-### 1. Environment Variables
-
-You need a Google AI API key to use the generative features.
-
-1.  Create a `.env` file in the root of the project.
-2.  Add your API key to the file:
-
-    ```bash
-    GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-    ```
-
-3.  Ensure this secret is also added to your deployment environment as per the `apphosting.yaml` configuration.
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 Install all the required packages using npm:
 
@@ -83,7 +74,7 @@ Install all the required packages using npm:
 npm install
 ```
 
-### 3. Run the Development Server
+### 2. Run the Development Server
 
 Start the Next.js development server:
 

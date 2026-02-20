@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Mail, Send, Loader2, Plus, Users, School } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDocs, writeBatch, limit } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDocs, writeBatch, limit, setDoc } from 'firebase/firestore';
 import type { Class, User, Parent, Conversation, ChatMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -114,6 +114,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                 [recipient.id]: { firstName: recipient.firstName, lastName: recipient.lastName, role: recipient.role },
             };
             await setDoc(newConvoRef, {
+                id: newConvoRef.id,
                 participantIds,
                 participantInfo,
                 lastMessage: null,
@@ -145,7 +146,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                     {recipients.map(r => (
                         <div key={r.id} onClick={() => handleSelectRecipient(r)} className="flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer">
                             <Avatar>
-                                <AvatarImage src={r.avatarUrl} />
+                                <AvatarImage src={(r as any).avatarUrl} />
                                 <AvatarFallback>{getInitials(r.firstName, r.lastName)}</AvatarFallback>
                             </Avatar>
                             <div>
@@ -177,12 +178,20 @@ export default function CommunicationPage() {
     if (!user) return null;
     return query(
       collection(firestore, 'conversations'), 
-      where('participantIds', 'array-contains', user.uid),
-      orderBy('updatedAt', 'desc')
+      where('participantIds', 'array-contains', user.uid)
     );
   }, [firestore, user]);
   const { data: conversations, isLoading: areConversationsLoading } = useCollection<Conversation>(conversationsQuery);
   
+  const sortedConversations = useMemo(() => {
+    if (!conversations) return [];
+    return [...conversations].sort((a, b) => {
+        const timeA = a.updatedAt?.toDate().getTime() || 0;
+        const timeB = b.updatedAt?.toDate().getTime() || 0;
+        return timeB - timeA;
+    });
+  }, [conversations]);
+
   const messagesQuery = useMemoFirebase(() => {
     if (!selectedConversationId) return null;
     return query(
@@ -253,7 +262,7 @@ export default function CommunicationPage() {
                  </div>
                  <ScrollArea className="flex-1">
                      {areConversationsLoading && <div className="p-4 text-center"><Loader2 className="animate-spin mx-auto"/></div>}
-                     {conversations?.map(convo => {
+                     {sortedConversations.map(convo => {
                          const otherParticipant = getOtherParticipant(convo);
                          return (
                             <div 

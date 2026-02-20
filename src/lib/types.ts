@@ -102,7 +102,7 @@ export interface Conversation {
   lastMessage: {
     text: string;
     senderId: string;
-    timestamp: Timestamp;
+    timestamp: Timestamp | Date; // Allow Date for immediate client-side update
   } | null;
   updatedAt: Timestamp;
 }

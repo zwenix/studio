@@ -7,6 +7,7 @@ export interface User {
   lastName: string;
   role: 'teacher' | 'student' | 'parent' | 'admin';
   avatarUrl?: string;
+  phoneNumber?: string;
 }
 
 export interface Teacher {
@@ -14,6 +15,7 @@ export interface Teacher {
   userId: string;
   subjects: string[];
   classIds: string[];
+  school?: string;
   signatureUrl?: string;
   aiDifficultyAdaptation?: boolean;
   culturalContextIntegration?: boolean;
@@ -113,3 +115,5 @@ export interface ChatMessage {
   text: string;
   createdAt: Timestamp;
 }
+
+    

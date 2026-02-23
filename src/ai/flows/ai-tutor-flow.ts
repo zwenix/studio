@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { part } from 'genkit/ai';
 import {z} from 'genkit';
 
 const AiTutorInputSchema = z.object({
@@ -30,33 +31,26 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   return aiTutorFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'aiTutorPrompt',
-  input: {schema: AiTutorInputSchema},
-  output: {schema: AiTutorOutputSchema},
-  prompt: `You are an expert AI Tutor for students and teachers. Be helpful and answer questions clearly.
-
-  Respond in the following language: {{{language}}}
-  
-  {{#if history}}
-  Conversation History:
-  {{#each history}}
-  {{role}}: {{{content}}}
-  {{/each}}
-  {{/if}}
-
-  User query: {{{query}}}
-  `,
-});
-
 const aiTutorFlow = ai.defineFlow(
   {
     name: 'aiTutorFlow',
     inputSchema: AiTutorInputSchema,
     outputSchema: AiTutorOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async ({ query, history, language }) => {
+    const systemPrompt = `You are an expert AI Tutor for students and teachers. Be helpful and answer questions clearly.
+
+Respond in the following language: ${language}`;
+
+    const { output } = await ai.generate({
+      system: systemPrompt,
+      history: history?.map(h => ({ role: h.role, content: [part({text: h.content})] })) || [],
+      prompt: query,
+      output: {
+        schema: AiTutorOutputSchema,
+      },
+    });
+
     return output!;
   }
 );

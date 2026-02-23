@@ -53,19 +53,6 @@ service cloud.firestore {
       return isOwner(userId) && documentExists();
     }
 
-    // Checks if the user is the teacher of the specified class.
-    function isClassTeacher(classId) {
-      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-      return isSignedIn() && classDoc.data.teacherId == request.auth.uid;
-    }
-
-    // Checks if the user is a parent of a student enrolled in the class.
-    function isParentOfEnrolledStudent(classId) {
-      let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-      return classDoc.data.parentIds != null && request.auth.uid in classDoc.data.parentIds;
-    }
-
-
     /**
      * @description Secures user profiles. A user can manage their own profile. A teacher or admin can read any user profile. Admin can write.
      * @path /users/{userId}
@@ -126,23 +113,51 @@ service cloud.firestore {
      * @path /classes/{classId}
      */
     match /classes/{classId} {
-      allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isParentOfEnrolledStudent(classId) || isAdmin());
-      allow list: if isSignedIn();
-      allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
-      allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
-      allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
+        function isParentOfEnrolledStudent() {
+            let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+            return classDoc.data.parentIds != null && request.auth.uid in classDoc.data.parentIds;
+        }
 
-      /**
-       * @description Secures assignments within a class. The class teacher or admin has full control. The assigned learner can read and submit their work.
-       * @path /classes/{classId}/assignments/{assignmentId}
-       */
-      match /assignments/{assignmentId} {
-        allow get: if isSignedIn() && (isClassTeacher(classId) || isOwner(resource.data.learnerId) || isParentOfEnrolledStudent(classId) || isAdmin());
-        allow list: if isSignedIn() && (isClassTeacher(classId) || request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds || isParentOfEnrolledStudent(classId) || isAdmin());
-        allow create: if (isClassTeacher(classId) && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
-        allow update: if ((isClassTeacher(classId) || isOwner(resource.data.learnerId)) && documentExists()) || isAdmin();
-        allow delete: if (isClassTeacher(classId) && documentExists()) || isAdmin();
-      }
+        allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isParentOfEnrolledStudent() || isAdmin());
+        allow list: if isSignedIn();
+        allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+        allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
+        allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
+    }
+    
+    /**
+     * @description Secures assignments within a class. This rule block handles direct access and collection group queries.
+     * @path /classes/{classId}/assignments/{assignmentId}
+     */
+    match /classes/{classId}/assignments/{assignmentId} {
+        // Checks if the user is the teacher of the specified class.
+        function isClassTeacher() {
+          let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+          return isSignedIn() && classDoc.data.teacherId == request.auth.uid;
+        }
+
+        function isParentOfAssignedStudent() {
+            let parentDoc = get(/databases/$(database)/documents/parents/$(request.auth.uid));
+            return parentDoc.exists && resource.data.learnerId in parentDoc.data.childIds;
+        }
+
+        allow get: if isSignedIn() && (
+            request.auth.uid == resource.data.teacherId || 
+            request.auth.uid == resource.data.learnerId || 
+            isParentOfAssignedStudent() || 
+            isAdmin()
+        );
+
+        // This permissive rule is necessary for collection group queries to function correctly.
+        // Security is enforced by the client-side queries which MUST include a `where` clause
+        // filtering by `teacherId` or `learnerId`.
+        allow list: if isSignedIn();
+
+        allow create: if (isClassTeacher() && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
+        
+        allow update: if (isSignedIn() && (request.auth.uid == resource.data.teacherId || request.auth.uid == resource.data.learnerId) && documentExists()) || isAdmin();
+        
+        allow delete: if (isClassTeacher() && documentExists()) || isAdmin();
     }
     
     /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,11 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useAuth, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useAuth, useStorage, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { Loader2, Cog, Save, User, Building, Bot } from 'lucide-react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2, Cog, Save, User, Building, Bot, Camera } from 'lucide-react';
 import type { User as UserProfile, Teacher } from '@/lib/types';
 
 
@@ -26,6 +28,7 @@ export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
 
   const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -38,6 +41,9 @@ export default function SettingsPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Teacher Profile State
   const [school, setSchool] = useState('');
@@ -56,6 +62,9 @@ export default function SettingsPage() {
       setFirstName(userData.firstName || '');
       setLastName(userData.lastName || '');
       setPhoneNumber(userData.phoneNumber || '');
+      setAvatarUrl(userData.avatarUrl || user?.photoURL || '');
+    } else if (user) {
+        setAvatarUrl(user.photoURL || '');
     }
     if (teacherData) {
       setSchool(teacherData.school || '');
@@ -64,7 +73,41 @@ export default function SettingsPage() {
       setCulturalContextIntegration(teacherData.culturalContextIntegration ?? false);
       setParentNotifications(teacherData.parentNotifications ?? false);
     }
-  }, [userData, teacherData]);
+  }, [userData, teacherData, user]);
+
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !user || !storage || !userRef) {
+      return;
+    }
+    const file = event.target.files[0];
+    setIsUploading(true);
+
+    try {
+      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      }
+      await setDoc(userRef, { avatarUrl: downloadURL }, { merge: true });
+
+      setAvatarUrl(downloadURL);
+      toast({ title: 'Profile picture updated!' });
+    } catch (error: any) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const getInitials = () => {
+    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
+  };
 
   const handleSaveSettings = async () => {
     if (!user || !userRef || !auth.currentUser) {
@@ -136,6 +179,30 @@ export default function SettingsPage() {
         
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-8">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><User className="mr-2"/> Profile Picture</CardTitle>
+                        <CardDescription>Update your avatar.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center gap-6">
+                        <div className="relative">
+                            <Avatar className="h-24 w-24 border">
+                                <AvatarImage src={avatarUrl} alt="User avatar" />
+                                <AvatarFallback>{getInitials()}</AvatarFallback>
+                            </Avatar>
+                            <Button onClick={handleFileSelect} disabled={isUploading} size="icon" className="absolute -bottom-2 -right-2 rounded-full border-2 border-background">
+                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                            </Button>
+                            <Input ref={fileInputRef} type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleFileChange} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Click the camera icon to upload a new photo.
+                            <br />
+                            Recommended size: 200x200px.
+                        </p>
+                    </CardContent>
+                </Card>
+
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center"><User className="mr-2"/> Personal Information</CardTitle>
@@ -231,5 +298,3 @@ export default function SettingsPage() {
     </AppLayout>
   );
 }
-
-    

@@ -19,7 +19,8 @@
  *     slow and insecure `get()` calls in rules for subcollections.
  *
  * This comment is added to force a full backend and rules redeployment to resolve
- * potential dependency drift and ensure a stable build environment.
+ * potential dependency drift and ensure a stable build environment. This is a critical
+ * step to fix persistent deployment failures.
  * =====================================================================================
  */
 rules_version = '2';

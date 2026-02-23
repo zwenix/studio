@@ -35,7 +35,7 @@ const allNavItems = [
   { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/autograding', label: 'Autograding', icon: ClipboardCheck, roles: ['teacher', 'admin'] },
   { href: '/mock-assessment', label: 'Practice Test', icon: FlaskConical, roles: ['student'] },
-  { href: '/communication', label: 'Communication', icon: Mail, roles: ['teacher', 'parent', 'admin'] },
+  { href: '/communication', label: 'Communication', icon: Mail, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/settings', label: 'Settings', icon: Cog, roles: ['teacher', 'admin'] },
 ];
 

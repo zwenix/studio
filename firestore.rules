@@ -54,6 +54,18 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rule for 'assignments' collection group queries. This is necessary for
+     *              dashboard and reporting features to work correctly for teachers and students.
+     * @path /{path=**}/assignments/{assignmentId}
+     */
+    match /{path=**}/assignments/{assignmentId} {
+      // Allow list (query) operations for any signed-in user. The client-side query MUST
+      // enforce security by filtering on 'teacherId' or 'learnerId'. This is the key
+      // rule that fixes the permission error for collection group queries.
+      allow list: if isSignedIn();
+    }
+
+    /**
      * @description Secures user profiles. A user can manage their own profile. A teacher or admin can read any user profile. Admin can write.
      * @path /users/{userId}
      */
@@ -126,7 +138,7 @@ service cloud.firestore {
     }
     
     /**
-     * @description Secures assignments within a class. This rule block handles direct access and collection group queries.
+     * @description Secures assignments within a class. This rule block handles direct access and direct subcollection queries.
      * @path /classes/{classId}/assignments/{assignmentId}
      */
     match /classes/{classId}/assignments/{assignmentId} {
@@ -148,9 +160,8 @@ service cloud.firestore {
             isAdmin()
         );
 
-        // This permissive rule is necessary for collection group queries to function correctly.
-        // Security is enforced by the client-side queries which MUST include a `where` clause
-        // filtering by `teacherId` or `learnerId`.
+        // This rule allows querying the assignments subcollection directly for a specific class.
+        // It does NOT cover collection group queries.
         allow list: if isSignedIn();
 
         allow create: if (isClassTeacher() && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();

@@ -61,6 +61,7 @@ export interface Assignment {
     id: string;
     contentId: string;
     learnerId: string;
+    teacherId: string;
     dueDate: Timestamp;
     status: 'assigned' | 'submitted' | 'graded';
     submissionContent?: string;
@@ -115,5 +116,3 @@ export interface ChatMessage {
   text: string;
   createdAt: Timestamp;
 }
-
-    

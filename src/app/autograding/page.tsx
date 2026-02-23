@@ -18,13 +18,18 @@ import { ClipboardCheck, Loader2, Sparkles, FileUp, Camera } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { useDropzone } from 'react-dropzone';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
-import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
+import { autograde, AutogradeOutput, AutogradeInput } from '@/ai/flows/autograder-flow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import type { Teacher } from '@/lib/types';
 
 
 export default function AutogradingPage() {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [assignmentContent, setAssignmentContent] = useState('');
@@ -40,6 +45,10 @@ export default function AutogradingPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Fetch teacher-specific settings
+  const teacherRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [user, firestore]);
+  const { data: teacherData } = useDoc<Teacher>(teacherRef);
 
   const processImageDataUri = useCallback(async (dataUri: string) => {
     setPreview(dataUri);
@@ -146,12 +155,14 @@ export default function AutogradingPage() {
     setResult(null);
 
     try {
-      const gradingResult = await autograde({
+      const input: AutogradeInput = {
         assignmentContent,
         gradingInstructions,
         subject,
         grade,
-      });
+        culturalContextIntegration: teacherData?.culturalContextIntegration,
+      };
+      const gradingResult = await autograde(input);
       setResult(gradingResult);
     } catch (error) {
         console.error("Failed to autograde:", error);

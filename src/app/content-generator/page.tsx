@@ -124,6 +124,8 @@ export default function ContentGeneratorPage() {
         customHeading,
         customSubject,
         teacherName: user?.displayName || 'Educator',
+        aiDifficultyAdaptation: teacherData?.aiDifficultyAdaptation,
+        culturalContextIntegration: teacherData?.culturalContextIntegration,
       };
       const result = await generateCAPSContent(input);
       setGeneratedContent(result);
@@ -194,6 +196,7 @@ export default function ContentGeneratorPage() {
             batch.set(assignmentRef, {
                 contentId: contentRef.id,
                 learnerId,
+                teacherId: user.uid, // Add teacherId to assignment
                 status: 'assigned',
                 dueDate,
                 createdAt: serverTimestamp(),

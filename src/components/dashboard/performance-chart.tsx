@@ -1,32 +1,34 @@
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, YAxis, XAxis, Tooltip, CartesianGrid } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
-const data = [
-  { month: 'January', desktop: 186, mobile: 80 },
-  { month: 'February', desktop: 305, mobile: 200 },
-  { month: 'March', desktop: 237, mobile: 120 },
-  { month: 'April', desktop: 73, mobile: 190 },
-  { month: 'May', desktop: 209, mobile: 130 },
-  { month: 'June', desktop: 214, mobile: 140 },
-];
+interface ChartData {
+  month: string;
+  assignmentsCompleted: number;
+  averageScore: number;
+}
 
 const chartConfig = {
-  desktop: {
+  assignmentsCompleted: {
     label: 'Assignments Completed',
     color: 'hsl(var(--chart-1))',
   },
-  mobile: {
-    label: 'Average Score',
+  averageScore: {
+    label: 'Average Score (%)',
     color: 'hsl(var(--chart-2))',
   },
 } satisfies ChartConfig
 
-export function PerformanceChart() {
+export function PerformanceChart({ data }: { data: ChartData[] }) {
+  if (!data || data.length === 0) {
+    return <div className="text-center text-muted-foreground p-8">No performance data available yet. Graded assignments will appear here.</div>;
+  }
+  
   return (
      <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-      <BarChart accessibilityLayer data={data}>
+      <BarChart accessibilityLayer data={data} margin={{ top: 20, right: 20, bottom: 5, left: -10 }}>
+        <CartesianGrid vertical={false} />
         <XAxis
           dataKey="month"
           tickLine={false}
@@ -34,9 +36,11 @@ export function PerformanceChart() {
           axisLine={false}
           tickFormatter={(value) => value.slice(0, 3)}
         />
-         <YAxis />
+        <YAxis yAxisId="left" orientation="left" stroke="hsl(var(--chart-1))" />
+        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--chart-2))" domain={[0, 100]} />
         <Tooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
+        <Bar yAxisId="left" dataKey="assignmentsCompleted" fill="var(--color-assignmentsCompleted)" radius={4} />
+        <Bar yAxisId="right" dataKey="averageScore" fill="var(--color-averageScore)" radius={4} />
       </BarChart>
     </ChartContainer>
   );

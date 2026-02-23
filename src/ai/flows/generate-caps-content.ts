@@ -65,6 +65,8 @@ const GenerateCAPSContentInputSchema = z.object({
   customHeading: z.string().optional().describe('A custom main heading for the document.'),
   customSubject: z.string().optional().describe('A custom subject or sub-heading for the document.'),
   teacherName: z.string().optional().describe('The full name of the teacher generating the content.'),
+  aiDifficultyAdaptation: z.boolean().optional().describe('If true, dynamically adjust content difficulty based on student performance trends. The provided difficulty level should be a starting point.'),
+  culturalContextIntegration: z.boolean().optional().describe("If true, use local examples and familiar cultural contexts in lessons. Prioritize South African context."),
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
@@ -123,6 +125,14 @@ Your audience is teachers, parents, and children who are not technical. Therefor
     -   **For Grades 8-12:** You can use a more formal tone, but the content must still be well-structured and clear. Emojis can be used more sparingly.
 
 The entire response for the 'content' field MUST start with a wrapper div that sets the font class. The user will provide a 'fontFamily' variable containing the CSS class name. All subsequent content, including custom headers and the final footnote, must be inside this single wrapper div.
+
+**AI BEHAVIORAL INSTRUCTIONS:**
+{{#if culturalContextIntegration}}
+- **Cultural Context:** You MUST integrate local South African examples, names, places, and scenarios to make the content relatable and relevant. For example, use "Lerato" and "Sipho" for names, "Johannesburg" for a city, and "rand" for currency.
+{{/if}}
+{{#if aiDifficultyAdaptation}}
+- **Difficulty Adaptation:** The user has requested a difficulty of '{{difficulty}}'. Treat this as a baseline. You should subtly adjust the complexity of questions and vocabulary to be appropriate for the specified grade level, but feel free to create a mix of easier and more challenging questions to test a range of abilities.
+{{/if}}
 
 You will generate content based on the user's request. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
 

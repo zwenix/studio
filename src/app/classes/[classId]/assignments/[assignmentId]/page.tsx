@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { autograde } from '@/ai/flows/autograder-flow';
+import { autograde, AutogradeInput } from '@/ai/flows/autograder-flow';
 import { Loader2, Sparkles, FileCheck2, ArrowLeft } from 'lucide-react';
-import type { Assignment, Content } from '@/lib/types';
+import type { Assignment, Content, Teacher } from '@/lib/types';
 
 export default function AssignmentPage() {
   const params = useParams();
@@ -39,6 +39,13 @@ export default function AssignmentPage() {
     return doc(firestore, 'content', assignment.contentId);
   }, [firestore, assignment?.contentId]);
   const { data: content, isLoading: isContentLoaded } = useDoc<Content>(contentRef);
+
+  // Fetch the teacher's settings using the teacherId from the content
+  const teacherRef = useMemoFirebase(() => {
+    if (!content?.teacherId) return null;
+    return doc(firestore, 'teachers', content.teacherId);
+  }, [firestore, content?.teacherId]);
+  const { data: teacherData } = useDoc<Teacher>(teacherRef);
 
   // Memoize question parsing and count
   const questionCount = useMemo(() => {
@@ -75,12 +82,14 @@ export default function AssignmentPage() {
 
     try {
       // 1. Autograde the submission
-      const gradingResult = await autograde({
+      const input: AutogradeInput = {
         assignmentContent: submissionContent,
         gradingInstructions: content.rubric,
         subject: content.subject,
         grade: content.grade,
-      });
+        culturalContextIntegration: teacherData?.culturalContextIntegration,
+      };
+      const gradingResult = await autograde(input);
 
       // 2. Update the assignment document in Firestore
       await updateDoc(assignmentRef, {

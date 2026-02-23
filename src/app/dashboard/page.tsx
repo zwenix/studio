@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, BookOpen, FileUp, PenSquare, Users, BarChart } from 'lucide-react';
+import { BookOpen, Users, BarChart, PenSquare } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AppLayout } from '@/components/app-layout';
@@ -15,9 +15,10 @@ import {
 import { PerformanceChart } from '@/components/dashboard/performance-chart';
 import { MyClasses } from '@/components/dashboard/my-classes';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
-import type { Teacher, Class, User } from '@/lib/types';
+import { doc, collection, query, where, collectionGroup } from 'firebase/firestore';
+import type { Teacher, Class, User, Assignment } from '@/lib/types';
 import { useMemo } from 'react';
+import { format } from 'date-fns';
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -56,6 +57,47 @@ export default function DashboardPage() {
     const name = userProfile.firstName || 'User';
     return `Welcome back, ${name}!`;
   }, [userProfile]);
+
+  // Fetch assignments for the teacher to populate the chart
+  const assignmentsQuery = useMemoFirebase(() => {
+    if (!user || userProfile?.role !== 'teacher') return null;
+    return query(collectionGroup(firestore, 'assignments'), where('teacherId', '==', user.uid));
+  }, [firestore, user, userProfile]);
+  const { data: assignments } = useCollection<Assignment>(assignmentsQuery);
+
+  const chartData = useMemo(() => {
+    if (!assignments || userProfile?.role !== 'teacher') return [];
+
+    const monthlyData: { [key: string]: { completed: number; totalScore: number; count: number } } = {};
+
+    assignments.forEach(assignment => {
+      if (assignment.status === 'graded' && assignment.submittedAt) {
+        const date = assignment.submittedAt.toDate();
+        const monthKey = format(date, 'yyyy-MM');
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { completed: 0, totalScore: 0, count: 0 };
+        }
+        
+        monthlyData[monthKey].completed++;
+        
+        const gradeMatch = assignment.gradeReceived?.match(/\d+/);
+        if (gradeMatch) {
+          monthlyData[monthKey].totalScore += parseInt(gradeMatch[0], 10);
+          monthlyData[monthKey].count++;
+        }
+      }
+    });
+    
+    return Object.entries(monthlyData)
+      .map(([monthKey, data]) => ({
+        month: format(new Date(`${monthKey}-01T12:00:00Z`), 'MMMM'), // Use a fixed date to parse month name
+        assignmentsCompleted: data.completed,
+        averageScore: data.count > 0 ? Math.round(data.totalScore / data.count) : 0,
+      }))
+      .sort((a, b) => new Date(a.month + ' 1, 2000').getMonth() - new Date(b.month + ' 1, 2000').getMonth());
+
+  }, [assignments, userProfile]);
 
 
   return (
@@ -124,10 +166,10 @@ export default function DashboardPage() {
           <Card className="col-span-4">
             <CardHeader>
               <CardTitle>Overall Student Performance</CardTitle>
-              <CardDescription>Feature coming soon.</CardDescription>
+              {userProfile?.role === 'teacher' && <CardDescription>Monthly overview of assignments and scores across all your classes.</CardDescription>}
             </CardHeader>
             <CardContent className="pl-2">
-              <PerformanceChart />
+              <PerformanceChart data={chartData} />
             </CardContent>
           </Card>
           <Card className="col-span-4 lg:col-span-3">

@@ -11,11 +11,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const AutogradeInputSchema = z.object({
+export const AutogradeInputSchema = z.object({
   assignmentContent: z.string().describe('The content of the student assignment.'),
   gradingInstructions: z.string().describe('The instructions for grading the assignment.'),
   subject: z.string().optional().describe('The subject of the assignment.'),
   grade: z.string().optional().describe('The grade level for the assignment.'),
+  culturalContextIntegration: z.boolean().optional().describe("If true, phrase feedback in a culturally sensitive and encouraging manner, using local context where appropriate."),
 });
 export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
 
@@ -39,6 +40,10 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert AI for grading student assignments.
   
   Grade the following assignment based on the provided instructions. Provide a score, detailed feedback, and the rubric used for grading.
+
+  {{#if culturalContextIntegration}}
+  **Feedback Style:** Phrase all feedback in a positive, encouraging, and culturally sensitive tone. Where possible, relate feedback to a South African context to make it more resonant.
+  {{/if}}
 
   Subject: {{{subject}}}
   Grade: {{{grade}}}

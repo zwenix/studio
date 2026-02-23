@@ -8,7 +8,7 @@ export const SplashScreen = () => {
           src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png"
           alt="EduAI Companion Logo"
           width={200}
-          height={200}
+          height={299}
           priority
           className="mx-auto"
         />

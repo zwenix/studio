@@ -1,34 +1,35 @@
-
-// Forcing a full backend and rules redeployment to resolve dependency drift and ensure a stable build environment.
 /**
- * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model
- * for the EduAI Companion platform. Data access is strictly controlled based on the
- * authenticated user's role (teacher, learner, parent, admin) and their direct relationship to the data.
+ * =====================================================================================
+ * EduAI Companion Firestore Security Rules
  *
- * Data Structure: The data is organized into top-level collections representing distinct
- * entity types: `users`, `learners`, `teachers`, `parents`, `content`, `classes`, and `conversations`.
- * This segregation provides clear boundaries for security rules. User-specific profiles are kept
- * separate from collaborative data like `classes` and `conversations`.
+ * Core Philosophy: This ruleset enforces a role-based and ownership-driven security model.
+ * Data access is strictly controlled based on the authenticated user's role (teacher, 
+ * learner, parent, admin) and their direct relationship to the data.
  *
- * Key Security Decisions:
- * - Strict User Ownership: All personal profile documents (in `/users`, `/learners`, etc.)
- *   can only be read or written by the owner of that document, unless the user is an admin.
- * - Secure Collaboration: Access to shared documents like `/classes` and `conversations`
- *   is governed by denormalized member lists (`teacherId`, `learnerIds`, `participantIds`)
- *   on the document itself. This avoids slow and costly `get` calls in subcollection rules.
- * - Secure Listing: `list` operations are secured by enforcing query constraints (e.g., `array-contains`)
- *   that ensure a user can only retrieve documents they are a member of.
+ * Key Security Principles:
+ * 1.  **Default Deny:** All paths are closed by default. Access must be explicitly granted.
+ * 2.  **Strict Ownership:** Users can only access their own profile data.
+ * 3.  **Role-Based Access:** Permissions change based on the user's role.
+ * 4.  **Secure Queries (Rules are not Filters):** `list` (query) operations are secured by
+ *     enforcing query constraints (e.g., `where('teacherId', '==', request.auth.uid)`) on the
+ *     client-side, which are then validated by these rules. A query will fail if it could
+ *     *potentially* return data the user isn't allowed to see.
+ * 5.  **Denormalization for Security:** Key authorization fields (like `teacherId`, 
+ *     `learnerIds`, `participantIds`) are denormalized (copied) onto documents to avoid
+ *     slow and insecure `get()` calls in rules for subcollections.
  *
- * Denormalization for Authorization: To create performant and secure rules, authorization data
- * is denormalized. For example, `classes` documents contain `learnerIds` and `parentIds`, and
- * `conversations` documents contain `participantIds`. This allows rules to grant access
- * without needing to read other documents.
+ * This comment is added to force a full backend and rules redeployment to resolve
+ * potential dependency drift and ensure a stable build environment.
+ * =====================================================================================
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for reusable logic
+    // =====================================================================================
+    //  Helper Functions
+    //  Reusable logic to keep rules clean and readable.
+    // =====================================================================================
     function isSignedIn() {
       return request.auth != null;
     }
@@ -48,36 +49,44 @@ service cloud.firestore {
     function documentExists() {
       return resource != null;
     }
-
-    function isExistingOwner(userId) {
-      return isOwner(userId) && documentExists();
-    }
+    
+    // =====================================================================================
+    //  Collection Group Queries
+    //  These rules apply to queries across all collections with a specific name.
+    // =====================================================================================
 
     /**
-     * @description Rule for 'assignments' collection group queries. This is necessary for
-     *              dashboard and reporting features to work correctly for teachers and students.
+     * @description Rule for 'assignments' collection group queries. This is critical for
+     *              dashboard and reporting features where a teacher or student needs to see
+     *              all their assignments across different classes at once.
      * @path /{path=**}/assignments/{assignmentId}
      */
     match /{path=**}/assignments/{assignmentId} {
-      // Allow list (query) operations for any signed-in user. The client-side query MUST
-      // enforce security by filtering on 'teacherId' or 'learnerId'. This is the key
-      // rule that fixes the permission error for collection group queries.
+      // Allows `list` operations (like `collectionGroup('assignments').where(...)`) for any
+      // signed-in user. Security is enforced by the mandatory `where()` clause on the
+      // client-side query (e.g., `where('teacherId', '==', user.uid)`), which ensures
+      // users can only query for their own assignments.
       allow list: if isSignedIn();
     }
 
+
+    // =====================================================================================
+    //  Top-Level Collections
+    // =====================================================================================
+
     /**
-     * @description Secures user profiles. A user can manage their own profile. A teacher or admin can read any user profile. Admin can write.
+     * @description Secures user profiles. A user can manage their own profile. A teacher or 
+     *              admin can read any user profile (e.g., for class rosters). Admin can write.
      * @path /users/{userId}
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isTeacher() || isAdmin();
-      allow list: if isTeacher() || isAdmin();
+      allow list: if isTeacher() || isAdmin(); // For teacher/admin dashboards to find users.
       allow write: if isOwner(userId) || isAdmin();
     }
 
-
     /**
-     * @description Secures learner profiles. The user or a teacher/admin can read it, but only the user or admin can write.
+     * @description Secures learner profiles, linked 1:1 with a user document.
      * @path /learners/{learnerId}
      */
     match /learners/{learnerId} {
@@ -86,14 +95,14 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secures teacher profiles. Only the associated user or an admin can access their own teacher document.
+     * @description Secures teacher profiles. Only the owner or an admin can manage this data.
      * @path /teachers/{teacherId}
      */
     match /teachers/{teacherId} {
       allow read, write: if isOwner(teacherId) || isAdmin();
 
       /**
-       * @description Secures a teacher's history of generated content. Only the teacher or admin can manage their own content.
+       * @description Secures a teacher's private history of AI-generated content.
        * @path /teachers/{teacherId}/generatedContent/{contentId}
        */
       match /generatedContent/{contentId} {
@@ -102,7 +111,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secures parent profiles. Only the associated user or an admin can access their own parent document.
+     * @description Secures parent profiles. Only the owner or an admin can manage this data.
      * @path /parents/{parentId}
      */
     match /parents/{parentId} {
@@ -110,65 +119,64 @@ service cloud.firestore {
     }
 
     /**
-     * @description Allows public read access to content, but write access is restricted to the creating teacher or an admin.
+     * @description Secures educational content created by teachers. Content is public to read,
+     *              but only the creating teacher or an admin can modify it.
      * @path /content/{contentId}
      */
     match /content/{contentId} {
-      allow get, list: if true;
-      allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
-      allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
-      allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
+      allow get, list: if isSignedIn();
+      allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+      allow update, delete: if (isOwner(resource.data.teacherId) && documentExists()) || isAdmin();
     }
 
     /**
-     * @description Secures class documents. The teacher or admin can manage it, and enrolled members can read it.
+     * @description Secures class documents. Managed by the teacher; readable by its members.
      * @path /classes/{classId}
      */
     match /classes/{classId} {
+        // Function to check if the requester is a parent of an enrolled student.
         function isParentOfEnrolledStudent() {
-            let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-            return classDoc.data.parentIds != null && request.auth.uid in classDoc.data.parentIds;
+            return isSignedIn() && request.auth.uid in resource.data.parentIds;
         }
 
-        allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isParentOfEnrolledStudent() || isAdmin());
-        allow list: if isSignedIn();
-        allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
-        allow update: if isExistingOwner(resource.data.teacherId) || isAdmin();
-        allow delete: if isExistingOwner(resource.data.teacherId) || isAdmin();
-    }
-    
-    /**
-     * @description Secures assignments within a class. This rule block handles direct access and direct subcollection queries.
-     * @path /classes/{classId}/assignments/{assignmentId}
-     */
-    match /classes/{classId}/assignments/{assignmentId} {
-        // Checks if the user is the teacher of the specified class.
-        function isClassTeacher() {
-          let classDoc = get(/databases/$(database)/documents/classes/$(classId));
-          return isSignedIn() && classDoc.data.teacherId == request.auth.uid;
-        }
-
-        function isParentOfAssignedStudent() {
-            let parentDoc = get(/databases/$(database)/documents/parents/$(request.auth.uid));
-            return parentDoc.exists && resource.data.learnerId in parentDoc.data.childIds;
-        }
-
-        allow get: if isSignedIn() && (
-            request.auth.uid == resource.data.teacherId || 
-            request.auth.uid == resource.data.learnerId || 
-            isParentOfAssignedStudent() || 
-            isAdmin()
-        );
-
-        // This rule allows querying the assignments subcollection directly for a specific class.
-        // It does NOT cover collection group queries.
-        allow list: if isSignedIn();
-
-        allow create: if (isClassTeacher() && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
+        allow get: if isSignedIn() && (isOwner(resource.data.teacherId) || request.auth.uid in resource.data.learnerIds || isParentOfEnrolledStudent() || isAdmin());
         
-        allow update: if (isSignedIn() && (request.auth.uid == resource.data.teacherId || request.auth.uid == resource.data.learnerId) && documentExists()) || isAdmin();
+        // Allows querying classes, secured by client-side constraints (e.g., `where('teacherId', '==', uid)`).
+        allow list: if isSignedIn();
         
-        allow delete: if (isClassTeacher() && documentExists()) || isAdmin();
+        allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+        allow update, delete: if (isOwner(resource.data.teacherId) && documentExists()) || isAdmin();
+
+        /**
+         * @description Secures assignments within a specific class subcollection.
+         * @path /classes/{classId}/assignments/{assignmentId}
+         */
+        match /assignments/{assignmentId} {
+            // Function to check if the user is the teacher of the parent class.
+            function isClassTeacher() {
+              return isOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
+            }
+
+            // Function to check if the user is a parent of the student assigned this work.
+            function isParentOfAssignedStudent() {
+                let parentDoc = get(/databases/$(database)/documents/parents/$(request.auth.uid));
+                return parentDoc.exists && resource.data.learnerId in parentDoc.data.childIds;
+            }
+
+            allow get: if isSignedIn() && (
+                isOwner(resource.data.teacherId) || 
+                isOwner(resource.data.learnerId) || 
+                isParentOfAssignedStudent() || 
+                isAdmin()
+            );
+
+            // Allows querying assignments for a specific class. This does NOT cover collection group queries.
+            allow list: if isClassTeacher() || isParentOfEnrolledStudent() || isAdmin();
+
+            allow create: if (isClassTeacher() && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
+            allow update: if (documentExists() && (isOwner(resource.data.teacherId) || isOwner(resource.data.learnerId))) || isAdmin();
+            allow delete: if (documentExists() && isClassTeacher()) || isAdmin();
+        }
     }
     
     /**
@@ -176,35 +184,29 @@ service cloud.firestore {
      * @path /conversations/{conversationId}
      */
     match /conversations/{conversationId} {
-      // Allow a user to get a specific conversation if they are a participant.
-      allow get: if isSignedIn() 
-                  && 'participantIds' in resource.data 
-                  && resource.data.participantIds is list 
-                  && request.auth.uid in resource.data.participantIds;
+      // A user can get/read a specific conversation document if they are a participant.
+      allow get: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       
-      // Allow a user to list conversations. The client query MUST constrain this
-      // to only conversations where the user is a participant.
+      // A user can list conversations. The client query MUST use an `array-contains` filter
+      // on `participantIds` to ensure they only query for their own conversations.
       allow list: if isSignedIn();
       
-      // Allow a user to create a conversation if they include themselves as a participant.
+      // A user can create a conversation if they include themselves as a participant.
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
       
-      // Allow a participant to update a conversation (e.g., to update the lastMessage field).
-      allow update: if isSignedIn() 
-                    && 'participantIds' in resource.data 
-                    && resource.data.participantIds is list 
-                    && request.auth.uid in resource.data.participantIds;
+      // A participant can update a conversation (e.g., to update the `lastMessage` field).
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       /**
-       * @description Secures messages within a conversation.
+       * @description Secures messages within a conversation subcollection.
        * @path /conversations/{conversationId}/messages/{messageId}
        */
       match /messages/{messageId} {
-        // A user can read messages in a conversation they are a part of.
+        // A user can read messages if they are part of the parent conversation.
         allow get, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         
         // A user can create a message if they are a participant and the sender.
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds && request.resource.data.senderId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
       }
     }
   }

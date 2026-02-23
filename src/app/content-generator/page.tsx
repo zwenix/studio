@@ -336,7 +336,7 @@ export default function ContentGeneratorPage() {
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-            <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="AI Content Generator" width={32} height={32} className="mr-3" />
+            <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="AI Content Generator" width={32} height={48} className="mr-3" />
             AI Content Generator
           </h1>
         </div>
@@ -510,7 +510,7 @@ export default function ContentGeneratorPage() {
             <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4">
               {isLoading && (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                      <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="Generating content" width={48} height={48} className="animate-pulse" />
+                      <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="Generating content" width={48} height={72} className="animate-pulse" />
                       <p className="mt-4">Generating content, please wait...</p>
                   </div>
               )}

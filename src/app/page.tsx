@@ -1,6 +1,10 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import { SplashScreen } from '@/components/splash-screen';
 
 const FeatureBox = ({ icon, title, description }: { icon: string; title: string; description: string; }) => (
   <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1">
@@ -11,6 +15,20 @@ const FeatureBox = ({ icon, title, description }: { icon: string; title: string;
 );
 
 export default function LandingPage() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500); // 2.5 seconds splash screen
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 text-white">
       {/* Navigation */}

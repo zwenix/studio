@@ -3,14 +3,21 @@ import Image from 'next/image';
 export const SplashScreen = () => {
   return (
     <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
-      <div className="animate-fadeInZoom">
+      <div className="animate-fadeInZoom text-center">
         <Image
           src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png"
           alt="EduAI Companion Logo"
-          width={150}
-          height={150}
+          width={200}
+          height={200}
           priority
+          className="mx-auto"
         />
+        <h1 className="text-4xl font-bold text-white mt-6 font-headline">
+          EduAI Companion
+        </h1>
+        <p className="text-lg text-white/70 mt-2 animate-pulse">
+          EduAI is Loading...
+        </p>
       </div>
     </div>
   );

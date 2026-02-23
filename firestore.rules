@@ -72,15 +72,8 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isTeacher() || isAdmin();
-      allow write: if isOwner(userId) || isAdmin();
-    }
-    
-    /**
-     * @description Allows teachers and admins to list users to find students to add to their class.
-     * @path /users
-     */
-    match /users/{path=**} {
       allow list: if isTeacher() || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
 

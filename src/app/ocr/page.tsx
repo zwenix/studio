@@ -38,10 +38,11 @@ export default function OcrPage() {
         }
     }, []);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    const { getRootProps, getInputProps, open, isDragActive } = useDropzone({
         onDrop,
         accept: { 'image/*': ['.jpeg', '.png', '.jpg', '.webp'] },
         multiple: false,
+        noClick: true,
     });
 
     useEffect(() => {
@@ -147,23 +148,17 @@ export default function OcrPage() {
                             <CardDescription>Upload an image with text or handwriting to convert it to digital text.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                            <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
                                 <input {...getInputProps()} />
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                     <FileUp className="h-10 w-10" />
-                                    {isDragActive ? <p>Drop the file here...</p> : <p>Drag & drop an image here, or click to select</p>}
+                                    {isDragActive ? <p>Drop the file here...</p> : <p>Drag & drop an image, or use an upload option below</p>}
                                 </div>
                             </div>
-                            {preview && (
-                                <div className="mt-4">
-                                    <h4 className="font-semibold mb-2">Preview:</h4>
-                                    <img src={preview} alt="Preview" className="max-h-60 w-auto rounded-md border" />
-                                </div>
-                            )}
-                            <div className="flex gap-4">
-                                <Button onClick={handleExtract} disabled={!file || isLoading} className="w-full">
-                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanText className="mr-2 h-4 w-4" />}
-                                    Extract Text
+                            
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Button onClick={open} variant="outline" className="w-full">
+                                    <FileUp className="mr-2 h-4 w-4" /> Upload from Device
                                 </Button>
                                 <Dialog open={isCameraOpen} onOpenChange={setCameraOpen}>
                                     <DialogTrigger asChild>
@@ -193,6 +188,18 @@ export default function OcrPage() {
                                     </DialogContent>
                                 </Dialog>
                             </div>
+
+                            {preview && (
+                                <div className="mt-4">
+                                    <h4 className="font-semibold mb-2">Preview:</h4>
+                                    <img src={preview} alt="Preview" className="max-h-60 w-auto rounded-md border" />
+                                </div>
+                            )}
+
+                             <Button onClick={handleExtract} disabled={!file || isLoading} className="w-full">
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanText className="mr-2 h-4 w-4" />}
+                                Extract Text
+                            </Button>
                         </CardContent>
                     </Card>
 

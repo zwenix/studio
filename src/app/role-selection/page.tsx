@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { GraduationCap, School, Users, Loader2, Shield } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
-import { doc, writeBatch } from 'firebase/firestore';
+import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -97,6 +97,22 @@ export default function RoleSelectionPage() {
       
       await batch.commit();
 
+      // Poll to confirm data is readable before redirecting
+      let docExists = false;
+      for (let i = 0; i < 10; i++) { // Poll for up to 5 seconds
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          docExists = true;
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (!docExists) {
+        // If the doc still doesn't exist, something is wrong.
+        throw new Error("Your profile could not be confirmed after creation. Please try signing in again.");
+      }
+
       if (!user.displayName && firstName) {
         await updateProfile(auth.currentUser, {
             displayName: `${firstName} ${lastName}`.trim()
@@ -113,10 +129,9 @@ export default function RoleSelectionPage() {
       console.error("Failed to save role:", error);
       toast({
         title: 'Error',
-        description: 'Could not save your role. Please try again.',
+        description: error.message || 'Could not save your role. Please try again.',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(null);
     }
   };

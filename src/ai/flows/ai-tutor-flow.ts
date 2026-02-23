@@ -9,15 +9,14 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { part } from 'genkit/ai';
-import {z} from 'genkit';
+import { part, z } from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user query to the AI tutor.'),
   language: z.string().describe('The language for the AI tutor to respond in.'),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
-    content: z.string(),
+    content: z.array(z.object({text: z.string()})),
   })).optional().describe('The conversation history.'),
 });
 export type AiTutorInput = z.infer<typeof AiTutorInputSchema>;
@@ -42,9 +41,16 @@ const aiTutorFlow = ai.defineFlow(
 
 Respond in the following language: ${language}`;
 
+    // Convert the message history to the format Genkit expects
+    const genkitHistory = history?.map(message => ({
+        role: message.role,
+        content: message.content.map(c => part(c.text))
+    })) || [];
+
+
     const { output } = await ai.generate({
       system: systemPrompt,
-      history: history?.map(h => ({ role: h.role, content: [part({text: h.content})] })) || [],
+      history: genkitHistory,
       prompt: query,
       output: {
         schema: AiTutorOutputSchema,

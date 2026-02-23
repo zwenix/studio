@@ -36,15 +36,15 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
             <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="EduAI Companion Logo" width={40} height={40} />
-            <h1 className="text-2xl font-bold">EduAI Companion</h1>
+            <h1 className="hidden sm:block text-2xl font-bold">EduAI Companion</h1>
           </Link>
-          <div className="flex gap-4 items-center">
-             <Button asChild className="bg-white text-blue-900 hover:bg-slate-200 transition px-6 py-2 rounded-lg">
+          <div className="flex gap-2 items-center">
+             <Button asChild className="bg-white text-blue-900 hover:bg-slate-200 transition px-4 py-2 rounded-lg text-sm font-semibold">
               <Link href="/login">
                 Sign In
               </Link>
             </Button>
-            <Button asChild className="px-6 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 transition font-semibold">
+            <Button asChild className="px-4 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 transition font-semibold text-sm">
               <Link href="/signup">
                 Get Started
               </Link>

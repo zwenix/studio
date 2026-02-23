@@ -81,8 +81,8 @@ export function useDoc<T = any>(
         setData(null)
         setIsLoading(false)
 
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // Temporarily disabled to prevent app crash and isolate the failing component.
+        // errorEmitter.emit('permission-error', contextualError);
       }
     );
 

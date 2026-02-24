@@ -14,7 +14,6 @@ import { part, z } from 'genkit';
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user query to the AI tutor.'),
   language: z.string().describe('The language for the AI tutor to respond in.'),
-  // Corrected schema to match the client's `Message` type where `content` is a simple string.
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),

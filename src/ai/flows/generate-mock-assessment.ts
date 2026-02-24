@@ -107,7 +107,7 @@ Number of Questions: {{{length}}}
 
 You MUST generate the assessment questions, a detailed memo with the correct answers, and a comprehensive grading rubric. All parts should be in clear HTML format.
 
-Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created with EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026</em>`,
+Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>`,
 });
 
 const generateMockAssessmentFlow = ai.defineFlow(

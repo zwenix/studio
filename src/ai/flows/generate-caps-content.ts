@@ -37,6 +37,16 @@ const ContentTypeSchema = z.enum([
   'assessment',
   'class planner',
   'educational poster',
+  'booklet-reading-handwriting-phonics',
+  'reading-comprehension',
+  'study-guide-notes',
+  'subject-topic-cutouts',
+  'letter-to-parents',
+  'classroom-subject-poster',
+  'improvement-plan-tracker',
+  'worksheet-handwriting-practice',
+  'worksheet-multipurpose',
+  'classroom-labels',
 ]);
 
 const AssessmentFormatSchema = z.enum([
@@ -65,6 +75,7 @@ const GenerateCAPSContentInputSchema = z.object({
   customHeading: z.string().optional().describe('A custom main heading for the document.'),
   customSubject: z.string().optional().describe('A custom subject or sub-heading for the document.'),
   teacherName: z.string().optional().describe('The full name of the teacher generating the content.'),
+  signatureUrl: z.string().optional().describe("The URL of the teacher's signature image."),
   aiDifficultyAdaptation: z.boolean().optional().describe('If true, dynamically adjust content difficulty based on student performance trends. The provided difficulty level should be a starting point.'),
   culturalContextIntegration: z.boolean().optional().describe("If true, use local examples and familiar cultural contexts in lessons. Prioritize South African context."),
 });
@@ -121,8 +132,11 @@ Your audience is teachers, parents, and children who are not technical. Therefor
     -   **For Grades R, 1, 2, 3, 4, 5, 6, and 7:** You MUST make the content highly visual and engaging for young children.
         -   **Use Emojis and Icons FREQUENTLY** (e.g., ✅, ✏️, 📚, 🤔, 👍, 🖍️, 🎨). Weave them into headings, questions, and lists to add color and visual cues.
         -   **Use BIG, FRIENDLY FONTS** by using '<h1>' and '<h2>' for titles and '<h3>' for questions.
-        -   If the Content Type is an 'educational poster', it MUST be extremely visual. Use very large headings, a lot of relevant emojis, bright conceptual colors (via inline style attributes on divs or spans), and simple layouts. The goal is to create a fun, vibrant poster that a child would love.
+        -   If the Content Type is an 'educational poster' or 'classroom-subject-poster', it MUST be extremely visual. Use very large headings, a lot of relevant emojis, bright conceptual colors (via inline style attributes on divs or spans), and simple layouts. The goal is to create a fun, vibrant poster that a child would love.
     -   **For Grades 8-12:** You can use a more formal tone, but the content must still be well-structured and clear. Emojis can be used more sparingly.
+
+4.  **Special Content Types:**
+    -   If the Content Type is **'Worksheet - Multi-Purpose'**, you MUST create a blank worksheet. The worksheet must have a header section for a Name, Date, and Subject line, followed by a single horizontal rule (<hr>) to separate the header from a large, blank area for the student to write in.
 
 The entire response for the 'content' field MUST start with a wrapper div that sets the font class. The user will provide a 'fontFamily' variable containing the CSS class name. All subsequent content, including custom headers and the final footnote, must be inside this single wrapper div.
 
@@ -165,7 +179,11 @@ If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed 
 
 If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.
 
-Finally, you MUST conclude the entire 'content' output with a single horizontal rule (<hr>) followed by the small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created by '{{{teacherName}}}' using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026</em>. This footnote must also be inside the main font wrapper div.`,
+Finally, you MUST conclude the entire 'content' output with the following elements in order:
+1. If a 'signatureUrl' is provided, include an image tag for it: <img src="{{{signatureUrl}}}" alt="Teacher's Signature" style="max-height: 75px; margin-top: 40px;" />
+2. A single horizontal rule (<hr>).
+3. The small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>
+This entire footer section must also be inside the main font wrapper div.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(

@@ -35,7 +35,7 @@ import { add } from 'date-fns';
 import type { Class, Teacher } from '@/lib/types';
 
 
-type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster";
+type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster" | "booklet-reading-handwriting-phonics" | "reading-comprehension" | "study-guide-notes" | "subject-topic-cutouts" | "letter-to-parents" | "classroom-subject-poster" | "improvement-plan-tracker" | "worksheet-handwriting-practice" | "worksheet-multipurpose" | "classroom-labels";
 export type GenerateCAPSContentInput = CAPSInput;
 
 const fonts = [
@@ -124,6 +124,7 @@ export default function ContentGeneratorPage() {
         customHeading,
         customSubject,
         teacherName: user?.displayName || 'Educator',
+        signatureUrl: teacherData?.signatureUrl,
         aiDifficultyAdaptation: teacherData?.aiDifficultyAdaptation,
         culturalContextIntegration: teacherData?.culturalContextIntegration,
       };
@@ -381,6 +382,16 @@ export default function ContentGeneratorPage() {
                       <SelectItem value="assessment">Assessment</SelectItem>
                       <SelectItem value="class planner">Class Planner</SelectItem>
                       <SelectItem value="educational poster">Educational Poster</SelectItem>
+                      <SelectItem value="booklet-reading-handwriting-phonics">Booklets - Reading, Handwritting & Phonics</SelectItem>
+                      <SelectItem value="reading-comprehension">Reading Comprehensions (CAPS Aligned)</SelectItem>
+                      <SelectItem value="study-guide-notes">Study Guides/Notes - (CAPS Aligned)</SelectItem>
+                      <SelectItem value="subject-topic-cutouts">Subject Topic Cutouts</SelectItem>
+                      <SelectItem value="letter-to-parents">Letters - Communication to Parents</SelectItem>
+                      <SelectItem value="classroom-subject-poster">Classroom Subject Posters</SelectItem>
+                      <SelectItem value="improvement-plan-tracker">Subject Improvement Plan Tracking Tool</SelectItem>
+                      <SelectItem value="worksheet-handwriting-practice">Worksheets: Handwriting & Practice Sheets</SelectItem>
+                      <SelectItem value="worksheet-multipurpose">Worksheet - Multi-Purpose</SelectItem>
+                      <SelectItem value="classroom-labels">Classroom Labels</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

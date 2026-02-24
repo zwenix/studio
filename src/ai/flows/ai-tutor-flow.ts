@@ -14,9 +14,10 @@ import { part, z } from 'genkit';
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user query to the AI tutor.'),
   language: z.string().describe('The language for the AI tutor to respond in.'),
+  // Corrected schema to match the client's `Message` type where `content` is a simple string.
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
-    content: z.array(z.object({text: z.string()})),
+    content: z.string(),
   })).optional().describe('The conversation history.'),
 });
 export type AiTutorInput = z.infer<typeof AiTutorInputSchema>;
@@ -41,10 +42,10 @@ const aiTutorFlow = ai.defineFlow(
 
 Respond in the following language: ${language}`;
 
-    // Convert the message history to the format Genkit expects
+    // Convert the message history (where content is a string) to the format Genkit expects (where content is an array of parts).
     const genkitHistory = history?.map(message => ({
         role: message.role,
-        content: message.content.map(c => part(c.text))
+        content: [part(message.content)]
     })) || [];
 
 

@@ -7,3 +7,4 @@ import '@/ai/flows/ai-tutor-flow.ts';
 import '@/ai/flows/tts-flow.ts';
 import '@/ai/flows/autograder-flow.ts';
 import '@/ai/flows/generate-mock-assessment.ts';
+import '@/ai/tools/pexels-search-tool.ts';

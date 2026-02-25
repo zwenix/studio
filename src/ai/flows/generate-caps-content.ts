@@ -3,14 +3,11 @@
 /**
  * @fileOverview Generates CAPS-compliant content for teachers, including lesson plans, exercises,
  * assessments, class planners, and educational posters.
- *
- * - generateCAPSContent - A function that generates CAPS-compliant content.
- * - GenerateCAPSContentInput - The input type for the generateCAPSContent function.
- * - GenerateCAPSContentOutput - The return type for the generateCAPSContent function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { pexelsSearchTool } from '@/ai/tools/pexels-search-tool';
 
 const GradeSchema = z.enum([
   'R',
@@ -100,15 +97,21 @@ const prompt = ai.definePrompt({
   name: 'generateCAPSContentPrompt',
   input: {schema: GenerateCAPSContentInputSchema},
   output: {schema: GenerateCAPSContentOutputSchema},
+  tools: [pexelsSearchTool],
   prompt: `You are an expert educational content creator specializing in generating CAPS-compliant educational content for South African schools.
 
 Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **HTML** format. The output MUST be ready for direct use and look like a real, clean document.
 
 **CRITICAL VISUAL & FORMATTING INSTRUCTIONS:**
 
-1.  **Clarity and Spacing:** Structure everything for clarity. Use simple language and clear headings (e.g., <h2>Question 1</h2>, <h2>Question 2</h2>). Use horizontal rules (<hr>) and ample vertical spacing (<br>) to visually separate questions. The layout must not be cramped.
+1.  **IMAGE INTEGRATION (MOST IMPORTANT):** You now have a powerful tool called \`searchPexelsImage\` to find high-quality, royalty-free images. You MUST use this tool to make the content visually rich and engaging.
+    -   **When to use it:** For any visual topic (e.g., animals, nature, history, science concepts), especially for younger grades (R-7) and for all "poster" content types.
+    -   **How to use it:** Call the \`searchPexelsImage\` tool with a descriptive query (e.g., "cute cartoon lion for kids", "photograph of Nelson Mandela", "diagram of a plant cell").
+    -   **How to display it:** Once the tool returns an \`imageUrl\`, you MUST embed it in the HTML using an \`<img>\` tag. For example: \`<img src="URL_FROM_TOOL" alt="A descriptive alt text" style="max-width: 100%; height: auto; border-radius: 0.75rem; margin: 1.5rem 0;" />\`. You must also credit the photographer beneath the image, like this: \`<p style="font-size: 10px; color: #888; text-align: center;">Photo by [Photographer Name] on Pexels</p>\`.
 
-2.  **NO HTML TABLES for Matching:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using HTML tables.
+2.  **Clarity and Spacing:** Structure everything for clarity. Use simple language and clear headings (e.g., <h2>Question 1</h2>, <h2>Question 2</h2>). Use horizontal rules (<hr>) and ample vertical spacing (<br>) to visually separate questions. The layout must not be cramped.
+
+3.  **NO HTML TABLES for Matching:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using HTML tables.
     Instead, list the items from the first column, and then provide a separate list of options for the student to match from.
     **Correct Example:**
     <hr>
@@ -128,14 +131,11 @@ Your audience is teachers, parents, and children who are not technical. Therefor
     </ol>
     <hr>
     
-3.  **AGE-APPROPRIATE VISUALS (CRITICAL):**
-    -   **For Grades R, 1, 2, 3, 4, 5, 6, and 7:** You MUST make the content highly visual and engaging for young children.
-        -   **Use Emojis and Icons FREQUENTLY** (e.g., ✅, ✏️, 📚, 🤔, 👍, 🖍️, 🎨). Weave them into headings, questions, and lists to add color and visual cues.
-        -   **Use BIG, FRIENDLY FONTS** by using '<h1>' and '<h2>' for titles and '<h3>' for questions.
-        -   If the Content Type is an 'educational poster' or 'classroom-subject-poster', it MUST be extremely visual. Use very large headings, a lot of relevant emojis, bright conceptual colors (via inline style attributes on divs or spans), and simple layouts. The goal is to create a fun, vibrant poster that a child would love.
-    -   **For Grades 8-12:** You can use a more formal tone, but the content must still be well-structured and clear. Emojis can be used more sparingly.
+4.  **AGE-APPROPRIATE VISUALS (CRITICAL):**
+    -   **For Grades R, 1, 2, 3, 4, 5, 6, and 7:** You MUST make the content highly visual. This is now primarily achieved by using the \`searchPexelsImage\` tool. You can still use emojis (e.g., ✅, ✏️, 📚) to supplement the images, but high-quality images are the priority.
+    -   **For Grades 8-12:** Use images where they add educational value (e.g., diagrams, historical photos, scientific concepts). The tone can be more formal.
 
-4.  **Special Content Types:**
+5.  **Special Content Types:**
     -   If the Content Type is **'Worksheet - Multi-Purpose'**, you MUST create a blank worksheet. The worksheet must have a header section for a Name, Date, and Subject line, followed by a single horizontal rule (<hr>) to separate the header from a large, blank area for the student to write in.
 
 The entire response for the 'content' field MUST start with a wrapper div that sets the font class. The user will provide a 'fontFamily' variable containing the CSS class name. All subsequent content, including custom headers and the final footnote, must be inside this single wrapper div.

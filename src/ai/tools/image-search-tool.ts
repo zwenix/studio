@@ -23,7 +23,7 @@ export const imageSearchTool = ai.defineTool(
     outputSchema: ImageSearchOutputSchema,
   },
   async ({ query, orientation }) => {
-    // 1. Try Pixabay First
+    // 1. Try Pixabay First (Primary)
     const pixabayKey = process.env.PIXABAY_API_KEY;
     if (pixabayKey) {
       try {
@@ -45,7 +45,7 @@ export const imageSearchTool = ai.defineTool(
       }
     }
 
-    // 2. Fallback to Pexels
+    // 2. Fallback to Pexels (Secondary)
     const pexelsApiKey = process.env.PEXELS_API_KEY;
     if (pexelsApiKey) {
       const client = createClient(pexelsApiKey);

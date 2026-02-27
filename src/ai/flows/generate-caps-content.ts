@@ -91,7 +91,7 @@ You MUST use the \`searchImage\` tool to find high-quality visuals for all conte
 **FORMATTING:**
 - Output MUST be clean, valid **HTML**.
 - **NO TABLES** for matching questions. Use lists.
-- For **'worksheet-multipurpose'**, create a header with Name, Date, and Subject labels, a horizontal rule, and a large blank writing area.
+- For **'worksheet-multipurpose'**, you MUST create a professional header with "Name:", "Date:", and "Subject:" labels at the top, followed by a bold horizontal rule (<hr style="border: 2px solid #000; margin: 20px 0;" />), and then a large blank area for the learner to write.
 
 **STRUCTURE:**
 1. Wrap everything in a \`<div class="{{fontFamily}}">\`.
@@ -104,8 +104,8 @@ You MUST use the \`searchImage\` tool to find high-quality visuals for all conte
    Difficulty: {{{difficulty}}}
    Instructions: {{{additionalInstructions}}}
 4. **Conclusion (Inside the font div):**
-   - If \`signatureUrl\` is provided, embed it: \`<img src="{{{signatureUrl}}}" alt="Teacher's Signature" style="max-height: 80px; display: block; margin-top: 40px;" />\`
-   - A single \`<hr />\`.
+   - If \`signatureUrl\` is provided, embed it clearly: \`<div style="margin-top: 40px;"><img src="{{{signatureUrl}}}" alt="Teacher's Signature" style="max-height: 80px; display: block;" /><p style="font-size: 12px; font-weight: bold; margin-top: 5px;">{{teacherName}}</p></div>\`
+   - A single \`<hr style="margin-top: 30px;" />\`.
    - The footnote: \`<em style="font-size: 9px; color: #666; display: block; margin-top: 10px;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>\``,
 });
 

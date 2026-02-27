@@ -28,7 +28,6 @@ import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import type { GenerateCAPSContentInput as CAPSInput } from '@/ai/flows/generate-caps-content';
 import { useToast } from '@/hooks/use-toast';
-import jsPDF from 'jspdf';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { add } from 'date-fns';
@@ -173,14 +172,6 @@ export default function ContentGeneratorPage() {
     }
   };
 
-  const handleExportPdf = () => {
-    if (!generatedContent) return;
-    const doc = new jsPDF();
-    const cleanText = (html: string) => html.replace(/<[^>]+>/g, '');
-    doc.text(cleanText(generatedContent.content), 10, 10);
-    doc.save(`EduAI-Content.pdf`);
-  };
-
   const handlePrint = () => {
     if (!generatedContent) return;
     const printWindow = window.open('', '_blank');
@@ -188,24 +179,38 @@ export default function ContentGeneratorPage() {
       printWindow.document.write(`
         <html>
           <head>
+            <title>EduAI Companion Content</title>
             <style>
-              body { font-family: sans-serif; padding: 2rem; }
+              @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Comic+Neue:wght@400;700&family=Schoolbell&display=swap');
+              body { font-family: sans-serif; padding: 2rem; color: #000; }
               img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 1rem 0; display: block; }
               hr { border: 0; border-top: 1px solid #eee; margin: 2rem 0; }
               .font-patrick-hand { font-family: 'Patrick Hand', cursive; }
               .font-comic-neue { font-family: 'Comic Neue', cursive; }
               .font-schoolbell { font-family: 'Schoolbell', cursive; }
+              @media print {
+                body { padding: 0; }
+                .no-print { display: none; }
+              }
             </style>
           </head>
           <body>
             ${generatedContent.content}
-            ${generatedContent.memo ? `<hr /><h2>Memo</h2>${generatedContent.memo}` : ''}
+            ${generatedContent.memo ? `<hr /><h2 style="page-break-before: always;">Memo</h2>${generatedContent.memo}` : ''}
             ${generatedContent.rubric ? `<hr /><h2>Rubric</h2>${generatedContent.rubric}` : ''}
+            <script>
+              window.onload = () => {
+                // Wait briefly for images (like signatures) to load before printing
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 1000);
+              };
+            </script>
           </body>
         </html>
       `);
       printWindow.document.close();
-      printWindow.print();
     }
   };
 
@@ -236,14 +241,14 @@ export default function ContentGeneratorPage() {
                     <SelectItem value="exercise">Exercise</SelectItem>
                     <SelectItem value="assessment">Assessment</SelectItem>
                     <SelectItem value="educational poster">Educational Poster</SelectItem>
-                    <SelectItem value="booklet-reading-handwriting-phonics">Booklets - Reading, Handwriting & Phonics</SelectItem>
+                    <SelectItem value="booklet-reading-handwriting-phonics">Booklets - Reading, Handwritting & Phonics (CAPS Aligned)</SelectItem>
                     <SelectItem value="reading-comprehension">Reading Comprehensions (CAPS Aligned)</SelectItem>
-                    <SelectItem value="study-guide-notes">Study Guides/Notes (CAPS Aligned)</SelectItem>
+                    <SelectItem value="study-guide-notes">Study Guides/Notes - (CAPS Aligned)</SelectItem>
                     <SelectItem value="subject-topic-cutouts">Subject Topic Cutouts</SelectItem>
-                    <SelectItem value="letter-to-parents">Letters to Parents</SelectItem>
+                    <SelectItem value="letter-to-parents">Letters - Communication to Parents</SelectItem>
                     <SelectItem value="classroom-subject-poster">Classroom Subject Posters</SelectItem>
-                    <SelectItem value="improvement-plan-tracker">Improvement Plan Tool</SelectItem>
-                    <SelectItem value="worksheet-handwriting-practice">Handwriting Practice Sheets</SelectItem>
+                    <SelectItem value="improvement-plan-tracker">Subject Improvement Plan Tracking Tool</SelectItem>
+                    <SelectItem value="worksheet-handwriting-practice">Worksheets: Handwriting & Practice Sheets</SelectItem>
                     <SelectItem value="worksheet-multipurpose">Worksheet - Multi-Purpose</SelectItem>
                     <SelectItem value="classroom-labels">Classroom Labels</SelectItem>
                   </SelectContent>
@@ -294,13 +299,19 @@ export default function ContentGeneratorPage() {
               )}
             </CardContent>
             {generatedContent && (
-              <CardFooter className="flex justify-between border-t pt-4">
-                <div className="flex gap-2"><Button variant="outline" onClick={handleExportPdf}><Download className="h-4 w-4 mr-2" />PDF</Button><Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" />Print</Button></div>
-                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
-                  <SelectContent>{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={handleSaveAndAssign}>{isAssigning ? <Loader2 className="animate-spin" /> : 'Assign'}</Button>
+              <CardFooter className="flex flex-col sm:flex-row justify-between items-stretch gap-4 border-t pt-4">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handlePrint} className="flex-1">
+                    <Download className="h-4 w-4 mr-2" /> PDF / Print
+                  </Button>
+                </div>
+                <div className='flex gap-2 items-center'>
+                    <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
+                    <SelectContent>{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Button disabled={!selectedClassId || isAssigning} onClick={handleSaveAndAssign}>{isAssigning ? <Loader2 className="animate-spin" /> : 'Assign'}</Button>
+                </div>
               </CardFooter>
             )}
           </Card>

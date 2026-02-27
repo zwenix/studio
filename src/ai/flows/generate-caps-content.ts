@@ -84,7 +84,10 @@ const prompt = ai.definePrompt({
 
 **VISUAL INSTRUCTIONS:**
 You MUST use the \`searchImage\` tool to find high-quality visuals for all content types, especially for Grades R-7 and posters.
-- **Source preference:** The tool automatically tries Pixabay first and falls back to Pexels.
+
+**CRITICAL GRADE-SPECIFIC VISUAL RULES:**
+- **For Grades 1-6:** You MUST prioritize relevant **illustrations, drawings, and cartoons**. Set \`imageType: 'illustration'\` when calling \`searchImage\`. 
+- **Use realistic images ONLY as a last resort** for Grades 1-6 if a specific topic is too technical for an illustration.
 - **Embedding:** Embed results using: \`<img src="URL" alt="Description" style="max-width: 100%; height: auto; border-radius: 0.75rem; margin: 1.5rem 0;" />\`.
 - **Credit:** Always credit beneath the image: \`<p style="font-size: 10px; color: #888; text-align: center;">Photo by [Photographer] on [Source]</p>\`.
 

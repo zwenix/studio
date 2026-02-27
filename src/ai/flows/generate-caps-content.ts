@@ -1,28 +1,15 @@
 'use server';
 
 /**
- * @fileOverview Generates CAPS-compliant content for teachers, including lesson plans, exercises,
- * assessments, class planners, and educational posters.
+ * @fileOverview Generates CAPS-compliant content for teachers with integrated image searching.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { pexelsSearchTool } from '@/ai/tools/pexels-search-tool';
+import { imageSearchTool } from '@/ai/tools/image-search-tool';
 
 const GradeSchema = z.enum([
-  'R',
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  '11',
-  '12',
+  'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
 ]);
 
 const SubjectSchema = z.string().describe('The subject for which to generate content.');
@@ -61,35 +48,30 @@ const GenerateCAPSContentInputSchema = z.object({
   subject: SubjectSchema.describe('The subject for which to generate content.'),
   topic: TopicSchema.describe('The specific topic within the subject.'),
   contentType: ContentTypeSchema.describe('The type of content to generate.'),
-  additionalInstructions: z
-    .string()
-    .optional()
-    .describe('Any specific instructions for content generation.'),
-  difficulty: z.string().optional().describe('The difficulty level for the content (e.g., Easy, Medium, Hard).'),
-  length: z.string().optional().describe('The desired number of questions for the content (e.g., 10, 25, 50).'),
-  assessmentFormat: AssessmentFormatSchema.optional().describe('The format of the assessment (e.g., Multiple Choice, Short Answer, Essay).'),
-  fontFamily: z.string().optional().describe('The CSS class for the font to be used.'),
-  customHeading: z.string().optional().describe('A custom main heading for the document.'),
-  customSubject: z.string().optional().describe('A custom subject or sub-heading for the document.'),
-  teacherName: z.string().optional().describe('The full name of the teacher generating the content.'),
-  signatureUrl: z.string().optional().describe("The URL of the teacher's signature image."),
-  aiDifficultyAdaptation: z.boolean().optional().describe('If true, dynamically adjust content difficulty based on student performance trends. The provided difficulty level should be a starting point.'),
-  culturalContextIntegration: z.boolean().optional().describe("If true, use local examples and familiar cultural contexts in lessons. Prioritize South African context."),
+  additionalInstructions: z.string().optional().describe('Any specific instructions.'),
+  difficulty: z.string().optional().describe('Difficulty level (Easy, Medium, Hard).'),
+  length: z.string().optional().describe('Desired length or number of questions.'),
+  assessmentFormat: AssessmentFormatSchema.optional().describe('Assessment format.'),
+  fontFamily: z.string().optional().describe('CSS font class.'),
+  customHeading: z.string().optional().describe('Custom main heading.'),
+  customSubject: z.string().optional().describe('Custom sub-heading.'),
+  teacherName: z.string().optional().describe('Teacher name.'),
+  signatureUrl: z.string().optional().describe('Signature URL.'),
+  aiDifficultyAdaptation: z.boolean().optional().describe('Dynamic difficulty adjustment.'),
+  culturalContextIntegration: z.boolean().optional().describe('Use South African context.'),
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
 const GenerateCAPSContentOutputSchema = z.object({
-  content: z.string().describe('The generated CAPS-compliant content in HTML format.'),
-  memo: z.string().describe('A generated memo for the content in HTML format. Should be empty if not applicable.'),
-  rubric: z.string().describe('A generated rubric for the content in HTML format. Should be empty if not applicable.'),
+  content: z.string().describe('Generated HTML content.'),
+  memo: z.string().describe('Generated HTML memo.'),
+  rubric: z.string().describe('Generated HTML rubric.'),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
 
-export async function generateCAPSContent(
-  input: GenerateCAPSContentInput
-): Promise<GenerateCAPSContentOutput> {
+export async function generateCAPSContent(input: GenerateCAPSContentInput): Promise<GenerateCAPSContentOutput> {
   return generateCAPSContentFlow(input);
 }
 
@@ -97,93 +79,34 @@ const prompt = ai.definePrompt({
   name: 'generateCAPSContentPrompt',
   input: {schema: GenerateCAPSContentInputSchema},
   output: {schema: GenerateCAPSContentOutputSchema},
-  tools: [pexelsSearchTool],
-  prompt: `You are an expert educational content creator specializing in generating CAPS-compliant educational content for South African schools.
+  tools: [imageSearchTool],
+  prompt: `You are an expert educational content creator for South African schools (CAPS compliant).
 
-Your audience is teachers, parents, and children who are not technical. Therefore, you MUST generate the content in well-structured and easy-to-read **HTML** format. The output MUST be ready for direct use and look like a real, clean document.
+**VISUAL INSTRUCTIONS:**
+You MUST use the \`searchImage\` tool to find high-quality visuals for all content types, especially for Grades R-7 and posters.
+- **Source preference:** The tool automatically tries Pixabay first and falls back to Pexels.
+- **Embedding:** Embed results using: \`<img src="URL" alt="Description" style="max-width: 100%; height: auto; border-radius: 0.75rem; margin: 1.5rem 0;" />\`.
+- **Credit:** Always credit beneath the image: \`<p style="font-size: 10px; color: #888; text-align: center;">Photo by [Photographer] on [Source]</p>\`.
 
-**CRITICAL VISUAL & FORMATTING INSTRUCTIONS:**
+**FORMATTING:**
+- Output MUST be clean, valid **HTML**.
+- **NO TABLES** for matching questions. Use lists.
+- For **'worksheet-multipurpose'**, create a header with Name, Date, and Subject labels, a horizontal rule, and a large blank writing area.
 
-1.  **IMAGE INTEGRATION (MOST IMPORTANT):** You now have a powerful tool called \`searchPexelsImage\` to find high-quality, royalty-free images. You MUST use this tool to make the content visually rich and engaging.
-    -   **When to use it:** For any visual topic (e.g., animals, nature, history, science concepts), especially for younger grades (R-7) and for all "poster" content types.
-    -   **How to use it:** Call the \`searchPexelsImage\` tool with a descriptive query (e.g., "cute cartoon lion for kids", "photograph of Nelson Mandela", "diagram of a plant cell").
-    -   **How to display it:** Once the tool returns an \`imageUrl\`, you MUST embed it in the HTML using an \`<img>\` tag. For example: \`<img src="URL_FROM_TOOL" alt="A descriptive alt text" style="max-width: 100%; height: auto; border-radius: 0.75rem; margin: 1.5rem 0;" />\`. You must also credit the photographer beneath the image, like this: \`<p style="font-size: 10px; color: #888; text-align: center;">Photo by [Photographer Name] on Pexels</p>\`.
-
-2.  **Clarity and Spacing:** Structure everything for clarity. Use simple language and clear headings (e.g., <h2>Question 1</h2>, <h2>Question 2</h2>). Use horizontal rules (<hr>) and ample vertical spacing (<br>) to visually separate questions. The layout must not be cramped.
-
-3.  **NO HTML TABLES for Matching:** For any "matching" type questions (e.g., "match column A to column B"), you are strictly forbidden from using HTML tables.
-    Instead, list the items from the first column, and then provide a separate list of options for the student to match from.
-    **Correct Example:**
-    <hr>
-    <h2>Question 5: Matching</h2>
-    <p>Match the animal to its sound. Write the letter of the correct sound next to the animal number.</p>
-    <h3>Animals:</h3>
-    <ol>
-      <li>Dog 🐶</li>
-      <li>Cat 🐱</li>
-      <li>Cow 🐮</li>
-    </ol>
-    <h3>Sounds:</h3>
-    <ol type="a">
-      <li>Moo</li>
-      <li>Bark</li>
-      <li>Meow</li>
-    </ol>
-    <hr>
-    
-4.  **AGE-APPROPRIATE VISUALS (CRITICAL):**
-    -   **For Grades R, 1, 2, 3, 4, 5, 6, and 7:** You MUST make the content highly visual. This is now primarily achieved by using the \`searchPexelsImage\` tool. You can still use emojis (e.g., ✅, ✏️, 📚) to supplement the images, but high-quality images are the priority.
-    -   **For Grades 8-12:** Use images where they add educational value (e.g., diagrams, historical photos, scientific concepts). The tone can be more formal.
-
-5.  **Special Content Types:**
-    -   If the Content Type is **'Worksheet - Multi-Purpose'**, you MUST create a blank worksheet. The worksheet must have a header section for a Name, Date, and Subject line, followed by a single horizontal rule (<hr>) to separate the header from a large, blank area for the student to write in.
-
-The entire response for the 'content' field MUST start with a wrapper div that sets the font class. The user will provide a 'fontFamily' variable containing the CSS class name. All subsequent content, including custom headers and the final footnote, must be inside this single wrapper div.
-
-**AI BEHAVIORAL INSTRUCTIONS:**
-{{#if culturalContextIntegration}}
-- **Cultural Context:** You MUST integrate local South African examples, names, places, and scenarios to make the content relatable and relevant. For example, use "Lerato" and "Sipho" for names, "Johannesburg" for a city, and "rand" for currency.
-{{/if}}
-{{#if aiDifficultyAdaptation}}
-- **Difficulty Adaptation:** The user has requested a difficulty of '{{difficulty}}'. Treat this as a baseline. You should subtly adjust the complexity of questions and vocabulary to be appropriate for the specified grade level, but feel free to create a mix of easier and more challenging questions to test a range of abilities.
-{{/if}}
-
-You will generate content based on the user's request. Ensure that the content adheres to the Curriculum and Assessment Policy Statement (CAPS) for the specified grade and subject.
-
-Grade: {{{grade}}}
-Subject: {{{subject}}}
-Topic: {{{topic}}}
-Content Type: {{{contentType}}}
-{{#if fontFamily}}
-Font Class: {{{fontFamily}}}
-{{/if}}
-
-{{#if difficulty}}
-Difficulty: {{{difficulty}}}
-{{/if}}
-{{#if length}}
-Number of Questions: {{{length}}}
-{{/if}}
-{{#if assessmentFormat}}
-Assessment Format: {{{assessmentFormat}}}
-{{/if}}
-{{#if additionalInstructions}}
-Additional Instructions: {{{additionalInstructions}}}
-{{/if}}
-
-Generate the following CAPS-compliant content.
-
-The content should start with the wrapper div. If the user provides a 'customHeading' or 'customSubject', they MUST be placed at the very top of the content, inside the main font wrapper div.
-
-If the Content Type is 'exercise' or 'assessment', you MUST generate a detailed memo with answers and a comprehensive grading rubric, also in clear HTML format.
-
-If the Content Type is NOT 'exercise' or 'assessment', you MUST return an empty string for the 'memo' and 'rubric' fields.
-
-Finally, you MUST conclude the entire 'content' output with the following elements in order:
-1. If a 'signatureUrl' is provided, include an image tag for it: <img src="{{{signatureUrl}}}" alt="Teacher's Signature" style="max-height: 75px; margin-top: 40px;" />
-2. A single horizontal rule (<hr>).
-3. The small, legible, italicized footnote: <em style="font-size: 9px; color: #666;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>
-This entire footer section must also be inside the main font wrapper div.`,
+**STRUCTURE:**
+1. Wrap everything in a \`<div class="{{fontFamily}}">\`.
+2. Include \`customHeading\` and \`customSubject\` at the top if provided.
+3. Generate the core educational content based on:
+   Grade: {{{grade}}}
+   Subject: {{{subject}}}
+   Topic: {{{topic}}}
+   Type: {{{contentType}}}
+   Difficulty: {{{difficulty}}}
+   Instructions: {{{additionalInstructions}}}
+4. **Conclusion (Inside the font div):**
+   - If \`signatureUrl\` is provided, embed it: \`<img src="{{{signatureUrl}}}" alt="Teacher's Signature" style="max-height: 80px; display: block; margin-top: 40px;" />\`
+   - A single \`<hr />\`.
+   - The footnote: \`<em style="font-size: 9px; color: #666; display: block; margin-top: 10px;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>\``,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(
@@ -193,29 +116,7 @@ const generateCAPSContentFlow = ai.defineFlow(
     outputSchema: GenerateCAPSContentOutputSchema,
   },
   async input => {
-    
-    // Construct the dynamic part of the prompt
-    let dynamicContent = '';
-
-    if (input.customHeading) {
-      dynamicContent += `<h1 style="text-align: center; font-size: 24px; font-weight: bold;">${input.customHeading}</h1>\n`;
-    }
-    if (input.customSubject) {
-      dynamicContent += `<h2 style="text-align: center; font-size: 20px; font-weight: normal; margin-bottom: 20px;">${input.customSubject}</h2>\n`;
-    }
-
-    const modifiedInput = { ...input };
-
-    const wrappedPrompt = `
-      <div class="${modifiedInput.fontFamily || 'font-sans'}">
-        ${dynamicContent}
-        {{AI will generate the main educational content here based on the original prompt instructions}}
-      </div>
-    `;
-
-    // This is a simplified representation. In a real scenario, you might need a more robust templating engine
-    // or pass the wrapping instruction differently. Here we are instructing the AI within the prompt itself.
-    const {output} = await prompt(modifiedInput);
+    const {output} = await prompt(input);
     return output!;
   }
 );

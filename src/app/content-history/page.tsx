@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import {
   Dialog,
@@ -16,31 +17,94 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { History, Loader2, Eye, Printer } from 'lucide-react';
-import type { GeneratedContent } from '@/lib/types';
-import { format } from 'date-fns';
+import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { History, Loader2, Eye, Printer, Send } from 'lucide-react';
+import type { GeneratedContent, Class } from '@/lib/types';
+import { format, add } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ContentHistoryPage() {
+  const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedItem, setSelectedItem] = useState<GeneratedContent | null>(null);
 
   const contentHistoryQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'teachers', user.uid, 'generatedContent'),
       orderBy('createdAt', 'desc'),
-      limit(10)
+      limit(20)
     );
   }, [firestore, user]);
 
   const { data: contentHistory, isLoading } = useCollection<GeneratedContent>(contentHistoryQuery);
   
+  const teacherClassesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+  }, [firestore, user]);
+  const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
+
+  const handleAssign = async (item: GeneratedContent) => {
+    if (!item || !selectedClassId || !user) return;
+    setIsAssigning(true);
+    try {
+        const contentRef = await addDoc(collection(firestore, 'content'), {
+            teacherId: user.uid,
+            grade: item.grade,
+            subject: item.subject,
+            topic: item.topic,
+            contentType: item.contentType,
+            content: item.content,
+            memo: item.memo || '',
+            rubric: item.rubric || '',
+            createdAt: serverTimestamp(),
+        });
+
+        const batch = writeBatch(firestore);
+        const selectedClass = teacherClasses?.find(c => c.id === selectedClassId);
+        const dueDate = Timestamp.fromDate(add(new Date(), { days: 7 }));
+
+        selectedClass?.learnerIds.forEach(learnerId => {
+            const assignmentRef = doc(collection(firestore, 'classes', selectedClassId, 'assignments'));
+            batch.set(assignmentRef, {
+                contentId: contentRef.id,
+                learnerId,
+                teacherId: user.uid,
+                status: 'assigned',
+                dueDate,
+                createdAt: serverTimestamp(),
+                rubric: item.rubric || '' 
+            });
+        });
+
+        await batch.commit();
+        toast({ title: 'Success!', description: `Content assigned.` });
+        setSelectedItem(null);
+    } catch (error: any) {
+        toast({ title: 'Assignment Failed', description: error.message, variant: 'destructive' });
+    } finally {
+        setIsAssigning(false);
+    }
+  };
+
   const handlePrint = (item: GeneratedContent) => {
     if (!item) return;
 
@@ -51,32 +115,21 @@ export default function ContentHistoryPage() {
           <head>
             <title>Print - ${item.topic}</title>
             <style>
+              @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Comic+Neue:wght@400;700&family=Schoolbell&display=swap');
               body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
               img { max-width: 100%; height: auto; border-radius: 0.5rem; display: block; margin: 1rem 0; }
               hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
+              .font-patrick-hand { font-family: 'Patrick Hand', cursive; }
+              .font-comic-neue { font-family: 'Comic Neue', cursive; }
+              .font-schoolbell { font-family: 'Schoolbell', cursive; }
               h1, h2, h3, h4 { font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
-              h1 { font-size: 2em; }
-              h2 { font-size: 1.5em; }
-              h3 { font-size: 1.25em; }
               ol, ul { padding-left: 1.5rem; }
-              em { font-style: italic; color: #555; }
             </style>
           </head>
           <body>
-            <h1>${item.topic}</h1>
-            <h2>${item.contentType}</h2>
-            <hr />
             ${item.content}
-            ${item.memo ? `
-              <hr style="margin-top: 3rem;" />
-              <h2>Memo</h2>
-              ${item.memo}
-            ` : ''}
-            ${item.rubric ? `
-              <hr style="margin-top: 3rem;" />
-              <h2>Rubric</h2>
-              ${item.rubric}
-            ` : ''}
+            ${item.memo ? `<hr /><h2>Memo</h2>${item.memo}` : ''}
+            ${item.rubric ? `<hr /><h2>Rubric</h2>${item.rubric}` : ''}
           </body>
         </html>
       `);
@@ -94,7 +147,7 @@ export default function ContentHistoryPage() {
           Content History
         </h1>
         <p className="text-muted-foreground">
-          Review your last 10 pieces of AI-generated content.
+          Review and assign your previous AI-generated content.
         </p>
 
         {isLoading && (
@@ -116,66 +169,77 @@ export default function ContentHistoryPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {contentHistory?.map((item) => (
-            <Card key={item.id}>
+            <Card key={item.id} className="flex flex-col">
               <CardHeader>
                 <CardTitle className="truncate">{item.topic}</CardTitle>
                 <CardDescription>
                   {item.createdAt ? format(item.createdAt.toDate(), 'PPP') : 'Date unknown'}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 flex-1">
                 <div>
                   <Badge variant="secondary">{item.contentType}</Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Grade {item.grade} - {item.subject}
                 </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <Eye className="mr-2 h-4 w-4" /> View Content
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>{item.topic}</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-auto p-4">
-                        <Tabs defaultValue="content" className="w-full">
-                          <TabsList>
-                            <TabsTrigger value="content">Content</TabsTrigger>
-                            {item.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
-                            {item.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
-                          </TabsList>
-                          <TabsContent value="content" className="mt-4">
-                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
-                                <div dangerouslySetInnerHTML={{ __html: item.content }} />
-                              </div>
-                          </TabsContent>
-                          {item.memo && <TabsContent value="memo" className="mt-4">
-                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
-                                <div dangerouslySetInnerHTML={{ __html: item.memo }} />
-                              </div>
-                          </TabsContent>}
-                          {item.rubric && <TabsContent value="rubric" className="mt-4">
-                              <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
-                                <div dangerouslySetInnerHTML={{ __html: item.rubric }} />
-                              </div>
-                          </TabsContent>}
-                        </Tabs>
-                    </div>
-                     <DialogFooter className="p-4 pt-2 border-t">
-                        <Button variant="outline" onClick={() => handlePrint(item)}>
-                          <Printer className="mr-2 h-4 w-4" />
-                          Print
-                        </Button>
-                      </DialogFooter>
-                  </DialogContent>
-                </Dialog>
               </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setSelectedItem(item)}>
+                  <Eye className="mr-2 h-4 w-4" /> View / Assign
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
+
+        <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{selectedItem?.topic}</DialogTitle>
+              <DialogDescription>Review content and assign to a class.</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto p-4 border rounded-md">
+                <Tabs defaultValue="content" className="w-full">
+                  <TabsList>
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                    {selectedItem?.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
+                    {selectedItem?.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
+                  </TabsList>
+                  <TabsContent value="content" className="mt-4">
+                      <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                        <div dangerouslySetInnerHTML={{ __html: selectedItem?.content || '' }} />
+                      </div>
+                  </TabsContent>
+                  {selectedItem?.memo && <TabsContent value="memo" className="mt-4">
+                      <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                        <div dangerouslySetInnerHTML={{ __html: selectedItem?.memo || '' }} />
+                      </div>
+                  </TabsContent>}
+                  {selectedItem?.rubric && <TabsContent value="rubric" className="mt-4">
+                      <div className="prose dark:prose-invert max-w-none bg-muted/50 p-4 rounded-md">
+                        <div dangerouslySetInnerHTML={{ __html: selectedItem?.rubric || '' }} />
+                      </div>
+                  </TabsContent>}
+                </Tabs>
+            </div>
+             <DialogFooter className="flex-col sm:flex-row gap-4 pt-4 border-t">
+                <Button variant="outline" onClick={() => selectedItem && handlePrint(selectedItem)}>
+                  <Printer className="mr-2 h-4 w-4" /> Print
+                </Button>
+                <div className="flex-1 flex gap-2 items-center">
+                    <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
+                        <SelectContent>{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)}>
+                        {isAssigning ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Assign
+                    </Button>
+                </div>
+              </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

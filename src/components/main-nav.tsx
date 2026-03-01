@@ -14,6 +14,8 @@ import {
   Cog,
   History,
   BarChart,
+  Library,
+  GraduationCap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -28,8 +30,10 @@ import { doc } from 'firebase/firestore';
 const allNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/content-generator', label: 'Content Generator', icon: Bot, roles: ['teacher', 'admin'] },
+  { href: '/template-archive', label: 'Template Store', icon: Library, roles: ['teacher', 'admin'] },
   { href: '/content-history', label: 'Content History', icon: History, roles: ['teacher', 'admin'] },
-  { href: '/my-classes', label: 'My Classes', icon: Users, roles: ['teacher', 'student', 'admin'] },
+  { href: '/my-classes', label: 'My Classes', icon: GraduationCap, roles: ['teacher', 'student', 'admin'] },
+  { href: '/students', label: 'Manage Students', icon: Users, roles: ['teacher', 'admin'] },
   { href: '/progress-reports', label: 'Progress Reports', icon: BarChart, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/ocr', label: 'OCR Tool', icon: ScanText, roles: ['teacher', 'student', 'admin'] },
   { href: '/ai-tutor', label: 'AI Tutor', icon: Sparkles, roles: ['teacher', 'student', 'parent', 'admin'] },

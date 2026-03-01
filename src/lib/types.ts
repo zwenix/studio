@@ -116,3 +116,16 @@ export interface ChatMessage {
   text: string;
   createdAt: Timestamp;
 }
+
+export interface Template {
+  id: string;
+  title: string;
+  description: string;
+  grade: string;
+  subject: string;
+  contentType: string;
+  content: string;
+  memo?: string;
+  rubric?: string;
+  category: 'Foundation' | 'Intermediate' | 'Senior' | 'FET';
+}

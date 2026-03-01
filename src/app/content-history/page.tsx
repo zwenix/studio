@@ -63,9 +63,14 @@ export default function ContentHistoryPage() {
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
   const handleAssign = async (item: GeneratedContent) => {
-    if (!item || !selectedClassId || !user) return;
+    if (!item || !selectedClassId || !user) {
+        toast({ title: 'Missing Information', description: 'Please select a class.', variant: 'destructive' });
+        return;
+    }
+    
     setIsAssigning(true);
     try {
+        // 1. Create a persistent content record
         const contentRef = await addDoc(collection(firestore, 'content'), {
             teacherId: user.uid,
             grade: item.grade,
@@ -78,11 +83,16 @@ export default function ContentHistoryPage() {
             createdAt: serverTimestamp(),
         });
 
-        const batch = writeBatch(firestore);
         const selectedClass = teacherClasses?.find(c => c.id === selectedClassId);
+        if (!selectedClass || !selectedClass.learnerIds || selectedClass.learnerIds.length === 0) {
+            throw new Error("This class has no students to assign content to.");
+        }
+
+        const batch = writeBatch(firestore);
         const dueDate = Timestamp.fromDate(add(new Date(), { days: 7 }));
 
-        selectedClass?.learnerIds.forEach(learnerId => {
+        selectedClass.learnerIds.forEach(learnerId => {
+            // Get a unique doc reference for each assignment
             const assignmentRef = doc(collection(firestore, 'classes', selectedClassId, 'assignments'));
             batch.set(assignmentRef, {
                 contentId: contentRef.id,
@@ -96,9 +106,11 @@ export default function ContentHistoryPage() {
         });
 
         await batch.commit();
-        toast({ title: 'Success!', description: `Content assigned.` });
+        toast({ title: 'Success!', description: `Content assigned to ${selectedClass.learnerIds.length} students.` });
         setSelectedItem(null);
+        setSelectedClassId('');
     } catch (error: any) {
+        console.error("Assignment error:", error);
         toast({ title: 'Assignment Failed', description: error.message, variant: 'destructive' });
     } finally {
         setIsAssigning(false);

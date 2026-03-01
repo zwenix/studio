@@ -1,5 +1,16 @@
 import { Template } from './types';
 
+/**
+ * TEMPLATE ARCHIVE DATA
+ * 
+ * To add your own templates:
+ * 1. Create a new object inside the StaticTemplates array.
+ * 2. Give it a unique 'id' (e.g., 'my-template-1').
+ * 3. Fill in the 'title', 'description', 'grade', 'subject', and 'category'.
+ * 4. Paste your HTML content into the 'content' field (use backticks `` for multi-line).
+ * 5. Add an optional 'rubric' or 'memo'.
+ */
+
 export const StaticTemplates: Template[] = [
   {
     id: 'tpl-1',
@@ -68,5 +79,37 @@ export const StaticTemplates: Template[] = [
       </div>
     `,
     rubric: '10 marks for correct gradient and explanation.',
-  }
+  },
+  {
+    id: 'tpl-4',
+    title: 'Subject Improvement Plan Tracker',
+    description: 'A tracking tool for teachers to monitor student progress and plan interventions.',
+    grade: 'Any',
+    subject: 'General',
+    contentType: 'improvement-plan-tracker',
+    category: 'Senior',
+    content: `
+      <div>
+        <h1>Subject Improvement Plan</h1>
+        <p>Teacher: ____________________ Date: __________</p>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+          <thead>
+            <tr style="background-color: #f2f2f2;">
+              <th style="border: 1px solid #000; padding: 8px;">Student Name</th>
+              <th style="border: 1px solid #000; padding: 8px;">Current Grade</th>
+              <th style="border: 1px solid #000; padding: 8px;">Target Grade</th>
+              <th style="border: 1px solid #000; padding: 8px;">Intervention Strategy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="border: 1px solid #000; padding: 8px; height: 30px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td></tr>
+            <tr><td style="border: 1px solid #000; padding: 8px; height: 30px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td></tr>
+            <tr><td style="border: 1px solid #000; padding: 8px; height: 30px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td><td style="border: 1px solid #000; padding: 8px;"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    `,
+    rubric: 'Internal teacher tool.',
+  },
+  // --- PASTE YOUR NEW TEMPLATES BELOW THIS LINE ---
 ];

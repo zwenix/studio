@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, UserPlus, Loader2, Edit2, Mail, GraduationCap } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { User as UserProfile } from '@/lib/types';
+import type { User as UserProfile, Learner } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function StudentsPage() {
@@ -21,8 +21,8 @@ export default function StudentsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const [isCreating, setIsCreating] = useState(false);
-  const [isEditing, setIsEditing] = useState<UserProfile | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', grade: '' });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,31 +30,52 @@ export default function StudentsPage() {
   const studentsQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'student')), [firestore]);
   const { data: students, isLoading: areStudentsLoading } = useCollection<UserProfile>(studentsQuery);
 
+  const handleOpenDialog = (student: UserProfile | null = null) => {
+    if (student) {
+      setEditingStudent(student);
+      setFormData({ 
+        firstName: student.firstName || '', 
+        lastName: student.lastName || '', 
+        email: student.email || '',
+        grade: '' 
+      });
+      // Fetch grade from learners collection
+      getDoc(doc(firestore, 'learners', student.id)).then(snap => {
+        if (snap.exists()) {
+          setFormData(prev => ({ ...prev, grade: (snap.data() as Learner).grade }));
+        }
+      });
+    } else {
+      setEditingStudent(null);
+      setFormData({ firstName: '', lastName: '', email: '', grade: '' });
+    }
+    setIsDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      toast({ title: 'Required Fields', description: 'Please fill in all details.', variant: 'destructive' });
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.grade) {
+      toast({ title: 'Required Fields', description: 'Please fill in all details including grade.', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
-      if (isEditing) {
+      if (editingStudent) {
         // Update existing student
-        const userRef = doc(firestore, 'users', isEditing.id);
+        const userRef = doc(firestore, 'users', editingStudent.id);
         await updateDoc(userRef, {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
         });
         
-        const learnerRef = doc(firestore, 'learners', isEditing.id);
+        const learnerRef = doc(firestore, 'learners', editingStudent.id);
         await setDoc(learnerRef, { grade: formData.grade }, { merge: true });
 
         toast({ title: 'Student updated successfully' });
       } else {
-        // Create new student record (Simulation: Creating Firestore doc)
-        // In a real app, this would use a Cloud Function to create Firebase Auth user
+        // Create new student record
         const newStudentId = doc(collection(firestore, 'users')).id;
         const userRef = doc(firestore, 'users', newStudentId);
         
@@ -77,24 +98,13 @@ export default function StudentsPage() {
 
         toast({ title: 'Student record created!' });
       }
-      setFormData({ firstName: '', lastName: '', email: '', grade: '' });
-      setIsCreating(false);
-      setIsEditing(null);
+      setIsDialogOpen(false);
     } catch (error: any) {
+      console.error("Student management error:", error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const startEdit = (student: UserProfile) => {
-    setFormData({ 
-        firstName: student.firstName, 
-        lastName: student.lastName, 
-        email: student.email,
-        grade: '' // Grade would ideally be fetched from 'learners' doc
-    });
-    setIsEditing(student);
   };
 
   return (
@@ -105,13 +115,13 @@ export default function StudentsPage() {
             <Users className="mr-3 h-8 w-8" />
             Student Management
           </h1>
-          <Dialog open={isCreating || !!isEditing} onOpenChange={(open) => { if(!open) { setIsCreating(false); setIsEditing(null); } }}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsCreating(true)}><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
+              <Button onClick={() => handleOpenDialog()}><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{isEditing ? 'Edit Student' : 'Add New Student'}</DialogTitle>
+                <DialogTitle>{editingStudent ? 'Edit Student' : 'Add New Student'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -141,7 +151,7 @@ export default function StudentsPage() {
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? <Loader2 className="animate-spin" /> : (isEditing ? 'Update' : 'Create Student')}
+                    {isLoading ? <Loader2 className="animate-spin" /> : (editingStudent ? 'Update Student' : 'Create Student')}
                   </Button>
                 </DialogFooter>
               </form>
@@ -173,14 +183,14 @@ export default function StudentsPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={s.avatarUrl} />
-                            <AvatarFallback>{s.firstName[0]}{s.lastName[0]}</AvatarFallback>
+                            <AvatarFallback>{s.firstName?.[0]}{s.lastName?.[0]}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{s.firstName} {s.lastName}</span>
                         </div>
                       </TableCell>
                       <TableCell>{s.email}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => startEdit(s)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(s)}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

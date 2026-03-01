@@ -1,26 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Library, Search, Eye, Send, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code } from 'lucide-react';
 import { StaticTemplates } from '@/lib/templates';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, query, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { add } from 'date-fns';
 import type { Class, Template } from '@/lib/types';
+import { educationalData } from '@/lib/educational-data';
 
 export default function TemplateArchivePage() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -28,18 +33,100 @@ export default function TemplateArchivePage() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
 
+  // Upload States
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadData, setUploadData] = useState({
+    title: '',
+    description: '',
+    grade: '',
+    subject: '',
+    category: '' as 'Foundation' | 'Intermediate' | 'Senior' | 'FET',
+    contentType: '',
+    fileType: 'pdf' as 'pdf' | 'image' | 'html',
+    content: '',
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Fetch contributed templates from Firestore
+  const templatesQuery = useMemoFirebase(() => query(collection(firestore, 'templates')), [firestore]);
+  const { data: contributedTemplates } = useCollection<Template>(templatesQuery);
+
   const teacherClassesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  const filteredTemplates = StaticTemplates.filter(t => {
+  const allTemplates = useMemo(() => {
+    const combined = [...StaticTemplates];
+    if (contributedTemplates) {
+      combined.push(...contributedTemplates);
+    }
+    return combined;
+  }, [contributedTemplates]);
+
+  const filteredTemplates = allTemplates.filter(t => {
     const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          t.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      
+      // Auto-set file type based on extension
+      if (file.type.includes('image')) setUploadData(prev => ({ ...prev, fileType: 'image' }));
+      else if (file.type === 'application/pdf') setUploadData(prev => ({ ...prev, fileType: 'pdf' }));
+      else if (file.name.endsWith('.html')) setUploadData(prev => ({ ...prev, fileType: 'html' }));
+    }
+  };
+
+  const handleUploadTemplate = async () => {
+    if (!user || !storage) return;
+    if (!uploadData.title || !uploadData.grade || !uploadData.subject || !uploadData.category) {
+      toast({ title: "Missing Information", description: "Please fill out all required fields.", variant: 'destructive' });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      let fileUrl = '';
+      let content = uploadData.content;
+
+      if (selectedFile) {
+        if (uploadData.fileType === 'html') {
+          // Read HTML file as text
+          content = await selectedFile.text();
+        } else {
+          // Upload PDF or Image
+          const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
+          await uploadBytes(fileRef, selectedFile);
+          fileUrl = await getDownloadURL(fileRef);
+        }
+      }
+
+      await addDoc(collection(firestore, 'templates'), {
+        ...uploadData,
+        content,
+        fileUrl,
+        teacherId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: 'Success!', description: 'Template added to archive.' });
+      setIsUploadOpen(false);
+      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: '', fileType: 'pdf', content: '' });
+      setSelectedFile(null);
+    } catch (error: any) {
+      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleAssign = async () => {
     if (!viewingTemplate || !selectedClassId || !user) return;
@@ -51,7 +138,9 @@ export default function TemplateArchivePage() {
             subject: viewingTemplate.subject,
             topic: viewingTemplate.title,
             contentType: viewingTemplate.contentType,
-            content: viewingTemplate.content,
+            content: viewingTemplate.content || '',
+            fileUrl: viewingTemplate.fileUrl || '',
+            fileType: viewingTemplate.fileType || 'html',
             memo: viewingTemplate.memo || '',
             rubric: viewingTemplate.rubric || '',
             createdAt: serverTimestamp(),
@@ -87,13 +176,109 @@ export default function TemplateArchivePage() {
   return (
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-          <Library className="mr-3 h-8 w-8 text-primary" />
-          Template Archive
-        </h1>
-        <p className="text-muted-foreground">
-          Ready-to-use CAPS-aligned educational materials. Select a template to view or assign.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
+              <Library className="mr-3 h-8 w-8 text-primary" />
+              Template Store
+            </h1>
+            <p className="text-muted-foreground">
+              Ready-to-use CAPS-aligned materials. Select or upload your own.
+            </p>
+          </div>
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="shadow-lg transform transition hover:scale-105">
+                <Plus className="mr-2 h-5 w-5" /> Upload Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Contribute a Template</DialogTitle>
+                <DialogDescription>Share a high-quality PDF, Image, or HTML template with the community.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label>Title / Topic</Label>
+                  <Input placeholder="e.g. Grade 10 Math: Trigonometry Intro" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea placeholder="What does this template cover?" value={uploadData.description} onChange={e => setUploadData({...uploadData, description: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Phase</Label>
+                    <Select value={uploadData.category} onValueChange={v => setUploadData({...uploadData, category: v as any})}>
+                      <SelectTrigger><SelectValue placeholder="Select Phase" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Foundation">Foundation Phase</SelectItem>
+                        <SelectItem value="Intermediate">Intermediate Phase</SelectItem>
+                        <SelectItem value="Senior">Senior Phase</SelectItem>
+                        <SelectItem value="FET">FET Phase</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Grade</Label>
+                    <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v})}>
+                      <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        <SelectItem value="Any">Any Grade</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subject</Label>
+                  <Input placeholder="e.g. Mathematics" value={uploadData.subject} onChange={e => setUploadData({...uploadData, subject: e.target.value})} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Content Type</Label>
+                  <Select value={uploadData.fileType} onValueChange={v => setUploadData({...uploadData, fileType: v as any})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">PDF Document</SelectItem>
+                      <SelectItem value="image">Image / Infographic</SelectItem>
+                      <SelectItem value="html">HTML Code / File</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {uploadData.fileType === 'html' ? (
+                  <div className="space-y-2">
+                    <Label>Paste HTML or Upload .html file</Label>
+                    <div className="flex flex-col gap-2">
+                      <Input type="file" accept=".html" onChange={handleFileChange} />
+                      <span className="text-center text-xs text-muted-foreground">OR</span>
+                      <Textarea placeholder="Paste HTML here..." rows={8} value={uploadData.content} onChange={e => setUploadData({...uploadData, content: e.target.value})} className="font-mono text-xs" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Upload {uploadData.fileType.toUpperCase()} File</Label>
+                    <div className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+                      <input type="file" accept={uploadData.fileType === 'pdf' ? '.pdf' : 'image/*'} className="hidden" id="tpl-file-upload" onChange={handleFileChange} />
+                      <label htmlFor="tpl-file-upload" className="cursor-pointer">
+                        <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                        {selectedFile ? <p className="font-medium text-primary">{selectedFile.name}</p> : <p className="text-sm text-muted-foreground">Click to select a {uploadData.fileType} file</p>}
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
+                <Button onClick={handleUploadTemplate} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
+                  Submit Template
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
@@ -121,19 +306,24 @@ export default function TemplateArchivePage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((tpl) => (
-            <Card key={tpl.id} className="flex flex-col">
+            <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group">
               <CardHeader>
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="outline">{tpl.category}</Badge>
                   <Badge>Grade {tpl.grade}</Badge>
                 </div>
-                <CardTitle>{tpl.title}</CardTitle>
+                <CardTitle className="group-hover:text-primary transition-colors">{tpl.title}</CardTitle>
                 <CardDescription>{tpl.subject}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground line-clamp-3">
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   {tpl.description}
                 </p>
+                <div className="mt-auto flex items-center gap-2">
+                  {tpl.fileType === 'pdf' && <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100"><FileText className="h-3 w-3 mr-1" /> PDF</Badge>}
+                  {tpl.fileType === 'image' && <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100"><ImageIcon className="h-3 w-3 mr-1" /> Image</Badge>}
+                  {(!tpl.fileType || tpl.fileType === 'html') && <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100"><Code className="h-3 w-3 mr-1" /> HTML</Badge>}
+                </div>
               </CardContent>
               <CardFooter>
                 <Button variant="secondary" className="w-full" onClick={() => setSelectedTemplate(tpl)}>
@@ -153,28 +343,45 @@ export default function TemplateArchivePage() {
         <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setSelectedTemplate(null)}>
           <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>{viewingTemplate?.title}</DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{viewingTemplate?.title}</DialogTitle>
+                {viewingTemplate?.fileUrl && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={viewingTemplate.fileUrl} target="_blank" rel="noreferrer">Open in New Tab</a>
+                  </Button>
+                )}
+              </div>
               <DialogDescription>
                 Review the content and assign it to your class.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-1 overflow-auto p-4 border rounded-md">
-              <Tabs defaultValue="content">
+            <div className="flex-1 overflow-hidden p-4 border rounded-md bg-muted/20">
+              <Tabs defaultValue="content" className="h-full flex flex-col">
                 <TabsList>
-                  <TabsTrigger value="content">Content</TabsTrigger>
+                  <TabsTrigger value="content">Content Preview</TabsTrigger>
                   <TabsTrigger value="rubric">Rubric</TabsTrigger>
                 </TabsList>
-                <TabsContent value="content" className="prose dark:prose-invert max-w-none pt-4">
-                  <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.content || '' }} />
+                <TabsContent value="content" className="flex-1 overflow-auto mt-4 min-h-0">
+                  {viewingTemplate?.fileType === 'pdf' ? (
+                    <iframe src={viewingTemplate.fileUrl} className="w-full h-full rounded-md border" />
+                  ) : viewingTemplate?.fileType === 'image' ? (
+                    <img src={viewingTemplate.fileUrl} alt="Template" className="max-w-full h-auto mx-auto rounded-md" />
+                  ) : (
+                    <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
+                      <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.content || '' }} />
+                    </div>
+                  )}
                 </TabsContent>
-                <TabsContent value="rubric" className="prose dark:prose-invert max-w-none pt-4">
-                  <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric provided.' }} />
+                <TabsContent value="rubric" className="flex-1 overflow-auto mt-4 min-h-0">
+                  <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric provided for this template.' }} />
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-4 pt-4 border-t">
+            <DialogFooter className="flex-col sm:flex-row gap-4 pt-4 border-t mt-4">
               <div className="flex-1 flex gap-2 items-center">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                   <SelectTrigger className="w-full">
@@ -186,7 +393,7 @@ export default function TemplateArchivePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign}>
+                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign} className="shrink-0">
                   {isAssigning ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   Assign
                 </Button>

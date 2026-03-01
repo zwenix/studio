@@ -40,6 +40,8 @@ export interface Content {
     subject: string;
     topic: string;
     content: string;
+    fileUrl?: string;
+    fileType?: 'pdf' | 'image' | 'html';
     memo?: string;
     rubric?: string;
 }
@@ -125,7 +127,11 @@ export interface Template {
   subject: string;
   contentType: string;
   content: string;
+  fileUrl?: string;
+  fileType?: 'pdf' | 'image' | 'html';
   memo?: string;
   rubric?: string;
   category: 'Foundation' | 'Intermediate' | 'Senior' | 'FET';
+  teacherId?: string; // Optional for user-contributed
+  createdAt?: Timestamp;
 }

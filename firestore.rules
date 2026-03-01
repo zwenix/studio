@@ -63,6 +63,12 @@ service cloud.firestore {
       allow update, delete: if (isOwner(resource.data.teacherId) && documentExists()) || isAdmin();
     }
 
+    match /templates/{templateId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacher() || isAdmin();
+      allow update, delete: if isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
     match /classes/{classId} {
         function isParentOfEnrolledStudent() {
             return isSignedIn() && request.auth.uid in resource.data.parentIds;

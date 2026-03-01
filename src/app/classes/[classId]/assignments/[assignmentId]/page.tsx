@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { autograde, AutogradeInput } from '@/ai/flows/autograder-flow';
-import { Loader2, Sparkles, FileCheck2, ArrowLeft } from 'lucide-react';
+import { Loader2, Sparkles, FileCheck2, ArrowLeft, Download, Eye } from 'lucide-react';
 import type { Assignment, Content, Teacher } from '@/lib/types';
 
 export default function AssignmentPage() {
@@ -129,14 +129,35 @@ export default function AssignmentPage() {
         {!pageLoading && content && assignment && (
           <div className="grid gap-8 md:grid-cols-1">
             <Card>
-              <CardHeader>
-                <CardTitle>{content.topic}</CardTitle>
-                <CardDescription>
-                  Due by: {assignment.dueDate.toDate().toLocaleDateString()}
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>{content.topic}</CardTitle>
+                  <CardDescription>
+                    Due by: {assignment.dueDate.toDate().toLocaleDateString()}
+                  </CardDescription>
+                </div>
+                {content.fileUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={content.fileUrl} target="_blank" rel="noreferrer">
+                      <Download className="mr-2 h-4 w-4" /> Download Original
+                    </a>
+                  </Button>
+                )}
               </CardHeader>
-              <CardContent className="prose dark:prose-invert max-w-none p-6">
-                 <div dangerouslySetInnerHTML={{ __html: content.content }} />
+              <CardContent className="p-6">
+                 {content.fileType === 'pdf' ? (
+                   <div className="aspect-[4/3] w-full border rounded-md overflow-hidden bg-muted/20">
+                      <iframe src={content.fileUrl} className="w-full h-full" title="PDF Assignment" />
+                   </div>
+                 ) : content.fileType === 'image' ? (
+                   <div className="flex justify-center bg-muted/20 rounded-md p-4">
+                      <img src={content.fileUrl} alt="Assignment" className="max-w-full h-auto rounded shadow-sm" />
+                   </div>
+                 ) : (
+                   <div className="prose dark:prose-invert max-w-none">
+                      <div dangerouslySetInnerHTML={{ __html: content.content }} />
+                   </div>
+                 )}
               </CardContent>
             </Card>
 

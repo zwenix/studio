@@ -84,6 +84,10 @@ service cloud.firestore {
               return isOwner(get(/databases/$(database)/documents/classes/$(classId)).data.teacherId);
             }
 
+            function isStudentInClass() {
+              return request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds;
+            }
+
             function isParentOfAssignedStudent() {
                 let parentDoc = get(/databases/$(database)/documents/parents/$(request.auth.uid));
                 return parentDoc.exists && resource.data.learnerId in parentDoc.data.childIds;
@@ -96,7 +100,7 @@ service cloud.firestore {
                 isAdmin()
             );
 
-            allow list: if isClassTeacher() || isParentOfEnrolledStudent() || isAdmin();
+            allow list: if isClassTeacher() || isStudentInClass() || isParentOfEnrolledStudent() || isAdmin();
             allow create: if (isClassTeacher() && request.resource.data.learnerId in get(/databases/$(database)/documents/classes/$(classId)).data.learnerIds) || isAdmin();
             allow update: if (documentExists() && (isOwner(resource.data.teacherId) || isOwner(resource.data.learnerId))) || isAdmin();
             allow delete: if (documentExists() && isClassTeacher()) || isAdmin();

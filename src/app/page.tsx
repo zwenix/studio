@@ -37,7 +37,7 @@ export default function LandingPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-indigo-900 to-slate-900 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
       {/* Magical Floating Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
@@ -94,12 +94,13 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative z-10 animate-float">
                 <Image 
-                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200"} 
+                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200"} 
                   alt="Happy learning adventure" 
                   width={800} 
                   height={600} 
                   className="rounded-[4rem] shadow-[0_0_50px_rgba(250,204,21,0.2)] border-8 border-white/10"
                   priority
+                  data-ai-hint="space education"
                 />
               </div>
               <div className="absolute -bottom-10 -right-10 w-56 h-56 bg-indigo-600 rounded-full flex items-center justify-center animate-wiggle z-20 shadow-2xl border-4 border-white/20 text-center p-6">
@@ -175,6 +176,7 @@ export default function LandingPage() {
                   width={500} 
                   height={500} 
                   className="animate-float drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]"
+                  data-ai-hint="friendly robot"
                 />
               </div>
             </div>

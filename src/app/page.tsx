@@ -37,18 +37,18 @@ export default function LandingPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-blue-900 via-indigo-900 to-blue-900 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
       {/* Magical Floating Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
         <Star className="absolute top-40 right-20 w-12 h-12 text-yellow-200 animate-float opacity-30" />
         <Star className="absolute bottom-40 left-1/4 w-10 h-10 text-purple-300 animate-wiggle opacity-20" />
-        <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] animate-float" />
+        <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] animate-float" />
       </div>
 
       {/* Navigation */}
-      <header className="fixed top-0 w-full bg-slate-950/50 backdrop-blur-xl z-50 border-b border-white/5">
+      <header className="fixed top-0 w-full bg-blue-950/50 backdrop-blur-xl z-50 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="p-1 rounded-xl transform group-hover:rotate-12 transition-transform bg-transparent">
@@ -94,13 +94,13 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative z-10 animate-float">
                 <Image 
-                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200"} 
-                  alt="Happy learning adventure" 
+                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200"} 
+                  alt="Multiracial children in a classroom" 
                   width={800} 
                   height={600} 
                   className="rounded-[4rem] shadow-[0_0_50px_rgba(250,204,21,0.2)] border-8 border-white/10"
                   priority
-                  data-ai-hint="space education"
+                  data-ai-hint="multiracial classroom"
                 />
               </div>
               <div className="absolute -bottom-10 -right-10 w-56 h-56 bg-indigo-600 rounded-full flex items-center justify-center animate-wiggle z-20 shadow-2xl border-4 border-white/20 text-center p-6">
@@ -203,7 +203,7 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 py-20 px-6 border-t border-white/5 text-center">
+      <footer className="bg-blue-950 py-20 px-6 border-t border-white/5 text-center">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
           <div className="flex items-center gap-4">
             <div className="bg-transparent p-1 rounded-lg">

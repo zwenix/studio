@@ -209,7 +209,7 @@ export default function LandingPage() {
             <div className="bg-transparent p-1 rounded-lg">
               <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="Logo" width={24} height={36} />
             </div>
-            <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI Companion</span>
+            <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
           </div>
           <p className="text-blue-100/40 font-medium text-lg">
             &copy; 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu.

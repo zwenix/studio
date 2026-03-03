@@ -22,6 +22,7 @@ import { autograde, AutogradeOutput, AutogradeInput } from '@/ai/flows/autograde
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { Teacher } from '@/lib/types';
 
 

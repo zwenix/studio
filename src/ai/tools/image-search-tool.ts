@@ -24,7 +24,7 @@ export const imageSearchTool = ai.defineTool(
     outputSchema: ImageSearchOutputSchema,
   },
   async ({ query, orientation, imageType }) => {
-    // 1. Try Unsplash (Primary)
+    // 1. Try Unsplash (Primary - User Provided Key)
     const unsplashKey = 'jwckjymTbMndP0-ljq-My-O21RkzILF2aWokAdiYu4Y';
     if (unsplashKey) {
       try {

@@ -38,11 +38,21 @@ service cloud.firestore {
       // Allow teachers to create and edit student profiles
       allow create, update: if isOwner(userId) || isAdmin() || (isTeacher() && (request.resource.data.role == 'student' || resource.data.role == 'student'));
       allow delete: if isAdmin();
+
+      match /ocrUploads/{uploadId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /learners/{learnerId} {
       allow get: if isOwner(learnerId) || isTeacher() || isAdmin();
       allow write: if isOwner(learnerId) || isTeacher() || isAdmin();
+
+      match /academicRecords/{recordId} {
+        allow read: if isOwner(learnerId) || isTeacher() || isAdmin();
+        allow create: if isSignedIn();
+        allow update, delete: if isTeacher() || isAdmin();
+      }
     }
 
     match /teachers/{teacherId} {

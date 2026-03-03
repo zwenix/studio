@@ -135,3 +135,28 @@ export interface Template {
   teacherId?: string; // Optional for user-contributed
   createdAt?: Timestamp;
 }
+
+export interface OcrUpload {
+  id: string;
+  userId: string;
+  contentType: string;
+  text: string;
+  createdAt: Timestamp;
+}
+
+export interface AcademicRecord {
+  id: string;
+  learnerId: string;
+  senderId: string;
+  type: string;
+  content: string;
+  createdAt: Timestamp;
+  teacherNotified: boolean;
+}
+
+export interface Learner {
+  id: string;
+  userId: string;
+  grade: string;
+  learningPreferences: string;
+}

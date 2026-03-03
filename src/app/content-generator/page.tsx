@@ -218,7 +218,7 @@ export default function ContentGeneratorPage() {
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-          <Image src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="EduAI Logo" width={32} height={48} className="mr-3" />
+          <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Logo" width={32} height={48} className="mr-3" />
           AI Content Generator
         </h1>
 

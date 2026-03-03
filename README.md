@@ -1,7 +1,7 @@
 # 🎓 EduAI Companion
 
 <div align="center">
-  <img src="https://i.ibb.co/pjdTJHdk/eduaicompanion-logo1-no-bg-720x1075.png" alt="EduAI Companion Logo" width="120px" />
+  <img src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Companion Logo" width="120px" />
   <p>
     <strong>Personalized Learning, Powered by AI.</strong>
   </p>
@@ -34,7 +34,6 @@ EduAI Companion is packed with features designed for every user role:
 | :--- | :--- | :--- |
 | 🤖 **AI Content Generator** | Instantly create CAPS-compliant lesson plans, exercises, assessments, and posters for any grade, subject, and topic. | Teachers, Admins |
 | ✍️ **AI Autograding** | Automatically grade submitted assignments using a custom rubric, providing instant, detailed feedback to students. | Teachers |
-| 💬 **Multilingual AI Tutor** | A 24/7 AI tutor that can answer student questions on any school subject in multiple languages, with text-to-speech support. | Students, Parents, Teachers |
 | 🔍 **OCR & Handwriting Recognition** | Upload a photo of a handwritten document or worksheet, and the AI will extract the text for digital use or grading. | Teachers, Students |
 | 🧪 **Practice Assessments** | Students can generate mock tests on specific topics to prepare for exams, complete them, and receive an automated grade. | Students |
 | 🏫 **Class & Student Management** | Teachers can create classes, manage student rosters, and view all class-related activities from a central dashboard. | Teachers |

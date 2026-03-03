@@ -31,6 +31,10 @@ const schoolbell = Schoolbell({
 export const metadata: Metadata = {
   title: 'EduAI Companion',
   description: 'An AI-powered educational platform for teachers and students.',
+  icons: {
+    icon: 'https://i.ibb.co/zHtKKvGg/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x64.jpg',
+    apple: 'https://i.ibb.co/6RV1WqHJ/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x128.jpg',
+  },
 };
 
 export default function RootLayout({

@@ -13,24 +13,45 @@ const ImageSearchInputSchema = z.object({
 const ImageSearchOutputSchema = z.object({
   imageUrl: z.string().describe('The URL of the found image.'),
   photographer: z.string().describe('The name of the photographer.'),
-  source: z.string().describe('The source of the image (Pixabay or Pexels).'),
+  source: z.string().describe('The source of the image (Unsplash, Pixabay, or Pexels).'),
 });
 
 export const imageSearchTool = ai.defineTool(
   {
     name: 'searchImage',
-    description: 'Searches for a high-quality, royalty-free image. It tries Pixabay first and falls back to Pexels if needed.',
+    description: 'Searches for high-quality images. Prioritizes Unsplash, falls back to Pixabay and Pexels.',
     inputSchema: ImageSearchInputSchema,
     outputSchema: ImageSearchOutputSchema,
   },
   async ({ query, orientation, imageType }) => {
-    // 1. Try Pixabay First (Primary)
+    // 1. Try Unsplash (Primary)
+    const unsplashKey = 'jwckjymTbMndP0-ljq-My-O21RkzILF2aWokAdiYu4Y';
+    if (unsplashKey) {
+      try {
+        const typeQuery = imageType && imageType !== 'all' ? `${query} ${imageType}` : query;
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(typeQuery)}&orientation=${orientation || 'landscape'}&per_page=1&client_id=${unsplashKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          const photo = data.results[0];
+          return {
+            imageUrl: photo.urls.regular,
+            photographer: photo.user.name,
+            source: 'Unsplash',
+          };
+        }
+      } catch (error) {
+        console.error('Unsplash search failed:', error);
+      }
+    }
+
+    // 2. Fallback to Pixabay (Secondary)
     const pixabayKey = process.env.PIXABAY_API_KEY;
     if (pixabayKey) {
       try {
-        const encodedQuery = encodeURIComponent(query);
         const typeParam = imageType || 'all';
-        const url = `https://pixabay.com/api/?key=${pixabayKey}&q=${encodedQuery}&image_type=${typeParam}&orientation=${orientation || 'all'}&safesearch=true&per_page=3`;
+        const url = `https://pixabay.com/api/?key=${pixabayKey}&q=${encodeURIComponent(query)}&image_type=${typeParam}&orientation=${orientation || 'all'}&safesearch=true&per_page=3`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -43,16 +64,15 @@ export const imageSearchTool = ai.defineTool(
           };
         }
       } catch (error) {
-        console.error('Pixabay search failed, falling back to Pexels:', error);
+        console.error('Pixabay fallback failed:', error);
       }
     }
 
-    // 2. Fallback to Pexels (Secondary)
+    // 3. Fallback to Pexels (Tertiary)
     const pexelsApiKey = process.env.PEXELS_API_KEY;
     if (pexelsApiKey) {
       const client = createClient(pexelsApiKey);
       try {
-        // Pexels doesn't have an image_type filter, so we append it to the query for better results
         let pexelsQuery = query;
         if (imageType === 'illustration' || imageType === 'vector') {
           pexelsQuery += ` ${imageType} drawing`;
@@ -68,7 +88,7 @@ export const imageSearchTool = ai.defineTool(
           };
         }
       } catch (error) {
-        console.error('Pexels search also failed:', error);
+        console.error('Pexels fallback failed:', error);
       }
     }
 

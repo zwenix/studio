@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +37,7 @@ export default function LandingPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-indigo-900 to-slate-900 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
       {/* Magical Floating Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
@@ -50,10 +51,10 @@ export default function LandingPage() {
       <header className="fixed top-0 w-full bg-slate-950/50 backdrop-blur-xl z-50 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="bg-white p-1 rounded-xl transform group-hover:rotate-12 transition-transform">
+            <div className="p-1 rounded-xl transform group-hover:rotate-12 transition-transform bg-transparent">
               <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={32} height={48} />
             </div>
-            <h1 className="text-2xl font-bold font-headline tracking-tight">EduAI <span className="text-yellow-400">Companion</span></h1>
+            <h1 className="text-2xl font-bold font-patrick-hand tracking-tight">EduAI <span className="text-yellow-400">Companion</span></h1>
           </Link>
           <div className="flex gap-4 items-center">
             <Button asChild variant="ghost" className="text-white hover:bg-white/10 hidden sm:flex font-bold">
@@ -93,7 +94,7 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative z-10 animate-float">
                 <Image 
-                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1200"} 
+                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200"} 
                   alt="Happy learning adventure" 
                   width={800} 
                   height={600} 
@@ -203,10 +204,10 @@ export default function LandingPage() {
       <footer className="bg-slate-950 py-20 px-6 border-t border-white/5 text-center">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
           <div className="flex items-center gap-4">
-            <div className="bg-white p-1 rounded-lg">
+            <div className="bg-transparent p-1 rounded-lg">
               <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="Logo" width={24} height={36} />
             </div>
-            <span className="font-headline font-bold text-2xl tracking-tight">EduAI Companion</span>
+            <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI Companion</span>
           </div>
           <p className="text-blue-100/40 font-medium text-lg">
             &copy; 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu.

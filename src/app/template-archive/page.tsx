@@ -23,6 +23,32 @@ import { educationalData } from '@/lib/educational-data';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { generateMemosAndRubrics } from '@/ai/flows/generate-memos-rubrics';
 
+const RESOURCE_CATEGORIES = {
+  "Teaching Tools & Aids": [
+    "Lesson Plans",
+    "Study Guides",
+    "Booklets",
+    "Subject Topic Cutouts",
+    "Other"
+  ],
+  "Exercises, Tasks & Assessments": [
+    "Exercises & Tasks",
+    "Homework",
+    "Assignments & Group Activities",
+    "Other"
+  ],
+  "Class Management & Admin": [
+    "Classroom Labels",
+    "Wall Posters",
+    "Signs",
+    "Illustrations",
+    "Letters to Parents",
+    "Announcements & Notice",
+    "Permission Slips",
+    "Other"
+  ]
+};
+
 export default function TemplateArchivePage() {
   const { toast } = useToast();
   const { user } = useUser();
@@ -30,7 +56,7 @@ export default function TemplateArchivePage() {
   const storage = useStorage();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPhase, setSelectedPhase] = useState('all');
   const [viewingTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -43,8 +69,10 @@ export default function TemplateArchivePage() {
     description: '',
     grade: '',
     subject: '',
-    category: 'Foundation' as 'Foundation' | 'Intermediate' | 'Senior' | 'FET',
-    contentType: 'Worksheet',
+    phase: 'Foundation' as 'Foundation' | 'Intermediate' | 'Senior' | 'FET',
+    resourceCategory: '',
+    subType: '',
+    manualType: '',
     fileType: 'pdf' as 'pdf' | 'image' | 'html',
     content: '',
     memo: '',
@@ -80,8 +108,8 @@ export default function TemplateArchivePage() {
     const description = t.description || '';
     const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesPhase = selectedPhase === 'all' || t.category === selectedPhase;
+    return matchesSearch && matchesPhase;
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,7 +125,10 @@ export default function TemplateArchivePage() {
 
   const handleUploadTemplate = async () => {
     if (!user || !storage) return;
-    if (!uploadData.title || !uploadData.grade || !uploadData.subject || !uploadData.category) {
+    
+    const finalType = uploadData.subType === 'Other' ? uploadData.manualType : uploadData.subType;
+
+    if (!uploadData.title || !uploadData.grade || !uploadData.subject || !uploadData.resourceCategory || !finalType) {
       toast({ title: "Missing Information", description: "Please fill out all required fields.", variant: 'destructive' });
       return;
     }
@@ -120,31 +151,48 @@ export default function TemplateArchivePage() {
         }
       }
 
-      // 2. Auto-generate Memo/Rubric if missing
-      if (!finalMemo || !finalRubric) {
-        toast({ title: 'AI Assistant', description: 'Generating Memo and Rubric...' });
-        const aiResult = await generateMemosAndRubrics({
-            taskDescription: `Title: ${uploadData.title}. Description: ${uploadData.description}. Content: ${content.substring(0, 1000)}`,
-            gradeLevel: uploadData.grade,
-            subject: uploadData.subject
-        });
-        finalMemo = finalMemo || aiResult.memo;
-        finalRubric = finalRubric || aiResult.rubric;
+      // 2. Auto-generate Memo/Rubric ONLY if Category 2 is selected and fields are empty
+      if (uploadData.resourceCategory === "Exercises, Tasks & Assessments") {
+        if (!finalMemo || !finalRubric) {
+          toast({ title: 'AI Assistant', description: 'Generating Memo and Rubric...' });
+          const aiResult = await generateMemosAndRubrics({
+              taskDescription: `Title: ${uploadData.title}. Type: ${finalType}. Description: ${uploadData.description}. Content: ${content.substring(0, 500)}`,
+              gradeLevel: uploadData.grade,
+              subject: uploadData.subject
+          });
+          finalMemo = finalMemo || aiResult.memo;
+          finalRubric = finalRubric || aiResult.rubric;
+        }
+      } else {
+        // Clear them if they aren't meant for this category
+        finalMemo = '';
+        finalRubric = '';
       }
 
       await addDoc(collection(firestore, 'templates'), {
-        ...uploadData,
+        title: uploadData.title,
+        description: uploadData.description,
+        grade: uploadData.grade,
+        subject: uploadData.subject,
+        category: uploadData.phase, // Store phase in category field for compatibility
+        resourceCategory: uploadData.resourceCategory,
+        contentType: finalType,
         content,
         memo: finalMemo,
         rubric: finalRubric,
         fileUrl,
+        fileType: uploadData.fileType,
         teacherId: user.uid,
         createdAt: serverTimestamp(),
       });
 
       toast({ title: 'Success!', description: 'Your content has been loaded and is ready to assign.' });
       setIsUploadOpen(false);
-      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: 'Worksheet', fileType: 'pdf', content: '', memo: '', rubric: '' });
+      setUploadData({ 
+        title: '', description: '', grade: '', subject: '', 
+        phase: 'Foundation', resourceCategory: '', subType: '', manualType: '', 
+        fileType: 'pdf', content: '', memo: '', rubric: '' 
+      });
       setSelectedFile(null);
     } catch (error: any) {
       console.error("Upload failed:", error);
@@ -225,22 +273,19 @@ export default function TemplateArchivePage() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Load Custom Content</DialogTitle>
-                <DialogDescription>Upload an assessment, exercise, or task. If you don't provide a Memo or Rubric, the AI will generate them for you.</DialogDescription>
+                <DialogDescription>Select your category and type. If you provide Exercises or Assessments, AI can generate Memos and Rubrics.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Title / Topic</Label>
                   <Input placeholder="e.g. Grade 10 Math: Trigonometry Intro" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea placeholder="What does this content cover?" value={uploadData.description} onChange={e => setUploadData({...uploadData, description: e.target.value})} />
-                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Phase</Label>
-                    <Select value={uploadData.category} onValueChange={v => setUploadData({...uploadData, category: v as any})}>
-                      <SelectTrigger><SelectValue placeholder="Select Phase" /></SelectTrigger>
+                    <Label>Phase (CAPS)</Label>
+                    <Select value={uploadData.phase} onValueChange={v => setUploadData({...uploadData, phase: v as any})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Foundation">Foundation Phase</SelectItem>
                         <SelectItem value="Intermediate">Intermediate Phase</SelectItem>
@@ -260,6 +305,39 @@ export default function TemplateArchivePage() {
                     </Select>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Organization Category</Label>
+                    <Select value={uploadData.resourceCategory} onValueChange={v => setUploadData({...uploadData, resourceCategory: v, subType: '', manualType: ''})}>
+                      <SelectTrigger><SelectValue placeholder="Choose Category" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(RESOURCE_CATEGORIES).map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Specific Type</Label>
+                    <Select value={uploadData.subType} onValueChange={v => setUploadData({...uploadData, subType: v})} disabled={!uploadData.resourceCategory}>
+                      <SelectTrigger><SelectValue placeholder="Choose Type" /></SelectTrigger>
+                      <SelectContent>
+                        {uploadData.resourceCategory && RESOURCE_CATEGORIES[uploadData.resourceCategory as keyof typeof RESOURCE_CATEGORIES].map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {uploadData.subType === 'Other' && (
+                  <div className="space-y-2">
+                    <Label>Manually Specify Type</Label>
+                    <Input placeholder="e.g. Permission Slip, Activity Sheet" value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} />
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Subject</Label>
                   <Input placeholder="e.g. Mathematics" value={uploadData.subject} onChange={e => setUploadData({...uploadData, subject: e.target.value})} />
@@ -288,22 +366,24 @@ export default function TemplateArchivePage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
-                        <Textarea placeholder="Paste your memo here..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} rows={4} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="flex items-center gap-2">Rubric <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
-                        <Textarea placeholder="Paste your rubric here..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} rows={4} />
-                    </div>
-                </div>
+                {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+                      <div className="space-y-2">
+                          <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
+                          <Textarea placeholder="Paste your memo here..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} rows={4} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label className="flex items-center gap-2">Rubric <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
+                          <Textarea placeholder="Paste your rubric here..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} rows={4} />
+                      </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
                 <Button onClick={handleUploadTemplate} disabled={isUploading}>
                   {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                  {(!uploadData.memo || !uploadData.rubric) ? 'AI Generate & Load' : 'Load Content'}
+                  {(uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (!uploadData.memo || !uploadData.rubric)) ? 'AI Generate & Load' : 'Load Content'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -320,9 +400,9 @@ export default function TemplateArchivePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select value={selectedPhase} onValueChange={setSelectedPhase}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder="Phase Filter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Phases</SelectItem>
@@ -338,9 +418,7 @@ export default function TemplateArchivePage() {
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error Loading Community Content</AlertTitle>
-            <AlertDescription>
-              We couldn't fetch some templates. You can still use the system templates below.
-            </AlertDescription>
+            <AlertDescription>We couldn't fetch some templates. You can still use the system templates below.</AlertDescription>
           </Alert>
         )}
 
@@ -355,9 +433,7 @@ export default function TemplateArchivePage() {
             <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group relative">
               {tpl.teacherId && (
                 <div className="absolute top-2 right-2 z-10">
-                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                    My Content
-                  </Badge>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">My Content</Badge>
                 </div>
               )}
               <CardHeader>
@@ -369,13 +445,11 @@ export default function TemplateArchivePage() {
                 <CardDescription>{tpl.subject}</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {tpl.description}
-                </p>
+                <p className="text-sm text-muted-foreground line-clamp-2">{tpl.description}</p>
                 <div className="mt-auto flex items-center gap-2">
-                  {tpl.fileType === 'pdf' && <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100"><FileText className="h-3 w-3 mr-1" /> PDF</Badge>}
-                  {tpl.fileType === 'image' && <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100"><ImageIcon className="h-3 w-3 mr-1" /> Image</Badge>}
-                  {(!tpl.fileType || tpl.fileType === 'html') && <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100"><Code className="h-3 w-3 mr-1" /> HTML</Badge>}
+                  {tpl.fileType === 'pdf' && <Badge variant="secondary" className="bg-red-100 text-red-700"><FileText className="h-3 w-3 mr-1" /> PDF</Badge>}
+                  {tpl.fileType === 'image' && <Badge variant="secondary" className="bg-blue-100 text-blue-700"><ImageIcon className="h-3 w-3 mr-1" /> Image</Badge>}
+                  {(!tpl.fileType || tpl.fileType === 'html') && <Badge variant="secondary" className="bg-green-100 text-green-700"><Code className="h-3 w-3 mr-1" /> HTML</Badge>}
                 </div>
               </CardContent>
               <CardFooter>
@@ -400,25 +474,23 @@ export default function TemplateArchivePage() {
                 <DialogTitle>{viewingTemplate?.title}</DialogTitle>
                 {viewingTemplate?.fileUrl && (
                   <Button variant="ghost" size="sm" asChild>
-                    <a href={viewingTemplate.fileUrl} target="_blank" rel="noreferrer">Open in New Tab</a>
+                    <a href={viewingTemplate.fileUrl} target="_blank" rel="noreferrer">Open Original</a>
                   </Button>
                 )}
               </div>
-              <DialogDescription>
-                Review the content and assign it to your class.
-              </DialogDescription>
+              <DialogDescription>Review content and assign to class.</DialogDescription>
             </DialogHeader>
             
             <div className="flex-1 overflow-hidden p-4 border rounded-md bg-muted/20">
               <Tabs defaultValue="content" className="h-full flex flex-col">
                 <TabsList>
-                  <TabsTrigger value="content">Content Preview</TabsTrigger>
+                  <TabsTrigger value="content">Content</TabsTrigger>
                   <TabsTrigger value="memo">Memo</TabsTrigger>
                   <TabsTrigger value="rubric">Rubric</TabsTrigger>
                 </TabsList>
-                <TabsContent value="content" className="flex-1 overflow-auto mt-4 min-h-0">
+                <TabsContent value="content" className="flex-1 overflow-auto mt-4">
                   {viewingTemplate?.fileType === 'pdf' ? (
-                    <iframe src={viewingTemplate.fileUrl} className="w-full h-full rounded-md border" />
+                    <iframe src={viewingTemplate.fileUrl} className="w-full h-full rounded-md border bg-white" />
                   ) : viewingTemplate?.fileType === 'image' ? (
                     <img src={viewingTemplate.fileUrl} alt="Template" className="max-w-full h-auto mx-auto rounded-md" />
                   ) : (
@@ -427,14 +499,14 @@ export default function TemplateArchivePage() {
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="memo" className="flex-1 overflow-auto mt-4 min-h-0">
+                <TabsContent value="memo" className="flex-1 overflow-auto mt-4">
                   <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
-                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo provided.' }} />
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo available.' }} />
                   </div>
                 </TabsContent>
-                <TabsContent value="rubric" className="flex-1 overflow-auto mt-4 min-h-0">
+                <TabsContent value="rubric" className="flex-1 overflow-auto mt-4">
                   <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
-                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric provided.' }} />
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric available.' }} />
                   </div>
                 </TabsContent>
               </Tabs>
@@ -443,16 +515,12 @@ export default function TemplateArchivePage() {
             <DialogFooter className="flex-col sm:flex-row gap-4 pt-4 border-t mt-4">
               <div className="flex-1 flex gap-2 items-center">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Class to Assign" />
-                  </SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select Class to Assign" /></SelectTrigger>
                   <SelectContent>
-                    {teacherClasses?.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
+                    {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign} className="shrink-0">
+                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign}>
                   {isAssigning ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   Assign
                 </Button>

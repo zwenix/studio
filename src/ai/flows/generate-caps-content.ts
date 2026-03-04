@@ -15,24 +15,6 @@ const GradeSchema = z.enum([
 const SubjectSchema = z.string().describe('The subject for which to generate content.');
 const TopicSchema = z.string().describe('The specific topic within the subject.');
 
-const ContentTypeSchema = z.enum([
-  'lesson plan',
-  'exercise',
-  'assessment',
-  'class planner',
-  'educational poster',
-  'booklet-reading-handwriting-phonics',
-  'reading-comprehension',
-  'study-guide-notes',
-  'subject-topic-cutouts',
-  'letter-to-parents',
-  'classroom-subject-poster',
-  'improvement-plan-tracker',
-  'worksheet-handwriting-practice',
-  'worksheet-multipurpose',
-  'classroom-labels',
-]);
-
 const AssessmentFormatSchema = z.enum([
   'multiple choice',
   'short answer',
@@ -47,7 +29,7 @@ const GenerateCAPSContentInputSchema = z.object({
   grade: GradeSchema.describe('The grade level for which to generate content.'),
   subject: SubjectSchema.describe('The subject for which to generate content.'),
   topic: TopicSchema.describe('The specific topic within the subject.'),
-  contentType: ContentTypeSchema.describe('The type of content to generate.'),
+  contentType: z.string().describe('The type of content to generate (e.g., Lesson Plan, Assignment, Poster).'),
   additionalInstructions: z.string().optional().describe('Any specific instructions.'),
   difficulty: z.string().optional().describe('Difficulty level (Easy, Medium, Hard).'),
   length: z.string().optional().describe('Desired length or number of questions.'),

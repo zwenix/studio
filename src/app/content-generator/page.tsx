@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,14 +33,31 @@ import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Tim
 import { add } from 'date-fns';
 import type { Class, Teacher } from '@/lib/types';
 
-type ContentType = "lesson plan" | "exercise" | "assessment" | "class planner" | "educational poster" | "booklet-reading-handwriting-phonics" | "reading-comprehension" | "study-guide-notes" | "subject-topic-cutouts" | "letter-to-parents" | "classroom-subject-poster" | "improvement-plan-tracker" | "worksheet-handwriting-practice" | "worksheet-multipurpose" | "classroom-labels";
-
-const fonts = [
-    { value: 'font-patrick-hand', label: "Teacher's Pet" },
-    { value: 'font-comic-neue', label: 'Comic Neue' },
-    { value: 'font-schoolbell', label: 'Schoolbell' },
-    { value: 'font-sans', label: 'Default Sans-Serif' },
-];
+const CONTENT_CATEGORIES = {
+  "Teaching Tools & Aids": [
+    "Lesson Plans",
+    "Study Guides",
+    "Booklets",
+    "Subject Topic Cutouts",
+    "Other"
+  ],
+  "Exercises, Tasks & Assessments": [
+    "Exercises & Tasks",
+    "Homework",
+    "Assignments & Group Activities",
+    "Other"
+  ],
+  "Class Management & Admin": [
+    "Classroom Labels",
+    "Wall Posters",
+    "Signs",
+    "Illustrations",
+    "Letters to Parents",
+    "Announcements & Notice",
+    "Permission Slips",
+    "Other"
+  ]
+};
 
 export default function ContentGeneratorPage() {
   const { toast } = useToast();
@@ -50,7 +67,11 @@ export default function ContentGeneratorPage() {
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
-  const [contentType, setContentType] = useState<ContentType | ''>('');
+  
+  const [category, setCategory] = useState<string>('');
+  const [subType, setSubType] = useState<string>('');
+  const [manualType, setManualType] = useState<string>('');
+
   const [manualSubject, setManualSubject] = useState('');
   const [manualTopic, setManualTopic] = useState('');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
@@ -78,11 +99,16 @@ export default function ContentGeneratorPage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
+  const finalContentType = useMemo(() => {
+    if (subType === 'Other') return manualType;
+    return subType;
+  }, [subType, manualType]);
+
   const handleGenerate = async () => {
     const finalSubject = subject === 'manual' ? manualSubject : subject;
     const finalTopic = topic === 'manual' ? manualTopic : topic;
 
-    if (!grade || !finalSubject || !finalTopic || !contentType) {
+    if (!grade || !finalSubject || !finalTopic || !finalContentType) {
       toast({ title: "Missing Information", description: "Fill out all required fields.", variant: "destructive" });
       return;
     }
@@ -97,7 +123,7 @@ export default function ContentGeneratorPage() {
         grade: grade as any,
         subject: finalSubject,
         topic: finalTopic,
-        contentType: contentType as ContentType,
+        contentType: finalContentType,
         additionalInstructions,
         difficulty: difficulty || undefined,
         length: length || undefined,
@@ -120,7 +146,7 @@ export default function ContentGeneratorPage() {
           grade,
           subject: finalSubject,
           topic: finalTopic,
-          contentType,
+          contentType: finalContentType,
           createdAt: serverTimestamp(),
         });
       }
@@ -141,7 +167,7 @@ export default function ContentGeneratorPage() {
             grade,
             subject: subject === 'manual' ? manualSubject : subject,
             topic: topic === 'manual' ? manualTopic : topic,
-            contentType,
+            contentType: finalContentType,
             createdAt: serverTimestamp(),
         });
 
@@ -200,7 +226,6 @@ export default function ContentGeneratorPage() {
             ${generatedContent.rubric ? `<hr /><h2>Rubric</h2>${generatedContent.rubric}` : ''}
             <script>
               window.onload = () => {
-                // Wait briefly for images (like signatures) to load before printing
                 setTimeout(() => {
                   window.print();
                   window.close();
@@ -229,31 +254,41 @@ export default function ContentGeneratorPage() {
               <Input placeholder="Custom Heading (Optional)" value={customHeading} onChange={e => setCustomHeading(e.target.value)} />
               <Input placeholder="Custom Subject (Optional)" value={customSubject} onChange={e => setCustomSubject(e.target.value)} />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <Select value={grade} onValueChange={setGrade}>
-                  <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select Grade" /></SelectTrigger>
                   <SelectContent>{Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
                 </Select>
-                <Select value={contentType} onValueChange={v => setContentType(v as ContentType)}>
-                  <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lesson plan">Lesson Plan</SelectItem>
-                    <SelectItem value="exercise">Exercise</SelectItem>
-                    <SelectItem value="assessment">Assessment</SelectItem>
-                    <SelectItem value="educational poster">Educational Poster</SelectItem>
-                    <SelectItem value="booklet-reading-handwriting-phonics">Booklets - Reading, Handwritting & Phonics (CAPS Aligned)</SelectItem>
-                    <SelectItem value="reading-comprehension">Reading Comprehensions (CAPS Aligned)</SelectItem>
-                    <SelectItem value="study-guide-notes">Study Guides/Notes - (CAPS Aligned)</SelectItem>
-                    <SelectItem value="subject-topic-cutouts">Subject Topic Cutouts</SelectItem>
-                    <SelectItem value="letter-to-parents">Letters - Communication to Parents</SelectItem>
-                    <SelectItem value="classroom-subject-poster">Classroom Subject Posters</SelectItem>
-                    <SelectItem value="improvement-plan-tracker">Subject Improvement Plan Tracking Tool</SelectItem>
-                    <SelectItem value="worksheet-handwriting-practice">Worksheets: Handwriting & Practice Sheets</SelectItem>
-                    <SelectItem value="worksheet-multipurpose">Worksheet - Multi-Purpose</SelectItem>
-                    <SelectItem value="classroom-labels">Classroom Labels</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={category} onValueChange={v => { setCategory(v); setSubType(''); }}>
+                    <SelectTrigger><SelectValue placeholder="Choose Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(CONTENT_CATEGORIES).map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Resource Type</Label>
+                  <Select value={subType} onValueChange={setSubType} disabled={!category}>
+                    <SelectTrigger><SelectValue placeholder="Choose Type" /></SelectTrigger>
+                    <SelectContent>
+                      {category && CONTENT_CATEGORIES[category as keyof typeof CONTENT_CATEGORIES].map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {subType === 'Other' && (
+                <Input placeholder="Manually type content type (e.g. Activity Sheet)" value={manualType} onChange={e => setManualType(e.target.value)} />
+              )}
 
               <Select value={subject} onValueChange={setSubject} disabled={!grade}>
                 <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>

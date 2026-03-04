@@ -94,7 +94,7 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative z-10 animate-float">
                 <Image 
-                  src={heroImage?.imageUrl || "https://images.unsplash.com/photo-1577891776198-c2a243b7afbb?auto=format&fit=crop&q=80&w=1200"} 
+                  src={heroImage?.imageUrl || "https://i.ibb.co/hGDJmD3/grok-image-1772581868247.jpg"} 
                   alt="Multiracial children learning together" 
                   width={800} 
                   height={600} 

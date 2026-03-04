@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { GraduationCap, School, Users, Loader2, Shield, Star, Sparkles } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
-import { doc, writeBatch, getDoc } from 'firebase/firestore';
-import { updateProfile } from 'firebase/auth';
+import { doc, writeBatch } from 'firebase/firestore';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,8 +62,8 @@ export default function RoleSelectionPage() {
           <Star className="absolute bottom-20 right-1/3 w-10 h-10 text-purple-300 opacity-20" />
         </div>
 
-        <div className="max-w-5xl w-full relative z-10 text-white">
-          <div className="text-center mb-12 animate-fadeInZoom">
+        <div className="max-w-5xl w-full relative z-10 text-white text-center">
+          <div className="mb-12 animate-fadeInZoom">
             <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 px-4 py-2 rounded-full text-yellow-400 font-bold mb-6">
               <Sparkles className="w-5 h-5" />
               <span>Identity Selection</span>
@@ -85,7 +84,7 @@ export default function RoleSelectionPage() {
                   {isLoading === role ? <Loader2 className="h-10 w-10 animate-spin" /> : <Icon className="h-10 w-10" />}
                 </div>
                 <h3 className="text-2xl font-bold mb-3 font-patrick-hand">{title}</h3>
-                <p className="text-sm font-medium text-blue-100/70 text-center">{desc}</p>
+                <p className="text-sm font-medium text-blue-100/70">{desc}</p>
               </button>
             ))}
           </div>

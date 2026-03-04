@@ -22,7 +22,8 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const storage = getStorage(firebaseApp);
   
-  // Removed timeout configuration that was causing runtime errors
+  // Storage retry logic is handled internally by the SDK. 
+  // Manual overrides removed to ensure cross-environment compatibility.
   
   return {
     firebaseApp,

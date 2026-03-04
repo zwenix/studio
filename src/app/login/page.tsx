@@ -51,40 +51,55 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
-      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border-none backdrop-blur-md bg-white/95">
+      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 backdrop-blur-md bg-indigo-950/90 text-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4 bg-transparent p-2">
-            <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={48} height={72} />
+            <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={48} height={72} className="drop-shadow-glow" />
           </div>
-          <CardTitle className="text-3xl font-patrick-hand">Welcome Back!</CardTitle>
-          <CardDescription>Login to continue your adventure.</CardDescription>
+          <CardTitle className="text-3xl font-patrick-hand text-white">Welcome Back!</CardTitle>
+          <CardDescription className="text-indigo-200">Login to continue your adventure.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="email" className="text-indigo-100">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="m@example.com" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"
+              />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Label htmlFor="password" title="password" className="text-indigo-100">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"
+              />
             </div>
-            <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold shadow-lg" disabled={isLoading || isGoogleLoading}>
+            <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold shadow-lg bg-yellow-400 text-indigo-950 hover:bg-yellow-300" disabled={isLoading || isGoogleLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
             </Button>
           </form>
 
           <div className="relative">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10" /></div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-indigo-950 px-2 text-indigo-300">Or continue with</span>
             </div>
           </div>
 
           <Button 
             variant="outline" 
             type="button" 
-            className="w-full rounded-full h-12 font-bold border-2" 
+            className="w-full rounded-full h-12 font-bold border-2 border-white/20 bg-transparent text-white hover:bg-white/10" 
             onClick={handleGoogleLogin} 
             disabled={isLoading || isGoogleLoading}
           >
@@ -98,8 +113,8 @@ export default function LoginPage() {
             Sign in with Google
           </Button>
 
-          <div className="text-center text-sm">
-            Don't have an account? <Link href="/signup" className="underline font-bold text-primary">Sign up</Link>
+          <div className="text-center text-sm text-indigo-200">
+            Don't have an account? <Link href="/signup" className="underline font-bold text-yellow-400 hover:text-yellow-300">Sign up</Link>
           </div>
         </CardContent>
       </Card>

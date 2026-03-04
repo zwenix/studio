@@ -127,8 +127,9 @@ export default function TemplateArchivePage() {
     
     const finalType = uploadData.subType === 'Other' ? uploadData.manualType : uploadData.subType;
 
+    // VALIDATION FIX: Ensure all fields including 'subject' are present.
     if (!uploadData.title || !uploadData.grade || !uploadData.subject || !uploadData.resourceCategory || !finalType) {
-      toast({ title: "Missing Information", description: "Please fill out all required fields.", variant: 'destructive' });
+      toast({ title: "Missing Information", description: "Please fill out all required fields, including Grade and Subject.", variant: 'destructive' });
       return;
     }
 
@@ -170,7 +171,7 @@ export default function TemplateArchivePage() {
           }
         } catch (storageError: any) {
           console.error("Storage error:", storageError);
-          toast({ title: 'Upload Issue', description: 'Using Paste HTML or a Remote URL is recommended for large content.', variant: 'destructive' });
+          toast({ title: 'Upload Issue', description: 'Large files may timeout. Please use Paste HTML for best results.', variant: 'destructive' });
           setIsUploading(false);
           return;
         }
@@ -200,7 +201,7 @@ export default function TemplateArchivePage() {
       resetUploadState();
     } catch (error: any) {
       console.error("Upload process failed:", error);
-      toast({ title: 'Process Failed', description: 'Try using the "Paste HTML" tab for better stability.', variant: 'destructive' });
+      toast({ title: 'Process Failed', description: 'Direct uploads may timeout on some connections. Try the "Paste HTML" tab.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
       setUploadStep('idle');
@@ -279,20 +280,31 @@ export default function TemplateArchivePage() {
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="font-patrick-hand text-4xl text-primary">Add New Template</DialogTitle>
-                <DialogDescription>Choose the easiest way to load your content.</DialogDescription>
+                <DialogDescription>Fill out all details. Note that Subject appears after selecting a Grade.</DialogDescription>
               </DialogHeader>
               
               <div className="grid gap-6 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Title / Topic</Label>
-                    <Input placeholder="e.g. Grade 10 Math: Trigonometry" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} disabled={isUploading} className="rounded-xl" />
+                    <Input placeholder="e.g. Intro to Trigonometry" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} disabled={isUploading} className="rounded-xl" />
                   </div>
                   <div className="space-y-2">
                     <Label>Grade</Label>
-                    <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v})} disabled={isUploading}>
+                    <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v, subject: ''})} disabled={isUploading}>
                       <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>{Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Subject</Label>
+                    <Select value={uploadData.subject} onValueChange={v => setUploadData({...uploadData, subject: v})} disabled={!uploadData.grade || isUploading}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Subject" /></SelectTrigger>
+                      <SelectContent>
+                        {uploadData.grade && educationalData[uploadData.grade as keyof typeof educationalData]?.subjects.map(s => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
                 </div>

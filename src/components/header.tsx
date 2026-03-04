@@ -17,6 +17,7 @@ export function Header({children}: {children?: ReactNode}) {
                       alt="EduAI Companion Logo" 
                       width={24} 
                       height={36} 
+                      style={{ width: 'auto', height: '36px' }}
                       className="group-hover:rotate-12 transition-transform" 
                     />
                 </div>

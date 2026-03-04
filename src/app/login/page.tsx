@@ -51,7 +51,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
-      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 backdrop-blur-md bg-indigo-950/95 text-white">
+      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 backdrop-blur-md bg-indigo-950 text-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4 bg-transparent p-2">
             <Image 
@@ -60,6 +60,7 @@ export default function LoginPage() {
               width={48} 
               height={72} 
               priority
+              style={{ width: 'auto', height: '72px' }}
               className="drop-shadow-glow" 
             />
           </div>

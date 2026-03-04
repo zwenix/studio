@@ -8,8 +8,6 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { imageSearchTool } from '@/ai/tools/image-search-tool';
 
-export const maxDuration = 120; // Increase timeout for complex content generation
-
 const GradeSchema = z.enum([
   'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
 ]);

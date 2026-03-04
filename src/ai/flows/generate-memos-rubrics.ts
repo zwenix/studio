@@ -11,8 +11,6 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const maxDuration = 120; // Increase timeout for complex generation
-
 const GenerateMemosAndRubricsInputSchema = z.object({
   taskDescription: z
     .string()

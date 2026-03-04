@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -9,17 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code } from 'lucide-react';
+import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle } from 'lucide-react';
 import { StaticTemplates } from '@/lib/templates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, query, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { add } from 'date-fns';
 import type { Class, Template } from '@/lib/types';
 import { educationalData } from '@/lib/educational-data';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function TemplateArchivePage() {
   const { toast } = useToast();
@@ -41,8 +43,8 @@ export default function TemplateArchivePage() {
     description: '',
     grade: '',
     subject: '',
-    category: '' as 'Foundation' | 'Intermediate' | 'Senior' | 'FET',
-    contentType: '',
+    category: 'Foundation' as 'Foundation' | 'Intermediate' | 'Senior' | 'FET',
+    contentType: 'Worksheet',
     fileType: 'pdf' as 'pdf' | 'image' | 'html',
     content: '',
   });
@@ -50,7 +52,7 @@ export default function TemplateArchivePage() {
 
   // Fetch contributed templates from Firestore
   const templatesQuery = useMemoFirebase(() => query(collection(firestore, 'templates')), [firestore]);
-  const { data: contributedTemplates } = useCollection<Template>(templatesQuery);
+  const { data: contributedTemplates, isLoading: isTemplatesLoading, error: templatesError } = useCollection<Template>(templatesQuery);
 
   const teacherClassesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -58,17 +60,26 @@ export default function TemplateArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
+  // Combine static and contributed templates, sorting new ones first
   const allTemplates = useMemo(() => {
     const combined = [...StaticTemplates];
     if (contributedTemplates) {
-      combined.push(...contributedTemplates);
+      // Sort contributed templates by creation date if available
+      const sortedContributed = [...contributedTemplates].sort((a, b) => {
+        const timeA = a.createdAt?.toMillis() || 0;
+        const timeB = b.createdAt?.toMillis() || 0;
+        return timeB - timeA;
+      });
+      combined.unshift(...sortedContributed);
     }
     return combined;
   }, [contributedTemplates]);
 
   const filteredTemplates = allTemplates.filter(t => {
-    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         t.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const title = t.title || '';
+    const description = t.description || '';
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || t.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -78,7 +89,6 @@ export default function TemplateArchivePage() {
       const file = e.target.files[0];
       setSelectedFile(file);
       
-      // Auto-set file type based on extension
       if (file.type.includes('image')) setUploadData(prev => ({ ...prev, fileType: 'image' }));
       else if (file.type === 'application/pdf') setUploadData(prev => ({ ...prev, fileType: 'pdf' }));
       else if (file.name.endsWith('.html')) setUploadData(prev => ({ ...prev, fileType: 'html' }));
@@ -99,10 +109,8 @@ export default function TemplateArchivePage() {
 
       if (selectedFile) {
         if (uploadData.fileType === 'html') {
-          // Read HTML file as text
           content = await selectedFile.text();
         } else {
-          // Upload PDF or Image
           const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
           await uploadBytes(fileRef, selectedFile);
           fileUrl = await getDownloadURL(fileRef);
@@ -119,9 +127,10 @@ export default function TemplateArchivePage() {
 
       toast({ title: 'Success!', description: 'Template added to archive.' });
       setIsUploadOpen(false);
-      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: '', fileType: 'pdf', content: '' });
+      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: 'Worksheet', fileType: 'pdf', content: '' });
       setSelectedFile(null);
     } catch (error: any) {
+      console.error("Upload failed:", error);
       toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
     } finally {
       setIsUploading(false);
@@ -150,7 +159,11 @@ export default function TemplateArchivePage() {
         const selectedClass = teacherClasses?.find(c => c.id === selectedClassId);
         const dueDate = Timestamp.fromDate(add(new Date(), { days: 7 }));
 
-        selectedClass?.learnerIds.forEach(learnerId => {
+        if (!selectedClass || selectedClass.learnerIds.length === 0) {
+          throw new Error("This class has no students to assign to.");
+        }
+
+        selectedClass.learnerIds.forEach(learnerId => {
             const assignmentRef = doc(collection(firestore, 'classes', selectedClassId, 'assignments'));
             batch.set(assignmentRef, {
                 contentId: contentRef.id,
@@ -164,7 +177,7 @@ export default function TemplateArchivePage() {
         });
 
         await batch.commit();
-        toast({ title: 'Success!', description: `Template assigned to class.` });
+        toast({ title: 'Success!', description: `Template assigned to ${selectedClass.name}.` });
         setSelectedTemplate(null);
     } catch (error: any) {
         toast({ title: 'Assignment Failed', description: error.message, variant: 'destructive' });
@@ -236,7 +249,7 @@ export default function TemplateArchivePage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Content Type</Label>
+                  <Label>Resource Format</Label>
                   <Select value={uploadData.fileType} onValueChange={v => setUploadData({...uploadData, fileType: v as any})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -304,15 +317,38 @@ export default function TemplateArchivePage() {
           </Select>
         </div>
 
+        {templatesError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error Loading Community Content</AlertTitle>
+            <AlertDescription>
+              We couldn't fetch some templates. You can still use the system templates below.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTemplates.map((tpl) => (
-            <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group">
+          {isTemplatesLoading && (
+            <div className="col-span-full flex justify-center py-12">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+          )}
+          
+          {!isTemplatesLoading && filteredTemplates.map((tpl) => (
+            <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group relative">
+              {tpl.teacherId && (
+                <div className="absolute top-2 right-2 z-10">
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                    Community
+                  </Badge>
+                </div>
+              )}
               <CardHeader>
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="outline">{tpl.category}</Badge>
                   <Badge>Grade {tpl.grade}</Badge>
                 </div>
-                <CardTitle className="group-hover:text-primary transition-colors">{tpl.title}</CardTitle>
+                <CardTitle className="group-hover:text-primary transition-colors pr-8">{tpl.title}</CardTitle>
                 <CardDescription>{tpl.subject}</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
@@ -334,7 +370,7 @@ export default function TemplateArchivePage() {
           ))}
         </div>
 
-        {filteredTemplates.length === 0 && (
+        {!isTemplatesLoading && filteredTemplates.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No templates found matching your criteria.</p>
           </div>

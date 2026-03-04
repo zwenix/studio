@@ -20,7 +20,6 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  // Use default storage settings to avoid incompatible runtime errors
   const storage = getStorage(firebaseApp);
   
   return {

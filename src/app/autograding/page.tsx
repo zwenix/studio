@@ -14,16 +14,17 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { ClipboardCheck, Loader2, Sparkles, FileUp, Camera } from 'lucide-react';
+import { ClipboardCheck, Loader2, Sparkles, FileUp, Camera, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useDropzone } from 'react-dropzone';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
 import { autograde, AutogradeOutput, AutogradeInput } from '@/ai/flows/autograder-flow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import type { Teacher } from '@/lib/types';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import type { Teacher, User as UserProfile } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export default function AutogradingPage() {
@@ -40,6 +41,11 @@ export default function AutogradingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AutogradeOutput | null>(null);
   
+  // Storage state
+  const [isSendOpen, setIsSendOpen] = useState(false);
+  const [selectedLearnerId, setSelectedLearnerId] = useState('');
+  const [isSendingToLearner, setIsSendingToLearner] = useState(false);
+
   // Camera state
   const [isCameraOpen, setCameraOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -50,6 +56,14 @@ export default function AutogradingPage() {
   // Fetch teacher-specific settings
   const teacherRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [user, firestore]);
   const { data: teacherData } = useDoc<Teacher>(teacherRef);
+  const { data: userProfile } = useDoc<UserProfile>(useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]));
+
+  // Fetch learners
+  const learnersQuery = useMemoFirebase(() => {
+    if (!userProfile || userProfile.role !== 'teacher') return null;
+    return query(collection(firestore, 'users'), where('role', '==', 'student'));
+  }, [firestore, userProfile]);
+  const { data: allLearners } = useCollection<UserProfile>(learnersQuery);
 
   const processImageDataUri = useCallback(async (dataUri: string) => {
     setPreview(dataUri);
@@ -177,6 +191,29 @@ export default function AutogradingPage() {
     }
   };
 
+  const handleRecordResult = async () => {
+    if (!selectedLearnerId || !result || !user) return;
+    setIsSendingToLearner(true);
+    try {
+        const recordRef = collection(firestore, 'learners', selectedLearnerId, 'academicRecords');
+        await addDoc(recordRef, {
+            learnerId: selectedLearnerId,
+            senderId: user.uid,
+            type: 'Graded Assignment',
+            content: `Subject: ${subject}\nGrade: ${grade}\n\nScore: ${result.grade}\n\nFeedback: ${result.feedback}`,
+            score: result.grade,
+            createdAt: serverTimestamp(),
+            teacherNotified: true,
+        });
+        toast({ title: 'Record Filed!', description: 'The grade and feedback have been added to the student\'s profile.' });
+        setIsSendOpen(false);
+    } catch (error: any) {
+        toast({ title: 'Filing Failed', variant: 'destructive' });
+    } finally {
+        setIsSendingToLearner(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
@@ -277,6 +314,39 @@ export default function AutogradingPage() {
               )}
               {result ? (
                   <div className="space-y-4">
+                      <div className="flex justify-end mb-4">
+                         {userProfile?.role === 'teacher' && (
+                            <Dialog open={isSendOpen} onOpenChange={setIsSendOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <GraduationCap className="mr-2 h-4 w-4" /> Record for Learner
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>File Grade to Student Profile</DialogTitle>
+                                        <DialogDescription>Select a student to save this result to their permanent record.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <Label>Select Student</Label>
+                                        <Select value={selectedLearnerId} onValueChange={setSelectedLearnerId}>
+                                            <SelectTrigger><SelectValue placeholder="Choose learner..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {allLearners?.map(l => <SelectItem key={l.id} value={l.id}>{l.firstName} {l.lastName}</SelectItem>)}
+                                                {(!allLearners || allLearners.length === 0) && <SelectItem value="none" disabled>No students found</SelectItem>}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsSendOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleRecordResult} disabled={!selectedLearnerId || isSendingToLearner}>
+                                            {isSendingToLearner ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Record'}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                         )}
+                      </div>
                       <div>
                           <h3 className="font-bold">Grade/Score</h3>
                           <pre className="whitespace-pre-wrap font-sans text-sm">{result.grade}</pre>

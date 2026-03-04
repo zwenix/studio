@@ -17,15 +17,15 @@ const GenerateMemosAndRubricsInputSchema = z.object({
     .describe('The description of the task or assessment.'),
   gradeLevel: z.string().describe('The grade level for the task.'),
   subject: z.string().describe('The subject of the task.'),
-  capsCompliance: z.string().describe('The CAPS compliance for the task.'),
+  capsCompliance: z.string().optional().default('Yes').describe('The CAPS compliance for the task.'),
 });
 export type GenerateMemosAndRubricsInput = z.infer<
   typeof GenerateMemosAndRubricsInputSchema
 >;
 
 const GenerateMemosAndRubricsOutputSchema = z.object({
-  memo: z.string().describe('The generated memo for the task.'),
-  rubric: z.string().describe('The generated rubric for the task.'),
+  memo: z.string().describe('The generated memo for the task in HTML format.'),
+  rubric: z.string().describe('The generated rubric for the task in HTML format.'),
 });
 export type GenerateMemosAndRubricsOutput = z.infer<
   typeof GenerateMemosAndRubricsOutputSchema
@@ -41,17 +41,17 @@ const prompt = ai.definePrompt({
   name: 'generateMemosAndRubricsPrompt',
   input: {schema: GenerateMemosAndRubricsInputSchema},
   output: {schema: GenerateMemosAndRubricsOutputSchema},
-  prompt: `You are an AI assistant helping teachers to generate memos and rubrics for their tasks and assessments. The content must be CAPS compliant.
-
-Task Description: {{{taskDescription}}}
-Grade Level: {{{gradeLevel}}}
-Subject: {{{subject}}}
-CAPS Compliance: {{{capsCompliance}}}
-
-Generate a detailed memo and rubric for the task described above. The memo should include the correct answers and explanations. The rubric should include the criteria for assessment and the points for each criterion.
-
-Memo:
-Rubric: `,
+  prompt: `You are an expert South African educational assistant (CAPS compliant). 
+  
+  Generate a detailed Memo (with answers and explanations) and a Rubric (with clear criteria and point allocations) for the following task.
+  
+  **FORMAT:** Return the output as clean HTML. Use <h2> for headings and <p>/<ul> for content.
+  
+  Task Description: {{{taskDescription}}}
+  Grade Level: {{{gradeLevel}}}
+  Subject: {{{subject}}}
+  
+  Ensure the rubric is fair and matches the cognitive levels required for Grade {{{gradeLevel}}}.`,
 });
 
 const generateMemosAndRubricsFlow = ai.defineFlow(

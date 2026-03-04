@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle } from 'lucide-react';
+import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle, Sparkles } from 'lucide-react';
 import { StaticTemplates } from '@/lib/templates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +21,7 @@ import { add } from 'date-fns';
 import type { Class, Template } from '@/lib/types';
 import { educationalData } from '@/lib/educational-data';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { generateMemosAndRubrics } from '@/ai/flows/generate-memos-rubrics';
 
 export default function TemplateArchivePage() {
   const { toast } = useToast();
@@ -47,6 +47,8 @@ export default function TemplateArchivePage() {
     contentType: 'Worksheet',
     fileType: 'pdf' as 'pdf' | 'image' | 'html',
     content: '',
+    memo: '',
+    rubric: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -60,11 +62,9 @@ export default function TemplateArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  // Combine static and contributed templates, sorting new ones first
   const allTemplates = useMemo(() => {
     const combined = [...StaticTemplates];
     if (contributedTemplates) {
-      // Sort contributed templates by creation date if available
       const sortedContributed = [...contributedTemplates].sort((a, b) => {
         const timeA = a.createdAt?.toMillis() || 0;
         const timeB = b.createdAt?.toMillis() || 0;
@@ -106,7 +106,10 @@ export default function TemplateArchivePage() {
     try {
       let fileUrl = '';
       let content = uploadData.content;
+      let finalMemo = uploadData.memo;
+      let finalRubric = uploadData.rubric;
 
+      // 1. Handle File Upload
       if (selectedFile) {
         if (uploadData.fileType === 'html') {
           content = await selectedFile.text();
@@ -117,17 +120,31 @@ export default function TemplateArchivePage() {
         }
       }
 
+      // 2. Auto-generate Memo/Rubric if missing
+      if (!finalMemo || !finalRubric) {
+        toast({ title: 'AI Assistant', description: 'Generating Memo and Rubric...' });
+        const aiResult = await generateMemosAndRubrics({
+            taskDescription: `Title: ${uploadData.title}. Description: ${uploadData.description}. Content: ${content.substring(0, 1000)}`,
+            gradeLevel: uploadData.grade,
+            subject: uploadData.subject
+        });
+        finalMemo = finalMemo || aiResult.memo;
+        finalRubric = finalRubric || aiResult.rubric;
+      }
+
       await addDoc(collection(firestore, 'templates'), {
         ...uploadData,
         content,
+        memo: finalMemo,
+        rubric: finalRubric,
         fileUrl,
         teacherId: user.uid,
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: 'Success!', description: 'Template added to archive.' });
+      toast({ title: 'Success!', description: 'Your content has been loaded and is ready to assign.' });
       setIsUploadOpen(false);
-      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: 'Worksheet', fileType: 'pdf', content: '' });
+      setUploadData({ title: '', description: '', grade: '', subject: '', category: 'Foundation', contentType: 'Worksheet', fileType: 'pdf', content: '', memo: '', rubric: '' });
       setSelectedFile(null);
     } catch (error: any) {
       console.error("Upload failed:", error);
@@ -202,13 +219,13 @@ export default function TemplateArchivePage() {
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-lg transform transition hover:scale-105">
-                <Plus className="mr-2 h-5 w-5" /> Upload Template
+                <Plus className="mr-2 h-5 w-5" /> Load My Content
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Contribute a Template</DialogTitle>
-                <DialogDescription>Share a high-quality PDF, Image, or HTML template with the community.</DialogDescription>
+                <DialogTitle>Load Custom Content</DialogTitle>
+                <DialogDescription>Upload an assessment, exercise, or task. If you don't provide a Memo or Rubric, the AI will generate them for you.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
@@ -217,7 +234,7 @@ export default function TemplateArchivePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea placeholder="What does this template cover?" value={uploadData.description} onChange={e => setUploadData({...uploadData, description: e.target.value})} />
+                  <Textarea placeholder="What does this content cover?" value={uploadData.description} onChange={e => setUploadData({...uploadData, description: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -260,33 +277,33 @@ export default function TemplateArchivePage() {
                   </Select>
                 </div>
 
-                {uploadData.fileType === 'html' ? (
-                  <div className="space-y-2">
-                    <Label>Paste HTML or Upload .html file</Label>
-                    <div className="flex flex-col gap-2">
-                      <Input type="file" accept=".html" onChange={handleFileChange} />
-                      <span className="text-center text-xs text-muted-foreground">OR</span>
-                      <Textarea placeholder="Paste HTML here..." rows={8} value={uploadData.content} onChange={e => setUploadData({...uploadData, content: e.target.value})} className="font-mono text-xs" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     <Label>Upload {uploadData.fileType.toUpperCase()} File</Label>
                     <div className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
-                      <input type="file" accept={uploadData.fileType === 'pdf' ? '.pdf' : 'image/*'} className="hidden" id="tpl-file-upload" onChange={handleFileChange} />
-                      <label htmlFor="tpl-file-upload" className="cursor-pointer">
+                        <input type="file" accept={uploadData.fileType === 'pdf' ? '.pdf' : 'image/*'} className="hidden" id="tpl-file-upload" onChange={handleFileChange} />
+                        <label htmlFor="tpl-file-upload" className="cursor-pointer">
                         <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
                         {selectedFile ? <p className="font-medium text-primary">{selectedFile.name}</p> : <p className="text-sm text-muted-foreground">Click to select a {uploadData.fileType} file</p>}
-                      </label>
+                        </label>
                     </div>
-                  </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
+                        <Textarea placeholder="Paste your memo here..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} rows={4} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="flex items-center gap-2">Rubric <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
+                        <Textarea placeholder="Paste your rubric here..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} rows={4} />
+                    </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
                 <Button onClick={handleUploadTemplate} disabled={isUploading}>
                   {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                  Submit Template
+                  {(!uploadData.memo || !uploadData.rubric) ? 'AI Generate & Load' : 'Load Content'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -339,7 +356,7 @@ export default function TemplateArchivePage() {
               {tpl.teacherId && (
                 <div className="absolute top-2 right-2 z-10">
                   <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                    Community
+                    My Content
                   </Badge>
                 </div>
               )}
@@ -363,7 +380,7 @@ export default function TemplateArchivePage() {
               </CardContent>
               <CardFooter>
                 <Button variant="secondary" className="w-full" onClick={() => setSelectedTemplate(tpl)}>
-                  <Eye className="mr-2 h-4 w-4" /> View Template
+                  <Eye className="mr-2 h-4 w-4" /> View / Assign
                 </Button>
               </CardFooter>
             </Card>
@@ -396,6 +413,7 @@ export default function TemplateArchivePage() {
               <Tabs defaultValue="content" className="h-full flex flex-col">
                 <TabsList>
                   <TabsTrigger value="content">Content Preview</TabsTrigger>
+                  <TabsTrigger value="memo">Memo</TabsTrigger>
                   <TabsTrigger value="rubric">Rubric</TabsTrigger>
                 </TabsList>
                 <TabsContent value="content" className="flex-1 overflow-auto mt-4 min-h-0">
@@ -409,9 +427,14 @@ export default function TemplateArchivePage() {
                     </div>
                   )}
                 </TabsContent>
+                <TabsContent value="memo" className="flex-1 overflow-auto mt-4 min-h-0">
+                  <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo provided.' }} />
+                  </div>
+                </TabsContent>
                 <TabsContent value="rubric" className="flex-1 overflow-auto mt-4 min-h-0">
                   <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
-                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric provided for this template.' }} />
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric provided.' }} />
                   </div>
                 </TabsContent>
               </Tabs>

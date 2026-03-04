@@ -93,13 +93,8 @@ export default function OcrPage() {
 
     // Fetch Learners for "Send to" feature
     const learnersQuery = useMemoFirebase(() => {
-        if (!userProfile) return null;
-        if (userProfile.role === 'teacher') return query(collection(firestore, 'users'), where('role', '==', 'student'));
-        if (userProfile.role === 'parent') {
-            // This is complex, would normally fetch based on parent's childIds
-            return null; 
-        }
-        return null;
+        if (!userProfile || userProfile.role !== 'teacher') return null;
+        return query(collection(firestore, 'users'), where('role', '==', 'student'));
     }, [firestore, userProfile]);
     const { data: allLearners } = useCollection<UserProfile>(learnersQuery);
 
@@ -242,7 +237,7 @@ export default function OcrPage() {
                 type: contentType,
                 content: extractedText,
                 createdAt: serverTimestamp(),
-                teacherNotified: true, // Simulate notification
+                teacherNotified: true,
             });
             toast({ title: 'Sent to Learner Profile', description: 'This content is now part of the student\'s record.' });
             setIsSendOpen(false);
@@ -409,41 +404,41 @@ export default function OcrPage() {
                                         <Printer className="mr-2 h-4 w-4" /> Print
                                     </Button>
                                     <Button variant="secondary" onClick={() => {
-                                        // Pass to autograder via query or state management
-                                        // For simplicity, we navigate and could potentially use a global store
                                         router.push('/autograding');
                                     }}>
                                         <ClipboardCheck className="mr-2 h-4 w-4" /> Autograde
                                     </Button>
-                                    <Dialog open={isSendOpen} onOpenChange={setIsSendOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="secondary">
-                                                <GraduationCap className="mr-2 h-4 w-4" /> Send to Learner
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>File to Learner Record</DialogTitle>
-                                                <DialogDescription>Select a student to add this to their academic history.</DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4 py-4">
-                                                <Label>Select Student</Label>
-                                                <Select value={selectedLearnerId} onValueChange={setSelectedLearnerId}>
-                                                    <SelectTrigger><SelectValue placeholder="Choose learner..." /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {allLearners?.map(l => <SelectItem key={l.id} value={l.id}>{l.firstName} {l.lastName}</SelectItem>)}
-                                                        {(!allLearners || allLearners.length === 0) && <SelectItem value="none" disabled>No students found</SelectItem>}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => setIsSendOpen(false)}>Cancel</Button>
-                                                <Button onClick={handleSendToLearner} disabled={!selectedLearnerId || isSendingToLearner}>
-                                                    {isSendingToLearner ? <Loader2 className="h-4 w-4 animate-spin" /> : 'File Record'}
+                                    {userProfile?.role === 'teacher' && (
+                                        <Dialog open={isSendOpen} onOpenChange={setIsSendOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="secondary">
+                                                    <GraduationCap className="mr-2 h-4 w-4" /> Send to Learner
                                                 </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>File to Learner Record</DialogTitle>
+                                                    <DialogDescription>Select a student to add this to their academic history.</DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <Label>Select Student</Label>
+                                                    <Select value={selectedLearnerId} onValueChange={setSelectedLearnerId}>
+                                                        <SelectTrigger><SelectValue placeholder="Choose learner..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {allLearners?.map(l => <SelectItem key={l.id} value={l.id}>{l.firstName} {l.lastName}</SelectItem>)}
+                                                            {(!allLearners || allLearners.length === 0) && <SelectItem value="none" disabled>No students found</SelectItem>}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={() => setIsSendOpen(false)}>Cancel</Button>
+                                                    <Button onClick={handleSendToLearner} disabled={!selectedLearnerId || isSendingToLearner}>
+                                                        {isSendingToLearner ? <Loader2 className="h-4 w-4 animate-spin" /> : 'File Record'}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                                 </div>
                             )}
                         </CardContent>

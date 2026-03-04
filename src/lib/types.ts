@@ -150,6 +150,7 @@ export interface AcademicRecord {
   senderId: string;
   type: string;
   content: string;
+  score?: string;
   createdAt: Timestamp;
   teacherNotified: boolean;
 }

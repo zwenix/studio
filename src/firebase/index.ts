@@ -4,7 +4,7 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getStorage, setMaxUploadRetryTime, setMaxOperationRetryTime } from 'firebase/storage';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -20,11 +20,19 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  const storage = getStorage(firebaseApp);
+  
+  // Increase timeouts to prevent "Storage maximum time exceeded" errors
+  // setMaxUploadRetryTime sets the max time to retry a single upload (e.g. 5 minutes)
+  setMaxUploadRetryTime(storage, 300000);
+  // setMaxOperationRetryTime sets the max time for any operation (e.g. 5 minutes)
+  setMaxOperationRetryTime(storage, 300000);
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
     firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp)
+    storage
   };
 }
 

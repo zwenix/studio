@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, query, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, orderBy } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { add } from 'date-fns';
 import type { Class, Template } from '@/lib/types';
 import { educationalData } from '@/lib/educational-data';
@@ -64,6 +64,7 @@ export default function TemplateArchivePage() {
   // Upload States
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState<'idle' | 'ai' | 'storage' | 'finishing'>('idle');
   const [uploadData, setUploadData] = useState({
     title: '',
     description: '',
@@ -134,52 +135,48 @@ export default function TemplateArchivePage() {
     }
 
     setIsUploading(true);
+    setUploadStep('ai');
     try {
       let fileUrl = '';
       let content = uploadData.content;
       let finalMemo = uploadData.memo;
       let finalRubric = uploadData.rubric;
 
-      // 1. AI Generation (if needed) - Do this before Storage to save time if it fails
+      // 1. AI Generation (if needed)
       if (uploadData.resourceCategory === "Exercises, Tasks & Assessments") {
         if (!finalMemo || !finalRubric) {
-          toast({ title: 'AI Assistant', description: 'Generating Memo and Rubric...' });
-          const aiResult = await generateMemosAndRubrics({
-              taskDescription: `Title: ${uploadData.title}. Type: ${finalType}. Description: ${uploadData.description}.`,
-              gradeLevel: uploadData.grade,
-              subject: uploadData.subject
-          });
-          finalMemo = finalMemo || aiResult.memo;
-          finalRubric = finalRubric || aiResult.rubric;
+          try {
+            const aiResult = await generateMemosAndRubrics({
+                taskDescription: `Title: ${uploadData.title}. Type: ${finalType}. Description: ${uploadData.description}.`,
+                gradeLevel: uploadData.grade,
+                subject: uploadData.subject
+            });
+            finalMemo = finalMemo || aiResult.memo;
+            finalRubric = finalRubric || aiResult.rubric;
+          } catch (aiError) {
+            console.error("AI Generation failed:", aiError);
+            toast({ title: "AI Warning", description: "Could not auto-generate memo/rubric, but proceeding with upload.", variant: "destructive" });
+          }
         }
       } else {
         finalMemo = '';
         finalRubric = '';
       }
 
-      // 2. Handle File Upload (More robust resumable upload)
+      // 2. Handle File Upload
+      setUploadStep('storage');
       if (selectedFile) {
         if (uploadData.fileType === 'html') {
           content = await selectedFile.text();
         } else {
           const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
-          const uploadTask = uploadBytesResumable(fileRef, selectedFile, {
-            contentType: selectedFile.type
-          });
-          
-          await new Promise((resolve, reject) => {
-            uploadTask.on('state_changed', 
-              null, 
-              (error) => reject(error), 
-              () => resolve(null)
-            );
-          });
-          
-          fileUrl = await getDownloadURL(fileRef);
+          const uploadResult = await uploadBytes(fileRef, selectedFile);
+          fileUrl = await getDownloadURL(uploadResult.ref);
         }
       }
 
       // 3. Save to Firestore
+      setUploadStep('finishing');
       await addDoc(collection(firestore, 'templates'), {
         title: uploadData.title,
         description: uploadData.description,
@@ -199,18 +196,23 @@ export default function TemplateArchivePage() {
 
       toast({ title: 'Success!', description: 'Your content has been loaded.' });
       setIsUploadOpen(false);
-      setUploadData({ 
-        title: '', description: '', grade: '', subject: '', 
-        phase: 'Foundation', resourceCategory: '', subType: '', manualType: '', 
-        fileType: 'pdf', content: '', memo: '', rubric: '' 
-      });
-      setSelectedFile(null);
+      resetUploadState();
     } catch (error: any) {
-      console.error("Upload failed:", error);
+      console.error("Upload process failed:", error);
       toast({ title: 'Process Failed', description: error.message || 'Check connection and try again.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
+      setUploadStep('idle');
     }
+  };
+
+  const resetUploadState = () => {
+    setUploadData({ 
+      title: '', description: '', grade: '', subject: '', 
+      phase: 'Foundation', resourceCategory: '', subType: '', manualType: '', 
+      fileType: 'pdf', content: '', memo: '', rubric: '' 
+    });
+    setSelectedFile(null);
   };
 
   const handleAssign = async () => {
@@ -267,15 +269,15 @@ export default function TemplateArchivePage() {
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-              <Library className="mr-3 h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center text-primary">
+              <Library className="mr-3 h-8 w-8" />
               Template Store
             </h1>
             <p className="text-muted-foreground">
               Ready-to-use CAPS-aligned materials. Select or upload your own.
             </p>
           </div>
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+          <Dialog open={isUploadOpen} onOpenChange={(open) => { setIsUploadOpen(open); if (!open) resetUploadState(); }}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-lg transform transition hover:scale-105">
                 <Plus className="mr-2 h-5 w-5" /> Load My Content
@@ -289,13 +291,13 @@ export default function TemplateArchivePage() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Title / Topic</Label>
-                  <Input placeholder="e.g. Grade 10 Math: Trigonometry Intro" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} />
+                  <Input placeholder="e.g. Grade 10 Math: Trigonometry Intro" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} disabled={isUploading} />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Phase (CAPS)</Label>
-                    <Select value={uploadData.phase} onValueChange={v => setUploadData({...uploadData, phase: v as any})}>
+                    <Select value={uploadData.phase} onValueChange={v => setUploadData({...uploadData, phase: v as any})} disabled={isUploading}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Foundation">Foundation Phase</SelectItem>
@@ -307,7 +309,7 @@ export default function TemplateArchivePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Grade</Label>
-                    <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v})}>
+                    <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v})} disabled={isUploading}>
                       <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>
                         {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
@@ -320,7 +322,7 @@ export default function TemplateArchivePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Organization Category</Label>
-                    <Select value={uploadData.resourceCategory} onValueChange={v => setUploadData({...uploadData, resourceCategory: v, subType: '', manualType: ''})}>
+                    <Select value={uploadData.resourceCategory} onValueChange={v => setUploadData({...uploadData, resourceCategory: v, subType: '', manualType: ''})} disabled={isUploading}>
                       <SelectTrigger><SelectValue placeholder="Choose Category" /></SelectTrigger>
                       <SelectContent>
                         {Object.keys(RESOURCE_CATEGORIES).map(cat => (
@@ -331,7 +333,7 @@ export default function TemplateArchivePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Specific Type</Label>
-                    <Select value={uploadData.subType} onValueChange={v => setUploadData({...uploadData, subType: v})} disabled={!uploadData.resourceCategory}>
+                    <Select value={uploadData.subType} onValueChange={v => setUploadData({...uploadData, subType: v})} disabled={!uploadData.resourceCategory || isUploading}>
                       <SelectTrigger><SelectValue placeholder="Choose Type" /></SelectTrigger>
                       <SelectContent>
                         {uploadData.resourceCategory && RESOURCE_CATEGORIES[uploadData.resourceCategory as keyof typeof RESOURCE_CATEGORIES].map(type => (
@@ -345,18 +347,18 @@ export default function TemplateArchivePage() {
                 {uploadData.subType === 'Other' && (
                   <div className="space-y-2">
                     <Label>Manually Specify Type</Label>
-                    <Input placeholder="e.g. Activity Sheet" value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} />
+                    <Input placeholder="e.g. Activity Sheet" value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} disabled={isUploading} />
                   </div>
                 )}
 
                 <div className="space-y-2">
                   <Label>Subject</Label>
-                  <Input placeholder="e.g. Mathematics" value={uploadData.subject} onChange={e => setUploadData({...uploadData, subject: e.target.value})} />
+                  <Input placeholder="e.g. Mathematics" value={uploadData.subject} onChange={e => setUploadData({...uploadData, subject: e.target.value})} disabled={isUploading} />
                 </div>
                 
                 <div className="space-y-2">
                   <Label>Resource Format</Label>
-                  <Select value={uploadData.fileType} onValueChange={v => setUploadData({...uploadData, fileType: v as any})}>
+                  <Select value={uploadData.fileType} onValueChange={v => setUploadData({...uploadData, fileType: v as any})} disabled={isUploading}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pdf">PDF Document</SelectItem>
@@ -368,16 +370,16 @@ export default function TemplateArchivePage() {
 
                 <div className="space-y-2">
                     <Label>Upload {uploadData.fileType.toUpperCase()} File</Label>
-                    <div className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
-                        <input type="file" accept={uploadData.fileType === 'pdf' ? '.pdf' : 'image/*'} className="hidden" id="tpl-file-upload" onChange={handleFileChange} />
-                        <label htmlFor="tpl-file-upload" className="cursor-pointer">
+                    <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${selectedFile ? 'border-primary bg-primary/5' : 'hover:border-primary/50'} ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <input type="file" accept={uploadData.fileType === 'pdf' ? '.pdf' : uploadData.fileType === 'image' ? 'image/*' : '.html'} className="hidden" id="tpl-file-upload" onChange={handleFileChange} disabled={isUploading} />
+                        <label htmlFor="tpl-file-upload" className={isUploading ? 'cursor-not-allowed' : 'cursor-pointer'}>
                         <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
                         {selectedFile ? <p className="font-medium text-primary">{selectedFile.name}</p> : <p className="text-sm text-muted-foreground">Click to select a {uploadData.fileType} file</p>}
                         </label>
                     </div>
                 </div>
 
-                {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (
+                {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && !isUploading && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
                       <div className="space-y-2">
                           <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(AI will generate if blank)</span></Label>
@@ -389,9 +391,20 @@ export default function TemplateArchivePage() {
                       </div>
                   </div>
                 )}
+
+                {isUploading && (
+                  <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center gap-2 animate-pulse">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm font-medium">
+                      {uploadStep === 'ai' && 'AI Generating Memo & Rubric...'}
+                      {uploadStep === 'storage' && 'Uploading file to secure storage...'}
+                      {uploadStep === 'finishing' && 'Finalizing record...'}
+                    </p>
+                  </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setIsUploadOpen(false)} disabled={isUploading}>Cancel</Button>
                 <Button onClick={handleUploadTemplate} disabled={isUploading}>
                   {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
                   {isUploading ? 'Processing...' : 'Load Content'}
@@ -444,7 +457,7 @@ export default function TemplateArchivePage() {
             <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group relative">
               {tpl.teacherId && (
                 <div className="absolute top-2 right-2 z-10">
-                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">My Content</Badge>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">Contributor</Badge>
                 </div>
               )}
               <CardHeader>
@@ -452,8 +465,8 @@ export default function TemplateArchivePage() {
                   <Badge variant="outline">{tpl.category}</Badge>
                   <Badge>Grade {tpl.grade}</Badge>
                 </div>
-                <CardTitle className="group-hover:text-primary transition-colors pr-8">{tpl.title}</CardTitle>
-                <CardDescription>{tpl.subject}</CardDescription>
+                <CardTitle className="group-hover:text-primary transition-colors pr-8 truncate">{tpl.title}</CardTitle>
+                <CardDescription className="truncate">{tpl.subject}</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
                 <p className="text-sm text-muted-foreground line-clamp-2">{tpl.description}</p>

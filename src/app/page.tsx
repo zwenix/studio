@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { SplashScreen } from '@/components/splash-screen';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Sparkles, Star, Rocket, Palette, Brain, Zap, ArrowRight } from 'lucide-react';
 
 const AdventureBox = ({ icon: Icon, title, description, color }: { icon: any; title: string; description: string; color: string }) => (
@@ -21,8 +19,6 @@ const AdventureBox = ({ icon: Icon, title, description, color }: { icon: any; ti
 
 export default function LandingPage() {
   const [showSplash, setShowSplash] = useState(true);
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-adventure');
-  const robotImage = PlaceHolderImages.find(img => img.id === 'ai-robot-companion');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,21 +33,20 @@ export default function LandingPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-blue-500 to-indigo-600 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-blue-500 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden relative">
       {/* Magical Floating Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
         <Star className="absolute top-40 right-20 w-12 h-12 text-yellow-200 animate-float opacity-30" />
-        <Star className="absolute bottom-40 left-1/4 w-10 h-10 text-purple-300 animate-wiggle opacity-20" />
+        <Star className="absolute bottom-40 left-1/4 w-10 h-10 text-purple-300 opacity-20" />
         <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-400/20 rounded-full blur-[100px] animate-float" />
       </div>
 
       {/* Navigation */}
-      <header className="fixed top-0 w-full bg-indigo-950/20 backdrop-blur-xl z-50 border-b border-white/5">
+      <header className="fixed top-0 w-full bg-transparent backdrop-blur-xl z-50 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="p-1 rounded-xl transform group-hover:rotate-12 transition-transform bg-transparent">
+            <div className="bg-transparent p-1 rounded-lg transform group-hover:rotate-12 transition-transform">
               <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={32} height={48} />
             </div>
             <h1 className="text-2xl font-bold font-patrick-hand tracking-tight">EduAI <span className="text-yellow-400">Companion</span></h1>
@@ -94,11 +89,11 @@ export default function LandingPage() {
             <div className="relative">
               <div className="relative z-10 animate-float">
                 <Image 
-                  src={heroImage?.imageUrl || "https://i.ibb.co/hGDJmD3/grok-image-1772581868247.jpg"} 
+                  src="https://i.ibb.co/hGDJmD3/grok-image-1772581868247.jpg" 
                   alt="Multiracial children learning together" 
                   width={800} 
                   height={600} 
-                  className="rounded-[4rem] shadow-[0_0_50px_rgba(255,255,255,0.2)] border-8 border-white/10 object-cover"
+                  className="rounded-[4rem] shadow-2xl border-8 border-white/10 object-cover"
                   priority
                   data-ai-hint="multiracial children"
                 />
@@ -118,91 +113,17 @@ export default function LandingPage() {
               <p className="text-xl text-blue-100/60 max-w-2xl mx-auto">Everything you need to be a top student or a master teacher, all powered by magic AI.</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-              <AdventureBox
-                icon={Zap}
-                title="Magic Lessons"
-                description="Create amazing lesson plans in a flash! Perfect for any subject."
-                color="bg-orange-500"
-              />
-              <AdventureBox
-                icon={Palette}
-                title="Super Worksheets"
-                description="Fun worksheets and exercises that you'll actually love doing!"
-                color="bg-pink-500"
-              />
-              <AdventureBox
-                icon={Brain}
-                title="Smart Bot Tutor"
-                description="Ask your friendly AI tutor anything, anytime! It never sleeps."
-                color="bg-blue-500"
-              />
-              <AdventureBox
-                icon={Star}
-                title="Instant Grades"
-                description="Get your results and helpful tips right away. No more waiting!"
-                color="bg-yellow-500"
-              />
-              <AdventureBox
-                icon={Rocket}
-                title="Skill Tracker"
-                description="Watch your skills grow like a rocket ship! 🚀"
-                color="bg-green-500"
-              />
-              <AdventureBox
-                icon={Palette}
-                title="Cool Posters"
-                description="Make beautiful posters for your room or classroom."
-                color="bg-purple-500"
-              />
+              <AdventureBox icon={Zap} title="Magic Lessons" description="Create amazing lesson plans in a flash! Perfect for any subject." color="bg-orange-500" />
+              <AdventureBox icon={Palette} title="Super Worksheets" description="Fun worksheets and exercises that you'll actually love doing!" color="bg-pink-500" />
+              <AdventureBox icon={Brain} title="Smart Bot Tutor" description="Ask your friendly AI tutor anything, anytime! It never sleeps." color="bg-blue-500" />
+              <AdventureBox icon={Star} title="Instant Grades" description="Get your results and helpful tips right away. No more waiting!" color="bg-yellow-500" />
+              <AdventureBox icon={Rocket} title="Skill Tracker" description="Watch your skills grow like a rocket ship! 🚀" color="bg-green-500" />
+              <AdventureBox icon={Palette} title="Cool Posters" description="Make beautiful posters for your room or classroom." color="bg-purple-500" />
             </div>
-          </div>
-        </section>
-
-        {/* Robot Buddy Section */}
-        <section className="py-32 px-6">
-          <div className="max-w-6xl mx-auto bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[5rem] p-12 md:p-20 text-white overflow-hidden relative group">
-            <div className="grid md:grid-cols-2 gap-16 items-center relative z-10">
-              <div className="text-center md:text-left">
-                <h3 className="text-5xl md:text-7xl font-bold font-patrick-hand mb-8">Need a Hand? 🤖</h3>
-                <p className="text-2xl font-medium mb-12 text-blue-100/90">Our AI companion is ready to help you with homework, lesson plans, or just a friendly chat!</p>
-                <Button asChild size="lg" className="bg-yellow-400 text-slate-950 hover:bg-yellow-300 rounded-[2rem] px-12 py-8 text-2xl font-bold shadow-xl transform transition hover:scale-110 h-auto">
-                  <Link href="/ai-tutor">Talk to the Robot</Link>
-                </Button>
-              </div>
-              <div className="flex justify-center group-hover:scale-110 transition-transform duration-1000">
-                <Image 
-                  src={robotImage?.imageUrl || "https://images.unsplash.com/photo-1531746790731-6c087fecd05a?auto=format&fit=crop&q=80&w=800"} 
-                  alt="Friendly Robot Buddy" 
-                  width={500} 
-                  height={500} 
-                  className="animate-float drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]"
-                  data-ai-hint="friendly robot"
-                />
-              </div>
-            </div>
-            {/* Decoration Circles */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-          </div>
-        </section>
-
-        {/* CTA Adventure Section */}
-        <section className="py-40 px-6 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h3 className="text-6xl md:text-8xl font-bold mb-10 font-patrick-hand">Ready to Start?</h3>
-            <p className="text-2xl text-blue-100/70 mb-16 font-medium">
-              Join thousands of happy learners and teachers today! 🌍
-            </p>
-            <Button size="lg" asChild className="px-16 py-10 bg-yellow-400 text-slate-950 hover:bg-yellow-300 rounded-[3rem] font-bold text-4xl shadow-[0_20px_50px_rgba(250,204,21,0.3)] transform hover:scale-110 transition-all h-auto group ring-8 ring-yellow-400/10">
-              <Link href="/signup" className="flex items-center gap-6">
-                Let's Go! <Rocket className="w-12 h-12 group-hover:animate-bounce" />
-              </Link>
-            </Button>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="bg-indigo-950/50 py-20 px-6 border-t border-white/5 text-center">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
           <div className="flex items-center gap-4">
@@ -211,13 +132,7 @@ export default function LandingPage() {
             </div>
             <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
           </div>
-          <p className="text-blue-100/40 font-medium text-lg">
-            &copy; 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu.
-          </p>
-          <div className="flex gap-8">
-            <Link href="/terms" className="text-blue-100/40 hover:text-white transition-colors">Terms</Link>
-            <Link href="/privacy" className="text-blue-100/40 hover:text-white transition-colors">Privacy</Link>
-          </div>
+          <p className="text-blue-100/40 font-medium text-lg">&copy; 2026 EduAI Companion. All rights reserved.</p>
         </div>
       </footer>
     </div>

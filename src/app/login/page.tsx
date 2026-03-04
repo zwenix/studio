@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -34,10 +35,23 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    } catch (error: any) {
+      toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
-      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2rem] border-none backdrop-blur-md bg-white/95">
+      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border-none backdrop-blur-md bg-white/95">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4 bg-transparent p-2">
             <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={48} height={72} />
@@ -45,7 +59,7 @@ export default function LoginPage() {
           <CardTitle className="text-3xl font-patrick-hand">Welcome Back!</CardTitle>
           <CardDescription>Login to continue your adventure.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -55,11 +69,36 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold shadow-lg" disabled={isLoading || isGoogleLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <Button 
+            variant="outline" 
+            type="button" 
+            className="w-full rounded-full h-12 font-bold border-2" 
+            onClick={handleGoogleLogin} 
+            disabled={isLoading || isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+              </svg>
+            )}
+            Sign in with Google
+          </Button>
+
+          <div className="text-center text-sm">
             Don't have an account? <Link href="/signup" className="underline font-bold text-primary">Sign up</Link>
           </div>
         </CardContent>

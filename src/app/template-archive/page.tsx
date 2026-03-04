@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle, Globe, CheckCircle2, Copy } from 'lucide-react';
+import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle, Globe, CheckCircle2, Copy, Download } from 'lucide-react';
 import { StaticTemplates } from '@/lib/templates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -274,11 +274,11 @@ export default function TemplateArchivePage() {
           </div>
           <Dialog open={isUploadOpen} onOpenChange={(open) => { setIsUploadOpen(open); if (!open) resetUploadState(); }}>
             <DialogTrigger asChild>
-              <Button size="lg" className="shadow-lg"><Plus className="mr-2" /> Load My Content</Button>
+              <Button size="lg" className="shadow-lg rounded-full font-bold h-14 px-8 bg-yellow-400 text-indigo-950 hover:bg-yellow-300"><Plus className="mr-2" /> Load My Content</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2rem]">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
               <DialogHeader>
-                <DialogTitle className="font-patrick-hand text-3xl text-primary">Add New Template</DialogTitle>
+                <DialogTitle className="font-patrick-hand text-4xl text-primary">Add New Template</DialogTitle>
                 <DialogDescription>Choose the easiest way to load your content.</DialogDescription>
               </DialogHeader>
               
@@ -286,22 +286,22 @@ export default function TemplateArchivePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Title / Topic</Label>
-                    <Input placeholder="e.g. Grade 10 Math: Trigonometry" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} disabled={isUploading} />
+                    <Input placeholder="e.g. Grade 10 Math: Trigonometry" value={uploadData.title} onChange={e => setUploadData({...uploadData, title: e.target.value})} disabled={isUploading} className="rounded-xl" />
                   </div>
                   <div className="space-y-2">
                     <Label>Grade</Label>
                     <Select value={uploadData.grade} onValueChange={v => setUploadData({...uploadData, grade: v})} disabled={isUploading}>
-                      <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>{Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <Tabs defaultValue="paste" className="w-full">
-                  <TabsList className="grid grid-cols-3 w-full rounded-full bg-muted p-1">
-                    <TabsTrigger value="paste" className="rounded-full"><Copy className="h-4 w-4 mr-2" /> Paste HTML</TabsTrigger>
-                    <TabsTrigger value="url" className="rounded-full"><Globe className="h-4 w-4 mr-2" /> Remote URL</TabsTrigger>
-                    <TabsTrigger value="file" className="rounded-full"><FileUp className="h-4 w-4 mr-2" /> Upload File</TabsTrigger>
+                  <TabsList className="grid grid-cols-3 w-full rounded-full bg-muted p-1 h-14">
+                    <TabsTrigger value="paste" className="rounded-full font-bold"><Copy className="h-4 w-4 mr-2" /> Paste HTML</TabsTrigger>
+                    <TabsTrigger value="url" className="rounded-full font-bold"><Globe className="h-4 w-4 mr-2" /> Remote URL</TabsTrigger>
+                    <TabsTrigger value="file" className="rounded-full font-bold"><FileUp className="h-4 w-4 mr-2" /> Upload File</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="paste" className="space-y-4 pt-4">
@@ -309,22 +309,22 @@ export default function TemplateArchivePage() {
                       <Label>HTML Content (Most Reliable)</Label>
                       <Textarea 
                         placeholder="Paste your full HTML document code here..." 
-                        className="min-h-[200px] font-mono text-xs" 
+                        className="min-h-[250px] font-mono text-xs rounded-2xl border-2" 
                         value={uploadData.content}
                         onChange={e => setUploadData({...uploadData, content: e.target.value, fileType: 'html', externalUrl: ''})}
                         disabled={isUploading}
                       />
-                      <p className="text-[10px] text-muted-foreground">Pasting text directly is immune to upload timeouts and connection errors.</p>
+                      <p className="text-[10px] text-muted-foreground bg-blue-50 p-2 rounded-lg border">Pasting text directly is immune to upload timeouts and connection errors.</p>
                     </div>
                   </TabsContent>
 
                   <TabsContent value="url" className="space-y-4 pt-4">
-                    <div className="space-y-2 bg-primary/5 p-4 rounded-xl border border-primary/20">
-                      <Label className="text-primary flex items-center gap-2 font-bold"><Globe className="h-4 w-4" /> Remote Document Link</Label>
-                      <p className="text-[11px] text-muted-foreground mb-2">Great for files hosted in your <strong>/templates</strong> folder, GitHub Gists, or Netlify.</p>
+                    <div className="space-y-2 bg-primary/5 p-6 rounded-[2rem] border-2 border-dashed border-primary/20">
+                      <Label className="text-primary flex items-center gap-2 font-bold text-lg"><Globe className="h-5 w-5" /> Remote Document Link</Label>
+                      <p className="text-sm text-muted-foreground mb-4">Host files in your <strong>/public/templates</strong> folder for the best performance.</p>
                       <Input 
-                        placeholder="https://your-project.web.app/templates/my-plan.html" 
-                        className="bg-white" 
+                        placeholder="https://your-app.web.app/templates/my-lesson.html" 
+                        className="bg-white rounded-full h-12 border-2 border-primary/20 px-6" 
                         value={uploadData.externalUrl} 
                         onChange={e => setUploadData({...uploadData, externalUrl: e.target.value, fileType: 'url', content: ''})} 
                         disabled={isUploading} 
@@ -333,29 +333,28 @@ export default function TemplateArchivePage() {
                   </TabsContent>
 
                   <TabsContent value="file" className="space-y-4 pt-4">
-                    <div className="border-2 border-dashed rounded-[1.5rem] p-8 text-center hover:border-primary transition-colors cursor-pointer bg-muted/20">
+                    <div className="border-2 border-dashed rounded-[2.5rem] p-12 text-center hover:border-primary transition-colors cursor-pointer bg-muted/20">
                       <input type="file" className="hidden" id="tpl-file-upload" onChange={handleFileChange} disabled={isUploading} />
                       <label htmlFor="tpl-file-upload" className="cursor-pointer">
-                        <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                        {selectedFile ? <p className="text-primary font-bold">{selectedFile.name}</p> : <p className="text-sm">Click to select PDF or Image</p>}
+                        <FileUp className="h-14 w-14 mx-auto text-muted-foreground mb-4" />
+                        {selectedFile ? <p className="text-primary font-bold text-lg">{selectedFile.name}</p> : <div className='space-y-1'><p className="text-lg font-bold">Click to select PDF or Image</p><p className='text-xs text-muted-foreground'>Files over 5MB may time out.</p></div>}
                       </label>
                     </div>
-                    <p className="text-[10px] text-center text-orange-600 font-medium">Note: Direct uploads may time out for files over 5MB on unstable connections.</p>
                   </TabsContent>
                 </Tabs>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
                   <div className="space-y-2">
                     <Label>Category</Label>
                     <Select value={uploadData.resourceCategory} onValueChange={v => setUploadData({...uploadData, resourceCategory: v, subType: ''})} disabled={isUploading}>
-                      <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Category" /></SelectTrigger>
                       <SelectContent>{Object.keys(RESOURCE_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Resource Type</Label>
                     <Select value={uploadData.subType} onValueChange={v => setUploadData({...uploadData, subType: v})} disabled={!uploadData.resourceCategory || isUploading}>
-                      <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Type" /></SelectTrigger>
                       <SelectContent>
                         {uploadData.resourceCategory && RESOURCE_CATEGORIES[uploadData.resourceCategory as keyof typeof RESOURCE_CATEGORIES].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                       </SelectContent>
@@ -364,36 +363,22 @@ export default function TemplateArchivePage() {
                 </div>
 
                 {uploadData.subType === 'Other' && (
-                  <Input placeholder="Manually type content type..." value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} disabled={isUploading} />
-                )}
-
-                {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (
-                  <div className="space-y-4 border-t pt-4 bg-muted/30 p-4 rounded-2xl">
-                    <Label className="text-primary font-bold">Assessment Details</Label>
-                    <div className="space-y-2">
-                      <Label>Memo (Optional - AI will auto-create if empty)</Label>
-                      <Textarea placeholder="Answers..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} disabled={isUploading} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Rubric (Optional - AI will auto-create if empty)</Label>
-                      <Textarea placeholder="Grading criteria..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} disabled={isUploading} />
-                    </div>
-                  </div>
+                  <Input placeholder="Manually type content type..." value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} disabled={isUploading} className="rounded-xl" />
                 )}
 
                 {isUploading && (
-                  <div className="bg-primary/10 p-6 rounded-3xl flex flex-col items-center gap-3 animate-pulse border border-primary/20">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="bg-indigo-950 p-8 rounded-[2rem] flex flex-col items-center gap-4 animate-pulse border border-yellow-400/30 text-white">
+                    <Loader2 className="h-10 w-10 animate-spin text-yellow-400" />
                     <div className="text-center">
-                      <p className="text-sm font-bold text-primary uppercase tracking-widest">Adventure in Progress...</p>
-                      <p className="text-xs text-muted-foreground mt-1 capitalize">{uploadStep} Phase</p>
+                      <p className="text-lg font-patrick-hand text-yellow-400 uppercase tracking-widest">Adventure in Progress...</p>
+                      <p className="text-sm text-indigo-200 mt-1 capitalize font-medium">{uploadStep} Phase</p>
                     </div>
                   </div>
                 )}
               </div>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setIsUploadOpen(false)} disabled={isUploading} className="rounded-full px-8">Cancel</Button>
-                <Button onClick={handleUploadTemplate} disabled={isUploading} className="rounded-full px-10 shadow-lg bg-primary hover:bg-primary/90">
+              <DialogFooter className="gap-2 pb-2">
+                <Button variant="outline" onClick={() => setIsUploadOpen(false)} disabled={isUploading} className="rounded-full px-8 h-12">Cancel</Button>
+                <Button onClick={handleUploadTemplate} disabled={isUploading} className="rounded-full px-10 h-12 shadow-lg bg-primary hover:bg-primary/90 font-bold">
                   {isUploading ? 'Processing...' : 'Add to Store'}
                 </Button>
               </DialogFooter>
@@ -403,15 +388,15 @@ export default function TemplateArchivePage() {
 
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search templates..." className="pl-8 rounded-full border-2" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input placeholder="Search templates..." className="pl-12 rounded-full border-2 h-14 text-lg focus:ring-primary" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {isTemplatesLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
           {!isTemplatesLoading && filteredTemplates.map((tpl) => (
-            <Card key={tpl.id} className="flex flex-col hover:shadow-xl transition-all duration-300 group relative border-none bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+            <Card key={tpl.id} className="flex flex-col hover:shadow-xl transition-all duration-300 group relative border-none bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-sm">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start mb-2">
                   <Badge variant="secondary" className="rounded-full px-3">Grade {tpl.grade}</Badge>
@@ -426,8 +411,8 @@ export default function TemplateArchivePage() {
                   <FileText className="h-3 w-3" /> {tpl.contentType}
                 </div>
               </CardContent>
-              <CardFooter className="pt-0">
-                <Button variant="secondary" className="w-full rounded-full group-hover:bg-primary group-hover:text-white transition-all shadow-sm" onClick={() => setSelectedTemplate(tpl)}>
+              <CardFooter className="pt-0 pb-6">
+                <Button variant="secondary" className="w-full rounded-full h-12 group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold" onClick={() => setSelectedTemplate(tpl)}>
                   <Eye className="mr-2 h-4 w-4" /> View / Assign
                 </Button>
               </CardFooter>
@@ -437,7 +422,7 @@ export default function TemplateArchivePage() {
 
         <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setSelectedTemplate(null)}>
           <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex flex-row items-center justify-between">
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex flex-row items-center justify-between shrink-0">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">{viewingTemplate?.title}</DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold mt-1">Review and distribute to your class.</DialogDescription>
@@ -447,8 +432,8 @@ export default function TemplateArchivePage() {
             
             <div className="flex-1 overflow-hidden bg-muted/20">
               <Tabs defaultValue="content" className="h-full flex flex-col">
-                <div className="px-8 pt-6">
-                  <TabsList className="grid grid-cols-3 w-full max-w-md rounded-full p-1.5 bg-white/50 backdrop-blur-md border shadow-sm">
+                <div className="px-8 pt-6 shrink-0">
+                  <TabsList className="grid grid-cols-3 w-full max-w-md rounded-full p-1.5 bg-white/50 backdrop-blur-md border shadow-sm h-14">
                     <TabsTrigger value="content" className="rounded-full font-bold">Content</TabsTrigger>
                     <TabsTrigger value="memo" className="rounded-full font-bold">Memo</TabsTrigger>
                     <TabsTrigger value="rubric" className="rounded-full font-bold">Rubric</TabsTrigger>
@@ -479,10 +464,10 @@ export default function TemplateArchivePage() {
               </Tabs>
             </div>
             
-            <div className="p-8 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4 items-center">
+            <div className="p-8 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4 items-center shrink-0">
               <div className="flex-1 w-full flex gap-3">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full rounded-full border-2 focus:ring-primary h-14 text-lg"><SelectValue placeholder="Select Class to Assign" /></SelectTrigger>
+                  <SelectTrigger className="w-full rounded-full border-2 focus:ring-primary h-14 text-lg px-6"><SelectValue placeholder="Select Class to Assign" /></SelectTrigger>
                   <SelectContent className="rounded-2xl">{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
                 <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign} className="h-14 px-10 rounded-full shadow-xl transition-all active:scale-95 text-lg font-bold">

@@ -8,6 +8,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { imageSearchTool } from '@/ai/tools/image-search-tool';
 
+export const maxDuration = 120; // Increase timeout for complex content generation
+
 const GradeSchema = z.enum([
   'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
 ]);
@@ -29,7 +31,8 @@ const GenerateCAPSContentInputSchema = z.object({
   grade: GradeSchema.describe('The grade level for which to generate content.'),
   subject: SubjectSchema.describe('The subject for which to generate content.'),
   topic: TopicSchema.describe('The specific topic within the subject.'),
-  contentType: z.string().describe('The type of content to generate (e.g., Lesson Plan, Assignment, Poster).'),
+  contentType: z.string().describe('The specific type of content.'),
+  category: z.enum(['Teaching Tools & Aids', 'Exercises, Tasks & Assessments', 'Class Management & Admin']).describe('The high-level category.'),
   additionalInstructions: z.string().optional().describe('Any specific instructions.'),
   difficulty: z.string().optional().describe('Difficulty level (Easy, Medium, Hard).'),
   length: z.string().optional().describe('Desired length or number of questions.'),
@@ -47,8 +50,8 @@ export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSc
 
 const GenerateCAPSContentOutputSchema = z.object({
   content: z.string().describe('Generated HTML content.'),
-  memo: z.string().describe('Generated HTML memo.'),
-  rubric: z.string().describe('Generated HTML rubric.'),
+  memo: z.string().describe('Generated HTML memo. Return empty string if category is not "Exercises, Tasks & Assessments".'),
+  rubric: z.string().describe('Generated HTML rubric. Return empty string if category is not "Exercises, Tasks & Assessments".'),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
@@ -73,6 +76,10 @@ You MUST use the \`searchImage\` tool to find high-quality visuals for all conte
 - **Embedding:** Embed results using: \`<img src="URL" alt="Description" style="max-width: 100%; height: auto; border-radius: 0.75rem; margin: 1.5rem 0;" />\`.
 - **Credit:** Always credit beneath the image: \`<p style="font-size: 10px; color: #888; text-align: center;">Photo by [Photographer] on [Source]</p>\`.
 
+**MEMO & RUBRIC RULES:**
+- If category is "Exercises, Tasks & Assessments", you MUST generate a detailed Memo and Rubric.
+- If category is NOT "Exercises, Tasks & Assessments", you MUST return an empty string for both \`memo\` and \`rubric\`.
+
 **FORMATTING:**
 - Output MUST be clean, valid **HTML**.
 - **NO TABLES** for matching questions. Use lists.
@@ -82,6 +89,7 @@ You MUST use the \`searchImage\` tool to find high-quality visuals for all conte
 1. Wrap everything in a \`<div class="{{fontFamily}}">\`.
 2. Include \`customHeading\` and \`customSubject\` at the top if provided.
 3. Generate the core educational content based on:
+   Category: {{{category}}}
    Grade: {{{grade}}}
    Subject: {{{subject}}}
    Topic: {{{topic}}}

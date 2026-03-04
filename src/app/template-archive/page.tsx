@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, query, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { add } from 'date-fns';
 import type { Class, Template } from '@/lib/types';
 import { educationalData } from '@/lib/educational-data';
@@ -140,23 +140,12 @@ export default function TemplateArchivePage() {
       let finalMemo = uploadData.memo;
       let finalRubric = uploadData.rubric;
 
-      // 1. Handle File Upload
-      if (selectedFile) {
-        if (uploadData.fileType === 'html') {
-          content = await selectedFile.text();
-        } else {
-          const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
-          await uploadBytes(fileRef, selectedFile);
-          fileUrl = await getDownloadURL(fileRef);
-        }
-      }
-
-      // 2. Auto-generate Memo/Rubric ONLY if Category 2 is selected and fields are empty
+      // 1. AI Generation (if needed) - Do this before Storage to save time if it fails
       if (uploadData.resourceCategory === "Exercises, Tasks & Assessments") {
         if (!finalMemo || !finalRubric) {
           toast({ title: 'AI Assistant', description: 'Generating Memo and Rubric...' });
           const aiResult = await generateMemosAndRubrics({
-              taskDescription: `Title: ${uploadData.title}. Type: ${finalType}. Description: ${uploadData.description}. Content: ${content.substring(0, 500)}`,
+              taskDescription: `Title: ${uploadData.title}. Type: ${finalType}. Description: ${uploadData.description}.`,
               gradeLevel: uploadData.grade,
               subject: uploadData.subject
           });
@@ -164,17 +153,39 @@ export default function TemplateArchivePage() {
           finalRubric = finalRubric || aiResult.rubric;
         }
       } else {
-        // Clear them if they aren't meant for this category
         finalMemo = '';
         finalRubric = '';
       }
 
+      // 2. Handle File Upload (More robust resumable upload)
+      if (selectedFile) {
+        if (uploadData.fileType === 'html') {
+          content = await selectedFile.text();
+        } else {
+          const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
+          const uploadTask = uploadBytesResumable(fileRef, selectedFile, {
+            contentType: selectedFile.type
+          });
+          
+          await new Promise((resolve, reject) => {
+            uploadTask.on('state_changed', 
+              null, 
+              (error) => reject(error), 
+              () => resolve(null)
+            );
+          });
+          
+          fileUrl = await getDownloadURL(fileRef);
+        }
+      }
+
+      // 3. Save to Firestore
       await addDoc(collection(firestore, 'templates'), {
         title: uploadData.title,
         description: uploadData.description,
         grade: uploadData.grade,
         subject: uploadData.subject,
-        category: uploadData.phase, // Store phase in category field for compatibility
+        category: uploadData.phase, 
         resourceCategory: uploadData.resourceCategory,
         contentType: finalType,
         content,
@@ -186,7 +197,7 @@ export default function TemplateArchivePage() {
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: 'Success!', description: 'Your content has been loaded and is ready to assign.' });
+      toast({ title: 'Success!', description: 'Your content has been loaded.' });
       setIsUploadOpen(false);
       setUploadData({ 
         title: '', description: '', grade: '', subject: '', 
@@ -196,7 +207,7 @@ export default function TemplateArchivePage() {
       setSelectedFile(null);
     } catch (error: any) {
       console.error("Upload failed:", error);
-      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Process Failed', description: error.message || 'Check connection and try again.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
     }
@@ -273,7 +284,7 @@ export default function TemplateArchivePage() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Load Custom Content</DialogTitle>
-                <DialogDescription>Select your category and type. If you provide Exercises or Assessments, AI can generate Memos and Rubrics.</DialogDescription>
+                <DialogDescription>Select category and type. Rubrics are available for assessments only.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
@@ -334,7 +345,7 @@ export default function TemplateArchivePage() {
                 {uploadData.subType === 'Other' && (
                   <div className="space-y-2">
                     <Label>Manually Specify Type</Label>
-                    <Input placeholder="e.g. Permission Slip, Activity Sheet" value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} />
+                    <Input placeholder="e.g. Activity Sheet" value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} />
                   </div>
                 )}
 
@@ -367,14 +378,14 @@ export default function TemplateArchivePage() {
                 </div>
 
                 {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
                       <div className="space-y-2">
-                          <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
-                          <Textarea placeholder="Paste your memo here..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} rows={4} />
+                          <Label className="flex items-center gap-2">Memo <span className="text-[10px] text-muted-foreground">(AI will generate if blank)</span></Label>
+                          <Textarea placeholder="Paste memo..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} rows={4} />
                       </div>
                       <div className="space-y-2">
-                          <Label className="flex items-center gap-2">Rubric <span className="text-[10px] text-muted-foreground">(Optional - AI can generate)</span></Label>
-                          <Textarea placeholder="Paste your rubric here..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} rows={4} />
+                          <Label className="flex items-center gap-2">Rubric <span className="text-[10px] text-muted-foreground">(AI will generate if blank)</span></Label>
+                          <Textarea placeholder="Paste rubric..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} rows={4} />
                       </div>
                   </div>
                 )}
@@ -383,7 +394,7 @@ export default function TemplateArchivePage() {
                 <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Cancel</Button>
                 <Button onClick={handleUploadTemplate} disabled={isUploading}>
                   {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <Send className="mr-2" />}
-                  {(uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (!uploadData.memo || !uploadData.rubric)) ? 'AI Generate & Load' : 'Load Content'}
+                  {isUploading ? 'Processing...' : 'Load Content'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -485,8 +496,8 @@ export default function TemplateArchivePage() {
               <Tabs defaultValue="content" className="h-full flex flex-col">
                 <TabsList>
                   <TabsTrigger value="content">Content</TabsTrigger>
-                  <TabsTrigger value="memo">Memo</TabsTrigger>
-                  <TabsTrigger value="rubric">Rubric</TabsTrigger>
+                  {viewingTemplate?.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
+                  {viewingTemplate?.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="content" className="flex-1 overflow-auto mt-4">
                   {viewingTemplate?.fileType === 'pdf' ? (
@@ -499,16 +510,20 @@ export default function TemplateArchivePage() {
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="memo" className="flex-1 overflow-auto mt-4">
-                  <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
-                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo available.' }} />
-                  </div>
-                </TabsContent>
-                <TabsContent value="rubric" className="flex-1 overflow-auto mt-4">
-                  <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
-                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric available.' }} />
-                  </div>
-                </TabsContent>
+                {viewingTemplate?.memo && (
+                  <TabsContent value="memo" className="flex-1 overflow-auto mt-4">
+                    <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
+                      <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo available.' }} />
+                    </div>
+                  </TabsContent>
+                )}
+                {viewingTemplate?.rubric && (
+                  <TabsContent value="rubric" className="flex-1 overflow-auto mt-4">
+                    <div className="prose dark:prose-invert max-w-none p-4 bg-white dark:bg-slate-950 rounded-md">
+                      <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric available.' }} />
+                    </div>
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
 

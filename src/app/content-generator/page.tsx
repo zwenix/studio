@@ -108,7 +108,7 @@ export default function ContentGeneratorPage() {
     const finalSubject = subject === 'manual' ? manualSubject : subject;
     const finalTopic = topic === 'manual' ? manualTopic : topic;
 
-    if (!grade || !finalSubject || !finalTopic || !finalContentType) {
+    if (!grade || !finalSubject || !finalTopic || !finalContentType || !category) {
       toast({ title: "Missing Information", description: "Fill out all required fields.", variant: "destructive" });
       return;
     }
@@ -124,6 +124,7 @@ export default function ContentGeneratorPage() {
         subject: finalSubject,
         topic: finalTopic,
         contentType: finalContentType,
+        category: category as any,
         additionalInstructions,
         difficulty: difficulty || undefined,
         length: length || undefined,
@@ -146,6 +147,7 @@ export default function ContentGeneratorPage() {
           grade,
           subject: finalSubject,
           topic: finalTopic,
+          category,
           contentType: finalContentType,
           createdAt: serverTimestamp(),
         });
@@ -325,9 +327,14 @@ export default function ContentGeneratorPage() {
                 <div className="flex flex-col items-center justify-center h-full"><Loader2 className="h-12 w-12 animate-spin" /><p className="mt-4">Creating your content...</p></div>
               ) : generatedContent ? (
                 <Tabs defaultValue="content">
-                  <TabsList><TabsTrigger value="content">Content</TabsTrigger><TabsTrigger value="memo">Memo</TabsTrigger></TabsList>
+                  <TabsList>
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                    {generatedContent.memo && <TabsTrigger value="memo">Memo</TabsTrigger>}
+                    {generatedContent.rubric && <TabsTrigger value="rubric">Rubric</TabsTrigger>}
+                  </TabsList>
                   <TabsContent value="content" className="prose dark:prose-invert max-w-none"><div dangerouslySetInnerHTML={{ __html: generatedContent.content }} /></TabsContent>
-                  <TabsContent value="memo" className="prose dark:prose-invert max-w-none"><div dangerouslySetInnerHTML={{ __html: generatedContent.memo }} /></TabsContent>
+                  {generatedContent.memo && <TabsContent value="memo" className="prose dark:prose-invert max-w-none"><div dangerouslySetInnerHTML={{ __html: generatedContent.memo }} /></TabsContent>}
+                  {generatedContent.rubric && <TabsContent value="rubric" className="prose dark:prose-invert max-w-none"><div dangerouslySetInnerHTML={{ __html: generatedContent.rubric }} /></TabsContent>}
                 </Tabs>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><Sparkles className="h-12 w-12" /><p className="mt-4">Generated content will appear here.</p></div>

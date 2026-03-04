@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import Image from "next/image"
@@ -11,9 +10,9 @@ export function Header({children}: {children?: ReactNode}) {
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
       <div className="flex items-center gap-4">
         <div className="hidden items-center gap-2 font-patrick-hand font-semibold text-lg md:flex">
-            <Link href="/" className="flex items-center gap-2">
-                <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Companion Logo" width={24} height={36} />
-                <span>EduAI Companion</span>
+            <Link href="/" className="flex items-center gap-2 group">
+                <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Companion Logo" width={24} height={36} className="group-hover:rotate-12 transition-transform" />
+                <span className="font-patrick-hand">EduAI <span className="text-primary">Companion</span></span>
             </Link>
         </div>
         {children}

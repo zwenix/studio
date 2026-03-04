@@ -1,4 +1,3 @@
-
 'use client';
 import type { ReactNode } from 'react';
 import {
@@ -22,9 +21,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Sidebar>
             <SidebarHeader>
             <div className="flex items-center gap-2 p-2 font-patrick-hand font-semibold text-lg">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Companion Logo" width={24} height={36} />
-                        <span>EduAI Companion</span>
+                    <Link href="/dashboard" className="flex items-center gap-2 group">
+                        <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI Companion Logo" width={24} height={36} className="group-hover:rotate-12 transition-transform" />
+                        <span className="font-patrick-hand">EduAI <span className="text-primary">Companion</span></span>
                     </Link>
                 </div>
             </SidebarHeader>

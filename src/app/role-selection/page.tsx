@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
-import { GraduationCap, School, Users, Loader2, Shield } from 'lucide-react';
+import { GraduationCap, School, Users, Loader2, Shield, Star, Sparkles } from 'lucide-react';
 import AuthGuard from '@/components/auth-guard';
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -16,29 +16,29 @@ const ROLES_CONFIG = [
     role: 'teacher' as Role,
     title: 'Teacher',
     icon: GraduationCap,
-    color: 'from-purple-500 to-pink-500',
-    desc: 'Create lessons, grade homework, chat with AI',
+    color: 'bg-purple-500',
+    desc: 'Create magic lessons and grade homework!',
   },
   {
     role: 'student' as Role,
     title: 'Student',
     icon: School,
-    color: 'from-blue-500 to-cyan-500',
-    desc: 'Access learning materials, submit homework, AI tutor',
+    color: 'bg-blue-500',
+    desc: 'Start your learning adventure and talk to AI!',
   },
   {
     role: 'parent' as Role,
     title: 'Parent',
     icon: Users,
-    color: 'from-green-500 to-teal-500',
-    desc: 'View progress reports, communicate with teachers',
+    color: 'bg-green-500',
+    desc: 'Watch your child grow and chat with teachers!',
   },
   {
     role: 'admin' as Role,
     title: 'Admin',
     icon: Shield,
-    color: 'from-slate-500 to-gray-700',
-    desc: 'Manage users, data, and system settings',
+    color: 'bg-slate-600',
+    desc: 'Manage the magical kingdom of EduAI!',
   },
 ];
 
@@ -49,11 +49,14 @@ export default function RoleSelectionPage() {
   const auth = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<Role | null>(null);
+  const [isClicking, setIsClicking] = useState<Role | null>(null);
 
   const handleRoleSelect = async (role: Role) => {
     if (!user || !firestore || !auth.currentUser) return;
 
+    setIsClicking(role);
     setIsLoading(role);
+    
     try {
       const batch = writeBatch(firestore);
 
@@ -99,7 +102,7 @@ export default function RoleSelectionPage() {
 
       // Poll to confirm data is readable before redirecting
       let docExists = false;
-      for (let i = 0; i < 10; i++) { // Poll for up to 5 seconds
+      for (let i = 0; i < 10; i++) {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           docExists = true;
@@ -109,8 +112,7 @@ export default function RoleSelectionPage() {
       }
 
       if (!docExists) {
-        // If the doc still doesn't exist, something is wrong.
-        throw new Error("Your profile could not be confirmed after creation. Please try signing in again.");
+        throw new Error("Confirmation failed. Please try again.");
       }
 
       if (!user.displayName && firstName) {
@@ -120,8 +122,8 @@ export default function RoleSelectionPage() {
       }
 
       toast({
-        title: 'Role selected!',
-        description: `You are now registered as a ${role}.`,
+        title: 'Adventure Started!',
+        description: `Welcome to the team, ${role}!`,
       });
 
       router.push('/dashboard');
@@ -129,56 +131,72 @@ export default function RoleSelectionPage() {
       console.error("Failed to save role:", error);
       toast({
         title: 'Error',
-        description: error.message || 'Could not save your role. Please try again.',
+        description: error.message || 'Could not save your role.',
         variant: 'destructive',
       });
       setIsLoading(null);
+      setIsClicking(null);
     }
   };
 
   return (
     <AuthGuard>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-6">
-            <div className="max-w-4xl w-full">
-                <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 text-white font-headline">Choose Your Role</h1>
-                <p className="text-center text-lg text-gray-300 mb-12">
-                  Select the role that best fits you to access your personalized dashboard.
-                </p>
+        <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-blue-500 to-indigo-600 flex items-center justify-center p-6 overflow-hidden relative">
+            {/* Magical Background Decorations */}
+            <div className="absolute inset-0 pointer-events-none">
+                <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-40" />
+                <Star className="absolute top-1/4 right-20 w-12 h-12 text-yellow-200 animate-float opacity-30" />
+                <Star className="absolute bottom-20 left-1/3 w-10 h-10 text-purple-300 animate-wiggle opacity-20" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-400/10 rounded-full blur-[120px]" />
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="max-w-5xl w-full relative z-10 text-white">
+                <div className="text-center mb-12 animate-fadeInZoom">
+                    <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 px-4 py-2 rounded-full text-yellow-400 font-bold mb-6">
+                        <Sparkles className="w-5 h-5" />
+                        <span>Identity Selection</span>
+                    </div>
+                    <h1 className="text-5xl md:text-7xl font-bold mb-4 font-patrick-hand">Choose Your <span className="text-yellow-400">Path!</span></h1>
+                    <p className="text-xl md:text-2xl text-blue-100/80 font-medium">
+                      Select your role to start your EduAI adventure.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {ROLES_CONFIG.map(({ role, title, icon: Icon, color, desc }) => (
                     <button
                       key={role}
                       onClick={() => handleRoleSelect(role)}
                       disabled={!!isLoading}
-                      className={`group relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-60 bg-gradient-to-br ${color}`}
+                      className={`
+                        group relative flex flex-col items-center justify-center p-8 
+                        bg-white/10 backdrop-blur-lg border border-white/20 rounded-[2.5rem] 
+                        transition-all duration-300 transform
+                        hover:scale-105 hover:bg-white/20 hover:shadow-2xl hover:border-white/40
+                        active:scale-95 disabled:opacity-50
+                        ${isClicking === role ? 'scale-95' : ''}
+                      `}
                     >
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity"></div>
-                      <div className="p-8 text-center text-white relative z-10 flex flex-col items-center justify-center h-full">
+                      <div className={`p-5 rounded-2xl ${color} mb-6 shadow-inner group-hover:animate-bounce text-white`}>
                           {isLoading === role ? (
-                              <Loader2 className="h-12 w-12 mb-4 animate-spin" />
+                              <Loader2 className="h-10 w-10 animate-spin" />
                           ) : (
-                              <Icon className="h-12 w-12 mb-4" />
+                              <Icon className="h-10 w-10" />
                           )}
-                          <h3 className="text-2xl font-bold mb-3 font-headline">{title}</h3>
-                          <p className="text-sm opacity-90 flex-grow">{desc}</p>
                       </div>
+                      <h3 className="text-2xl font-bold mb-3 font-patrick-hand">{title}</h3>
+                      <p className="text-sm font-medium text-blue-100/70 text-center">{desc}</p>
+                      
+                      {/* Selection Glow */}
+                      <div className="absolute inset-0 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-4 ring-yellow-400/20" />
                     </button>
                   ))}
                 </div>
 
-                {isLoading && (
-                  <div className="text-center mt-10">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-                      <p className="text-gray-300">Updating your access...</p>
-                  </div>
-                )}
-                
-                <div className="mt-12 text-center text-sm text-gray-400">
-                    {user?.email && (
-                        <p>Signed in as: <span className="font-medium text-white">{user.email}</span></p>
-                    )}
-                    <p className="text-xs mt-2 block">You can change your role later in settings.</p>
+                <div className="mt-12 text-center animate-pulse">
+                    <p className="text-sm text-blue-100/50 font-medium">
+                        Signed in as: <span className="text-white">{user?.email}</span>
+                    </p>
                 </div>
             </div>
         </div>

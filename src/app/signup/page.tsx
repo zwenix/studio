@@ -41,7 +41,14 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 backdrop-blur-md bg-indigo-950/90 text-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4 bg-transparent p-2">
-            <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={48} height={72} className="drop-shadow-glow" />
+            <Image 
+              src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
+              alt="EduAI" 
+              width={48} 
+              height={72} 
+              style={{ width: 'auto', height: 'auto' }}
+              className="drop-shadow-glow" 
+            />
           </div>
           <CardTitle className="text-3xl font-patrick-hand text-white">Join the Team!</CardTitle>
           <CardDescription className="text-indigo-200">Start your learning adventure today.</CardDescription>
@@ -65,6 +72,7 @@ export default function SignupPage() {
               <Input 
                 id="password" 
                 type="password" 
+                autoComplete="new-password"
                 required 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 

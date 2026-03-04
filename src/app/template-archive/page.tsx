@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle, Globe } from 'lucide-react';
+import { Library, Search, Eye, Send, Loader2, Plus, FileUp, FileText, ImageIcon, Code, AlertCircle, Globe, CheckCircle2 } from 'lucide-react';
 import { StaticTemplates } from '@/lib/templates';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -83,7 +83,7 @@ export default function TemplateArchivePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const templatesQuery = useMemoFirebase(() => query(collection(firestore, 'templates')), [firestore]);
-  const { data: contributedTemplates, isLoading: isTemplatesLoading, error: templatesError } = useCollection<Template>(templatesQuery);
+  const { data: contributedTemplates, isLoading: isTemplatesLoading } = useCollection<Template>(templatesQuery);
 
   const teacherClassesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -161,12 +161,20 @@ export default function TemplateArchivePage() {
       // 2. Handle File Upload (only if URL not provided)
       setUploadStep('storage');
       if (selectedFile && !fileUrl) {
-        if (uploadData.fileType === 'html') {
-          content = await selectedFile.text();
-        } else {
-          const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
-          await uploadBytes(fileRef, selectedFile);
-          fileUrl = await getDownloadURL(fileRef);
+        try {
+          if (uploadData.fileType === 'html') {
+            content = await selectedFile.text();
+          } else {
+            // Direct simple upload to avoid timeout issues
+            const fileRef = ref(storage, `templates/${user.uid}/${Date.now()}_${selectedFile.name}`);
+            const result = await uploadBytes(fileRef, selectedFile);
+            fileUrl = await getDownloadURL(result.ref);
+          }
+        } catch (storageError: any) {
+          console.error("Storage error:", storageError);
+          toast({ title: 'Upload Issue', description: 'Local upload failed. Using a Remote URL is recommended for larger files.', variant: 'destructive' });
+          setIsUploading(false);
+          return;
         }
       }
 
@@ -193,7 +201,8 @@ export default function TemplateArchivePage() {
       setIsUploadOpen(false);
       resetUploadState();
     } catch (error: any) {
-      toast({ title: 'Error', description: 'Process timed out or failed. Try using a Remote URL.', variant: 'destructive' });
+      console.error("Upload process failed:", error);
+      toast({ title: 'Process Failed', description: 'Could not complete the load. Try using a Remote URL.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
       setUploadStep('idle');
@@ -271,7 +280,7 @@ export default function TemplateArchivePage() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Load Template Document</DialogTitle>
+                <DialogTitle className="font-patrick-hand text-2xl">Load Template Document</DialogTitle>
                 <DialogDescription>Link to a remote file or upload directly.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -294,13 +303,14 @@ export default function TemplateArchivePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Remote Document URL (Recommended for large files)</Label>
+                <div className="space-y-2 bg-primary/5 p-4 rounded-xl border border-primary/20">
+                  <Label className="text-primary flex items-center gap-2"><Globe className="h-4 w-4" /> Remote Document URL (Recommended)</Label>
+                  <p className="text-[11px] text-muted-foreground mb-2">To prevent timeouts with large files, we recommend hosting your documents on a service like GitHub Gists or Firebase Hosting and pasting the URL below.</p>
                   <div className="relative">
-                    <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Code className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      placeholder="https://gist.github.com/user/raw..." 
-                      className="pl-8" 
+                      placeholder="https://gist.githubusercontent.com/..." 
+                      className="pl-8 bg-white" 
                       value={uploadData.externalUrl} 
                       onChange={e => {
                         setUploadData({...uploadData, externalUrl: e.target.value, fileType: 'url'});
@@ -309,13 +319,12 @@ export default function TemplateArchivePage() {
                       disabled={isUploading} 
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Tip: Use GitHub Gists or Firebase Hosting for fast, reliable loading.</p>
                 </div>
 
                 {!uploadData.externalUrl && (
                   <div className="space-y-2 border-t pt-4">
-                    <Label>Or Upload Local File</Label>
-                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
+                    <Label className="flex items-center gap-2"><FileUp className="h-4 w-4" /> Or Upload Local File</Label>
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-muted/20">
                       <input type="file" className="hidden" id="tpl-file-upload" onChange={handleFileChange} disabled={isUploading} />
                       <label htmlFor="tpl-file-upload" className="cursor-pointer">
                         <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
@@ -344,16 +353,38 @@ export default function TemplateArchivePage() {
                   </div>
                 </div>
 
+                {uploadData.subType === 'Other' && (
+                  <Input placeholder="Manually type content type..." value={uploadData.manualType} onChange={e => setUploadData({...uploadData, manualType: e.target.value})} disabled={isUploading} />
+                )}
+
+                {uploadData.resourceCategory === "Exercises, Tasks & Assessments" && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="space-y-2">
+                      <Label>Memo (Optional - AI will generate if blank)</Label>
+                      <Textarea placeholder="Paste your answer key here..." value={uploadData.memo} onChange={e => setUploadData({...uploadData, memo: e.target.value})} disabled={isUploading} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rubric (Optional - AI will generate if blank)</Label>
+                      <Textarea placeholder="Paste your rubric criteria here..." value={uploadData.rubric} onChange={e => setUploadData({...uploadData, rubric: e.target.value})} disabled={isUploading} />
+                    </div>
+                  </div>
+                )}
+
                 {isUploading && (
-                  <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center gap-2">
+                  <div className="bg-primary/10 p-4 rounded-xl flex flex-col items-center gap-3 animate-pulse">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-sm font-medium">Step: {uploadStep.toUpperCase()}</p>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-primary uppercase tracking-widest">Processing...</p>
+                      <p className="text-xs text-muted-foreground mt-1">Current Step: {uploadStep.toUpperCase()}</p>
+                    </div>
                   </div>
                 )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsUploadOpen(false)} disabled={isUploading}>Cancel</Button>
-                <Button onClick={handleUploadTemplate} disabled={isUploading}>Load Store Item</Button>
+                <Button onClick={handleUploadTemplate} disabled={isUploading} className="bg-primary hover:bg-primary/90">
+                  {isUploading ? 'Loading Store Item...' : 'Load Store Item'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -369,43 +400,86 @@ export default function TemplateArchivePage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {isTemplatesLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
           {!isTemplatesLoading && filteredTemplates.map((tpl) => (
-            <Card key={tpl.id} className="flex flex-col hover:shadow-md transition-shadow group relative">
-              <CardHeader>
-                <div className="flex justify-between items-start mb-2"><Badge variant="outline">Grade {tpl.grade}</Badge></div>
-                <CardTitle className="truncate">{tpl.title}</CardTitle>
-                <CardDescription className="truncate">{tpl.subject}</CardDescription>
+            <Card key={tpl.id} className="flex flex-col hover:shadow-lg transition-all duration-300 group relative border-none bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start mb-2">
+                  <Badge variant="secondary" className="rounded-full px-3">Grade {tpl.grade}</Badge>
+                  {tpl.teacherId === user?.uid && <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">My Upload</Badge>}
+                </div>
+                <CardTitle className="truncate font-patrick-hand text-xl">{tpl.title}</CardTitle>
+                <CardDescription className="truncate text-primary font-medium">{tpl.subject}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1"><p className="text-sm text-muted-foreground line-clamp-2">{tpl.description}</p></CardContent>
-              <CardFooter><Button variant="secondary" className="w-full" onClick={() => setSelectedTemplate(tpl)}><Eye className="mr-2 h-4 w-4" /> View / Assign</Button></CardFooter>
+              <CardContent className="flex-1">
+                <p className="text-sm text-muted-foreground line-clamp-2">{tpl.description}</p>
+                <div className="mt-4 flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                  <FileText className="h-3 w-3" /> {tpl.contentType}
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0">
+                <Button variant="secondary" className="w-full rounded-full group-hover:bg-primary group-hover:text-white transition-colors" onClick={() => setSelectedTemplate(tpl)}>
+                  <Eye className="mr-2 h-4 w-4" /> View / Assign
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
 
         <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setSelectedTemplate(null)}>
-          <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>{viewingTemplate?.title}</DialogTitle>
-              <DialogDescription>Review and assign to class.</DialogDescription>
-            </DialogHeader>
-            <div className="flex-1 overflow-hidden border rounded-md bg-muted/20">
+          <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem]">
+            <div className="bg-primary p-6 text-white flex flex-row items-center justify-between">
+              <div>
+                <DialogTitle className="font-patrick-hand text-3xl">{viewingTemplate?.title}</DialogTitle>
+                <DialogDescription className="text-blue-100 font-medium">Review content and assign to your students.</DialogDescription>
+              </div>
+              <Badge variant="outline" className="text-white border-white/20 px-4 py-1 rounded-full uppercase text-xs font-bold">Grade {viewingTemplate?.grade}</Badge>
+            </div>
+            
+            <div className="flex-1 overflow-hidden bg-muted/20">
               <Tabs defaultValue="content" className="h-full flex flex-col">
-                <TabsList className="m-2"><TabsTrigger value="content">Content</TabsTrigger><TabsTrigger value="memo">Memo</TabsTrigger><TabsTrigger value="rubric">Rubric</TabsTrigger></TabsList>
-                <TabsContent value="content" className="flex-1 overflow-auto p-4 bg-white dark:bg-slate-950">
-                  {viewingTemplate?.fileUrl ? <iframe src={viewingTemplate.fileUrl} className="w-full h-full border-0" /> : <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.content || '' }} />}
+                <div className="px-6 pt-4">
+                  <TabsList className="grid grid-cols-3 w-full max-w-md rounded-full p-1 bg-white/50 backdrop-blur-sm border">
+                    <TabsTrigger value="content" className="rounded-full">Content</TabsTrigger>
+                    <TabsTrigger value="memo" className="rounded-full">Memo</TabsTrigger>
+                    <TabsTrigger value="rubric" className="rounded-full">Rubric</TabsTrigger>
+                  </TabsList>
+                </div>
+                
+                <TabsContent value="content" className="flex-1 overflow-auto m-0 p-6">
+                  <div className="bg-white dark:bg-slate-950 rounded-3xl p-8 shadow-inner border min-h-full">
+                    {viewingTemplate?.fileUrl ? (
+                      <iframe src={viewingTemplate.fileUrl} className="w-full aspect-[3/4] border-0 rounded-2xl" />
+                    ) : (
+                      <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: viewingTemplate?.content || '' }} />
+                    )}
+                  </div>
                 </TabsContent>
-                <TabsContent value="memo" className="flex-1 overflow-auto p-4 bg-white dark:bg-slate-950"><div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || 'No memo.' }} /></TabsContent>
-                <TabsContent value="rubric" className="flex-1 overflow-auto p-4 bg-white dark:bg-slate-950"><div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || 'No rubric.' }} /></TabsContent>
+                
+                <TabsContent value="memo" className="flex-1 overflow-auto m-0 p-6">
+                  <div className="bg-white dark:bg-slate-950 rounded-3xl p-8 shadow-inner border min-h-full prose dark:prose-invert max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.memo || '<p class="text-muted-foreground text-center py-12">No memo provided for this item.</p>' }} />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="rubric" className="flex-1 overflow-auto m-0 p-6">
+                  <div className="bg-white dark:bg-slate-950 rounded-3xl p-8 shadow-inner border min-h-full prose dark:prose-invert max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: viewingTemplate?.rubric || '<p class="text-muted-foreground text-center py-12">No rubric provided for this item.</p>' }} />
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
-            <DialogFooter className="flex-col sm:flex-row gap-4 pt-4 border-t mt-4">
-              <div className="flex-1 flex gap-2">
+            
+            <div className="p-6 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4 items-center">
+              <div className="flex-1 w-full flex gap-2">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Choose Class" /></SelectTrigger>
+                  <SelectTrigger className="w-full rounded-full border-2 focus:ring-primary h-12"><SelectValue placeholder="Select Class to Assign" /></SelectTrigger>
                   <SelectContent>{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign}>{isAssigning ? <Loader2 className="animate-spin" /> : 'Assign'}</Button>
+                <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign} className="h-12 px-8 rounded-full shadow-lg transition-transform active:scale-95">
+                  {isAssigning ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  Assign Now
+                </Button>
               </div>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

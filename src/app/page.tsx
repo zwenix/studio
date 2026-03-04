@@ -33,13 +33,13 @@ export default function LandingPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-blue-500 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 text-white selection:bg-yellow-400 selection:text-indigo-900 overflow-x-hidden relative">
       {/* Magical Floating Decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
+        <Star className="absolute top-20 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-40" />
         <Star className="absolute top-40 right-20 w-12 h-12 text-yellow-200 animate-float opacity-30" />
         <Star className="absolute bottom-40 left-1/4 w-10 h-10 text-purple-300 opacity-20" />
-        <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] bg-white/10 rounded-full blur-[120px] animate-pulse" />
       </div>
 
       {/* Navigation */}
@@ -67,18 +67,18 @@ export default function LandingPage() {
         <section className="pt-48 pb-20 px-6">
           <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
             <div className="text-center lg:text-left animate-fadeInZoom">
-              <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 px-4 py-2 rounded-full text-yellow-400 font-bold mb-8 animate-bounce">
-                <Sparkles className="w-5 h-5" />
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white font-bold mb-8 animate-bounce">
+                <Sparkles className="w-5 h-5 text-yellow-400" />
                 <span>The Smartest Way to Learn!</span>
               </div>
               <h2 className="text-6xl md:text-8xl font-bold mb-8 leading-[1.05] font-patrick-hand">
                 Learning is an <span className="text-yellow-400 underline decoration-wavy underline-offset-8">Adventure!</span>
               </h2>
-              <p className="text-2xl text-blue-100/80 mb-12 font-medium max-w-xl mx-auto lg:mx-0">
+              <p className="text-2xl text-white/90 mb-12 font-medium max-w-xl mx-auto lg:mx-0">
                 Magic lesson plans, super homework help, and your very own AI robot tutor! 🚀
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
-                <Button size="lg" asChild className="px-10 py-8 bg-yellow-400 text-slate-950 hover:bg-yellow-300 rounded-3xl font-bold text-2xl shadow-2xl transform hover:scale-105 h-auto ring-8 ring-yellow-400/10">
+                <Button size="lg" asChild className="px-10 py-8 bg-yellow-400 text-slate-950 hover:bg-yellow-300 rounded-3xl font-bold text-2xl shadow-2xl transform hover:scale-105 h-auto ring-8 ring-white/10">
                   <Link href="/signup" className="flex items-center gap-3">Start My Adventure <ArrowRight /></Link>
                 </Button>
                 <Button size="lg" asChild variant="outline" className="px-10 py-8 bg-white/5 border-white/20 backdrop-blur-md text-white hover:bg-white/10 rounded-3xl font-bold text-xl h-auto">
@@ -90,7 +90,7 @@ export default function LandingPage() {
               <div className="relative z-10 animate-float">
                 <Image 
                   src="https://i.ibb.co/hGDJmD3/grok-image-1772581868247.jpg" 
-                  alt="Multiracial children learning together" 
+                  alt="Multiracial children learning together in classroom" 
                   width={800} 
                   height={600} 
                   className="rounded-[4rem] shadow-2xl border-8 border-white/10 object-cover"
@@ -98,7 +98,7 @@ export default function LandingPage() {
                   data-ai-hint="multiracial children"
                 />
               </div>
-              <div className="absolute -bottom-10 -right-10 w-56 h-56 bg-indigo-600 rounded-full flex items-center justify-center animate-wiggle z-20 shadow-2xl border-4 border-white/20 text-center p-6">
+              <div className="absolute -bottom-10 -right-10 w-56 h-56 bg-primary rounded-full flex items-center justify-center animate-wiggle z-20 shadow-2xl border-4 border-white/20 text-center p-6">
                 <p className="text-white font-bold text-xl leading-tight">100% Fun<br/>Learning! 🎉</p>
               </div>
             </div>
@@ -110,7 +110,7 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-24">
               <h3 className="text-5xl md:text-6xl font-bold font-patrick-hand mb-6">Your Super Powers! 🦸‍♂️</h3>
-              <p className="text-xl text-blue-100/60 max-w-2xl mx-auto">Everything you need to be a top student or a master teacher, all powered by magic AI.</p>
+              <p className="text-xl text-white/80 max-w-2xl mx-auto">Everything you need to be a top student or a master teacher, all powered by magic AI.</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
               <AdventureBox icon={Zap} title="Magic Lessons" description="Create amazing lesson plans in a flash! Perfect for any subject." color="bg-orange-500" />
@@ -132,7 +132,7 @@ export default function LandingPage() {
             </div>
             <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
           </div>
-          <p className="text-blue-100/40 font-medium text-lg">&copy; 2026 EduAI Companion. All rights reserved.</p>
+          <p className="text-white/40 font-medium text-lg">&copy; 2026 EduAI Companion. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { BookOpen, Users, BarChart, PenSquare, Rocket, Sparkles, Star, Zap, ScanText, FlaskConical, Loader2 } from 'lucide-react';
@@ -118,7 +119,7 @@ export default function DashboardPage() {
           <Card className="bg-primary text-primary-foreground col-span-2">
             <CardHeader><CardTitle className="text-sm font-medium">Quick Actions</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                 <Button variant="secondary" size="sm" asChild><Link href="/content-generator">Generate Content</Link></Button>
+                 <Button variant="secondary" size="sm" asChild><Link href="/content-creator">Generate Content</Link></Button>
                  <Button variant="secondary" size="sm" asChild><Link href="/my-classes/new">New Class</Link></Button>
                  <Button variant="secondary" size="sm" asChild><Link href="/progress-reports">View Reports</Link></Button>
             </CardContent>

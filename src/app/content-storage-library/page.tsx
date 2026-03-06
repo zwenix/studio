@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -27,14 +28,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2 } from 'lucide-react';
+import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2, Edit3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
 import type { GeneratedContent, Class } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
-export default function ContentStorageLibraryPage() {
+export default function ContentArchivePage() {
+  const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -114,7 +117,7 @@ export default function ContentStorageLibraryPage() {
     if (!user) return;
     try {
       await deleteDoc(doc(firestore, 'teachers', user.uid, 'generatedContent', item.id));
-      toast({ title: 'Item removed from Library' });
+      toast({ title: 'Item removed from Archive' });
     } catch (e) {
       toast({ title: 'Delete failed', variant: "destructive" });
     }
@@ -126,26 +129,26 @@ export default function ContentStorageLibraryPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-indigo-600 to-blue-500 p-10 rounded-[3rem] text-white shadow-xl">
           <div>
             <h1 className="text-4xl md:text-6xl font-bold font-patrick-hand flex items-center gap-4">
-              <Box className="h-12 w-12 text-yellow-400" /> Content Storage Library
+              <Box className="h-12 w-12 text-yellow-400" /> Content & Templates Archive
             </h1>
-            <p className="text-xl text-blue-100 font-medium mt-2">Manage your creations and explore the world of templates.</p>
+            <p className="text-xl text-blue-100 font-medium mt-2">The vault for all your creative materials and official templates.</p>
           </div>
         </div>
 
-        {/* Template Repository Links (GitHub) */}
+        {/* Repository Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-indigo-950 text-white border-none shadow-lg rounded-[2.5rem] overflow-hidden group">
             <CardHeader className="flex flex-row items-center gap-4">
               <div className="p-4 bg-yellow-400 rounded-2xl text-indigo-950 group-hover:animate-bounce"><Library className="h-8 w-8" /></div>
               <div>
-                <CardTitle className="font-patrick-hand text-2xl">System Template Repository</CardTitle>
-                <CardDescription className="text-indigo-200">Official preloaded templates & aids.</CardDescription>
+                <CardTitle className="font-patrick-hand text-2xl">Official Repository</CardTitle>
+                <CardDescription className="text-indigo-200">Preloaded CAPS-compliant templates.</CardDescription>
               </div>
             </CardHeader>
             <CardFooter>
               <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
                 <a href="https://github.com/your-username/eduai-templates" target="_blank" rel="noopener noreferrer">
-                  Browse Official Store <ExternalLink className="ml-2 h-4 w-4" />
+                  Browse System Store <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
             </CardFooter>
@@ -155,14 +158,14 @@ export default function ContentStorageLibraryPage() {
             <CardHeader className="flex flex-row items-center gap-4">
               <div className="p-4 bg-blue-500 rounded-2xl text-white group-hover:animate-bounce"><History className="h-8 w-8" /></div>
               <div>
-                <CardTitle className="font-patrick-hand text-2xl">User-Generated Repository</CardTitle>
-                <CardDescription className="text-indigo-200">Community shared materials & designs.</CardDescription>
+                <CardTitle className="font-patrick-hand text-2xl">User-Generated Store</CardTitle>
+                <CardDescription className="text-indigo-200">Community shared materials.</CardDescription>
               </div>
             </CardHeader>
             <CardFooter>
               <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
                 <a href="https://github.com/your-username/eduai-community-content" target="_blank" rel="noopener noreferrer">
-                  Explore Community Lab <ExternalLink className="ml-2 h-4 w-4" />
+                  Explore User Library <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
             </CardFooter>
@@ -174,7 +177,7 @@ export default function ContentStorageLibraryPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input placeholder="Search your library..." className="pl-12 rounded-full h-12 border-2 focus:ring-primary" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Input placeholder="Search your archive..." className="pl-12 rounded-full h-12 border-2 focus:ring-primary" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
           </div>
 
@@ -195,9 +198,12 @@ export default function ContentStorageLibraryPage() {
                   <div className="text-xs text-muted-foreground uppercase font-black tracking-widest bg-muted/50 px-2 py-1 rounded-full w-fit mb-2">{item.contentType}</div>
                   <p className="text-xs text-muted-foreground">{format(item.createdAt.toDate(), 'PPP')}</p>
                 </CardContent>
-                <CardFooter>
-                  <Button variant="secondary" className="w-full rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
-                    <Eye className="mr-2 h-4 w-4" /> View / Assign
+                <CardFooter className="gap-2">
+                  <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
+                    <Eye className="mr-2 h-4 w-4" /> View
+                  </Button>
+                  <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => router.push(`/content-design-lab?editId=${item.id}`)}>
+                    <Edit3 className="mr-2 h-4 w-4" /> Edit
                   </Button>
                 </CardFooter>
               </Card>
@@ -206,20 +212,20 @@ export default function ContentStorageLibraryPage() {
             {!isLoading && filteredHistory?.length === 0 && (
               <div className="col-span-full text-center py-20 bg-muted/20 rounded-[3rem] border-2 border-dashed">
                 <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-patrick-hand">Your library is currently empty</h3>
-                <p className="text-muted-foreground">Go to the Design Lab to create something magical!</p>
+                <h3 className="text-2xl font-patrick-hand">Your archive is empty</h3>
+                <p className="text-muted-foreground">Go to the Content Creator to start your adventure!</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* View/Assign Dialog */}
+        {/* View Dialog */}
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">{selectedItem?.topic}</DialogTitle>
-                <DialogDescription className="text-blue-100 font-bold mt-1">Review your design and distribute to classes.</DialogDescription>
+                <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
               </div>
               <Badge variant="outline" className="text-white border-white/40 px-6 py-2 rounded-full uppercase text-sm font-black shadow-inner">Grade {selectedItem?.grade}</Badge>
             </div>
@@ -231,9 +237,18 @@ export default function ContentStorageLibraryPage() {
             </div>
             
             <div className="p-8 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4 items-center shrink-0">
+              <Button 
+                variant="outline" 
+                className="rounded-full h-14 px-8 border-2 font-bold"
+                onClick={() => {
+                  if(selectedItem) router.push(`/content-design-lab?editId=${selectedItem.id}`);
+                }}
+              >
+                <Edit3 className="mr-2 h-5 w-5" /> Tweak in Creator
+              </Button>
               <div className="flex-1 w-full flex gap-3">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full rounded-full border-2 h-14 text-lg px-6"><SelectValue placeholder="Select Class to Assign" /></SelectTrigger>
+                  <SelectTrigger className="w-full rounded-full border-2 h-14 text-lg px-6"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
                   <SelectContent className="rounded-2xl">{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
                 <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full shadow-xl text-lg font-bold">

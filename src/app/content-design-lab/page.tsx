@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
@@ -33,20 +34,24 @@ import {
   Save, 
   Send,
   Zap,
-  Palette
+  Palette,
+  Edit3,
+  Box,
+  Eye
 } from 'lucide-react';
-import Image from 'next/image';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, addDoc, writeBatch, doc, serverTimestamp, Timestamp, getDoc } from 'firebase/firestore';
 import { add } from 'date-fns';
 import { useDropzone } from 'react-dropzone';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import type { Class, Teacher, User } from '@/lib/types';
+import type { Class, Teacher, User, GeneratedContent } from '@/lib/types';
 
 const CONTENT_CATEGORIES = {
   "Teaching Tools & Aids": ["Lesson Plans", "Study Guides", "Booklets", "Subject Topic Cutouts", "Other"],
@@ -54,7 +59,8 @@ const CONTENT_CATEGORIES = {
   "Class Management & Admin": ["Classroom Labels", "Wall Posters", "Signs", "Illustrations", "Letters to Parents", "Announcements & Notice", "Permission Slips", "Other"]
 };
 
-export default function ContentDesignLabPage() {
+export default function ContentCreatorPage() {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
@@ -66,6 +72,7 @@ export default function ContentDesignLabPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [selectedClassId, setSelectedClassId] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // AI Generator Form
   const [grade, setGrade] = useState('');
@@ -75,11 +82,8 @@ export default function ContentDesignLabPage() {
   const [subType, setSubType] = useState<string>('');
   const [manualType, setManualType] = useState<string>('');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
-  const [customHeading, setCustomHeading] = useState('');
-  const [customSubject, setCustomSubject] = useState('');
 
   // OCR/Upload Form
-  const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isCameraOpen, setCameraOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -104,6 +108,39 @@ export default function ContentDesignLabPage() {
     return subType;
   }, [subType, manualType]);
 
+  // Handle incoming data from Archive
+  useEffect(() => {
+    const editId = searchParams.get('editId');
+    if (editId && user) {
+      const loadEditItem = async () => {
+        setIsLoading(true);
+        try {
+          const docRef = doc(firestore, 'teachers', user.uid, 'generatedContent', editId);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const data = snap.data() as GeneratedContent;
+            setGeneratedContent({
+              content: data.content,
+              memo: data.memo || '',
+              rubric: data.rubric || ''
+            });
+            setGrade(data.grade);
+            setSubject(data.subject);
+            setTopic(data.topic);
+            setSubType(data.contentType);
+            setIsEditMode(true);
+            toast({ title: 'Loaded from Archive!' });
+          }
+        } catch (e) {
+          toast({ title: 'Failed to load item', variant: 'destructive' });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadEditItem();
+    }
+  }, [searchParams, user, firestore, toast]);
+
   // --- AI GENERATION ---
   const handleGenerate = async () => {
     if (!grade || !subject || !topic || !finalContentType || !category) {
@@ -113,6 +150,7 @@ export default function ContentDesignLabPage() {
     
     setIsLoading(true);
     setGeneratedContent(null);
+    setIsEditMode(false);
 
     try {
       const result = await generateCAPSContent({
@@ -139,7 +177,6 @@ export default function ContentDesignLabPage() {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const currentFile = acceptedFiles[0];
-      setFile(currentFile);
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(currentFile);
@@ -158,11 +195,11 @@ export default function ContentDesignLabPage() {
     try {
       const result = await extractTextFromImage({ photoDataUri: preview });
       setGeneratedContent({
-        content: `<div>${result.extractedText}</div>`,
+        content: `<div class="p-4">${result.extractedText}</div>`,
         memo: '',
         rubric: ''
       });
-      setActiveTab('ai'); // Move to review state
+      setIsEditMode(true); // Allow immediate tweaking of OCR text
       toast({ title: 'Text Extracted!' });
     } catch (error) {
       toast({ title: 'Extraction Failed', variant: 'destructive' });
@@ -212,14 +249,14 @@ export default function ContentDesignLabPage() {
       await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
         ...generatedContent,
         teacherId: user.uid,
-        grade,
-        subject,
-        topic: topic || 'User Upload',
+        grade: grade || 'Any',
+        subject: subject || 'General',
+        topic: topic || 'Custom Content',
         category: category || 'General',
         contentType: finalContentType || 'Document',
         createdAt: serverTimestamp(),
       });
-      toast({ title: 'Saved to Library!', description: 'You can find this in your Storage Library.' });
+      toast({ title: 'Saved to Archive!', description: 'Your content is now in your History.' });
     } catch (error) {
       toast({ title: 'Save Failed', variant: "destructive" });
     } finally {
@@ -234,9 +271,9 @@ export default function ContentDesignLabPage() {
         const contentRef = await addDoc(collection(firestore, 'content'), {
             ...generatedContent,
             teacherId: user.uid,
-            grade,
-            subject,
-            topic: topic || 'Lab Assignment',
+            grade: grade || 'Any',
+            subject: subject || 'General',
+            topic: topic || 'Class Assignment',
             contentType: finalContentType || 'Document',
             createdAt: serverTimestamp(),
         });
@@ -271,7 +308,7 @@ export default function ContentDesignLabPage() {
     if (!generatedContent) return;
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`<html><head><title>EduAI Lab</title><style>body{font-family:sans-serif;padding:2rem;}img{max-width:100%;}hr{margin:2rem 0;}</style></head><body>${generatedContent.content}${generatedContent.memo ? `<hr/><h2>Memo</h2>${generatedContent.memo}` : ''}</body></html>`);
+      printWindow.document.write(`<html><head><title>EduAI Creator</title><style>body{font-family:sans-serif;padding:2rem;}img{max-width:100%;}hr{margin:2rem 0;}</style></head><body>${generatedContent.content}${generatedContent.memo ? `<hr/><h2>Memo</h2>${generatedContent.memo}` : ''}</body></html>`);
       printWindow.document.close();
       printWindow.print();
     }
@@ -283,8 +320,8 @@ export default function ContentDesignLabPage() {
         <div className="flex items-center gap-3">
           <Palette className="h-10 w-10 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Generation & Design Lab</h1>
-            <p className="text-muted-foreground">The magical workshop for all your classroom materials.</p>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
+            <p className="text-muted-foreground">The magical workshop for creating and tweaking all your materials.</p>
           </div>
         </div>
 
@@ -292,12 +329,15 @@ export default function ContentDesignLabPage() {
           <Card className="bg-indigo-950 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <CardHeader className="pb-2">
-                <TabsList className="grid grid-cols-2 bg-white/10 rounded-full h-14 p-1">
+                <TabsList className="grid grid-cols-3 bg-white/10 rounded-full h-14 p-1">
                   <TabsTrigger value="ai" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
-                    <Sparkles className="mr-2 h-4 w-4" /> AI Magic
+                    <Sparkles className="mr-2 h-4 w-4" /> Magic AI
                   </TabsTrigger>
                   <TabsTrigger value="upload" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
-                    <Camera className="mr-2 h-4 w-4" /> Scan & Upload
+                    <Camera className="mr-2 h-4 w-4" /> Scan
+                  </TabsTrigger>
+                  <TabsTrigger value="archive" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
+                    <Box className="mr-2 h-4 w-4" /> Archive
                   </TabsTrigger>
                 </TabsList>
               </CardHeader>
@@ -317,9 +357,20 @@ export default function ContentDesignLabPage() {
                       </Select>
                       <Select value={subType} onValueChange={setSubType} disabled={!category}>
                         <SelectTrigger className="bg-white/10 border-white/20 rounded-xl"><SelectValue placeholder="Type" /></SelectTrigger>
-                        <SelectContent>{category && CONTENT_CATEGORIES[category as keyof typeof CONTENT_CATEGORIES].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                        <SelectContent>
+                          {category && CONTENT_CATEGORIES[category as keyof typeof CONTENT_CATEGORIES].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                        </SelectContent>
                       </Select>
                     </div>
+
+                    {subType === 'Other' && (
+                      <Input 
+                        placeholder="What would you like to create?" 
+                        value={manualType} 
+                        onChange={e => setManualType(e.target.value)} 
+                        className="bg-white/10 border-white/20 rounded-xl text-white" 
+                      />
+                    )}
 
                     <Select value={subject} onValueChange={setSubject} disabled={!grade}>
                       <SelectTrigger className="bg-white/10 border-white/20 rounded-xl"><SelectValue placeholder="Subject" /></SelectTrigger>
@@ -338,12 +389,12 @@ export default function ContentDesignLabPage() {
                   </Button>
                 </TabsContent>
 
-                <TabsContent value="upload" className="space-y-4 m-0">
+                <TabsContent value="upload" className="space-y-4 m-0 text-center">
                   <div {...getRootProps()} className={`border-2 border-dashed rounded-[2.5rem] p-12 text-center transition-all ${isDragActive ? 'border-yellow-400 bg-white/10' : 'border-white/20 hover:border-yellow-400/50 cursor-pointer'}`}>
                     <input {...getInputProps()} />
                     <FileUp className="h-16 w-16 mx-auto mb-4 text-indigo-200" />
                     <p className="text-xl font-bold font-patrick-hand">Drag & Drop Documents</p>
-                    <p className="text-sm text-indigo-200 mt-2">PDF or Images supported</p>
+                    <p className="text-sm text-indigo-200 mt-2">OCR will process your file for editing.</p>
                   </div>
 
                   <div className="flex gap-4">
@@ -372,29 +423,75 @@ export default function ContentDesignLabPage() {
                     {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ScanText className="mr-2 h-5 w-5" />} Process with OCR
                   </Button>
                 </TabsContent>
+
+                <TabsContent value="archive" className="space-y-6 m-0 py-8 text-center">
+                  <div className="bg-white/5 rounded-[2rem] p-10 border border-white/10">
+                    <Box className="h-20 w-20 mx-auto mb-6 text-yellow-400" />
+                    <h3 className="text-2xl font-patrick-hand mb-4">Saved Contents & Templates</h3>
+                    <p className="text-indigo-200 mb-8">Select an item from your archive to tweak and customize it.</p>
+                    <Button asChild className="w-full rounded-full h-14 bg-white/10 hover:bg-white/20 border-white/20 border text-white font-bold text-lg">
+                      <Link href="/content-storage-library">Browse My Archive</Link>
+                    </Button>
+                  </div>
+                </TabsContent>
               </CardContent>
             </Tabs>
           </Card>
 
           <Card className="flex flex-col rounded-[2.5rem] overflow-hidden border-none shadow-xl bg-white dark:bg-slate-900">
-            <CardHeader className="bg-primary/5 border-b pb-4">
-              <CardTitle className="font-patrick-hand text-2xl flex items-center gap-2">Design Preview & Actions</CardTitle>
-              <CardDescription>Review your work and distribute it.</CardDescription>
+            <CardHeader className="bg-primary/5 border-b pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-patrick-hand text-2xl flex items-center gap-2">Creator Workspace</CardTitle>
+                <CardDescription>Review and tweak your masterpiece.</CardDescription>
+              </div>
+              {generatedContent && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  className="rounded-full font-bold"
+                >
+                  <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View Preview' : 'Edit Content'}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="flex-1 overflow-auto p-6">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full space-y-4 animate-pulse">
                   <div className="h-12 w-12 bg-primary/20 rounded-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                  <p className="font-patrick-hand text-xl">Creating your masterpiece...</p>
+                  <p className="font-patrick-hand text-xl">Processing your request...</p>
                 </div>
               ) : generatedContent ? (
-                <div className="prose dark:prose-invert max-w-none bg-muted/30 p-6 rounded-[2rem] border">
-                  <div dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
+                <div className="h-full">
+                  {isEditMode ? (
+                    <div className="space-y-4 h-full flex flex-col">
+                      <Label>HTML Content Editor</Label>
+                      <Textarea 
+                        className="flex-1 font-mono text-sm resize-none rounded-[1.5rem]" 
+                        value={generatedContent.content}
+                        onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})}
+                      />
+                      {generatedContent.memo !== undefined && (
+                        <>
+                          <Label>Memo Editor</Label>
+                          <Textarea 
+                            className="h-32 font-mono text-sm resize-none rounded-[1rem]" 
+                            value={generatedContent.memo}
+                            onChange={e => setGeneratedContent({...generatedContent, memo: e.target.value})}
+                          />
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="prose dark:prose-invert max-w-none bg-muted/30 p-6 rounded-[2rem] border shadow-inner">
+                      <div dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
                   <Palette className="h-20 w-20 mb-4" />
-                  <p className="font-patrick-hand text-2xl">Design something magical!</p>
+                  <p className="font-patrick-hand text-2xl">Create or load something magical!</p>
                 </div>
               )}
             </CardContent>
@@ -404,13 +501,13 @@ export default function ContentDesignLabPage() {
                 <div className="flex w-full gap-2">
                   <Button variant="outline" onClick={handlePrint} className="flex-1 rounded-full"><Printer className="mr-2 h-4 w-4" /> Print / PDF</Button>
                   <Button variant="outline" onClick={handleSaveToLibrary} disabled={isSaving} className="flex-1 rounded-full">
-                    {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save to Library
+                    {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save to Archive
                   </Button>
                 </div>
                 <div className="flex w-full gap-2 items-center">
                   <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                     <SelectTrigger className="flex-1 rounded-full"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
-                    <SelectContent>{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    <SelectContent className="rounded-2xl">{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                   <Button disabled={!selectedClassId || isAssigning} onClick={handleAssign} className="rounded-full px-8 bg-primary">
                     {isAssigning ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Assign

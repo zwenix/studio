@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -12,12 +11,10 @@ import {
   Mail,
   FlaskConical,
   Cog,
-  Library,
   GraduationCap,
   BarChart,
   Box
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
   SidebarMenuItem,

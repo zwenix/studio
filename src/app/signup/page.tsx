@@ -81,7 +81,7 @@ export default function SignupPage() {
               />
             </div>
             <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold bg-yellow-400 text-indigo-950 hover:bg-yellow-300 shadow-lg" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Create Account'}
+              {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Create Account'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-indigo-200">

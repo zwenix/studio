@@ -52,7 +52,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
       <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 bg-indigo-950 text-white">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4 bg-transparent p-2">
             <Image 
               src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
@@ -94,11 +94,11 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold shadow-lg bg-yellow-400 text-indigo-950 hover:bg-yellow-300" disabled={isLoading || isGoogleLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
+              {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Login'}
             </Button>
           </form>
 
-          <div className="relative">
+          <div className="relative my-2">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10" /></div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-indigo-950 px-2 text-indigo-300">Or continue with</span>
@@ -122,7 +122,7 @@ export default function LoginPage() {
             Sign in with Google
           </Button>
 
-          <div className="text-center text-sm text-indigo-200">
+          <div className="text-center text-sm text-indigo-200 mt-2">
             Don't have an account? <Link href="/signup" className="underline font-bold text-yellow-400 hover:text-yellow-300">Sign up</Link>
           </div>
         </CardContent>

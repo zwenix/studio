@@ -4,16 +4,17 @@ const nextConfig = {
     'genkit',
     '@genkit-ai/google-genai',
     '@genkit-ai/core',
-    'require-in-the-middle',
+    '@genkit-ai/ai',
+    'wav',
+    'require-in-the-middle'
   ],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.ibb.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
-      { protocol: 'https', hostname: 'picsum.photos' },
-    ],
-  },
+      { protocol: 'https', hostname: 'picsum.photos' }
+    ]
+  }
 };
 
 export default nextConfig;

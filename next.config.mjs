@@ -1,20 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: [
-    'genkit',
-    '@genkit-ai/google-genai',
-    '@genkit-ai/core',
-    '@genkit-ai/ai',
-    'wav',
-    'require-in-the-middle'
-  ],
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'i.ibb.co' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'picsum.photos' }
-    ]
-  }
+  experimental: {
+    serverExternalPackages: ['genkit', 'require-in-the-middle'],
+  },
+  // Suppress hydration warnings from browser extensions
+  compiler: {
+    styledComponents: true,
+  },
 };
 
 export default nextConfig;

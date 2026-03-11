@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { part, z } from 'genkit';
+import { z } from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user query to the AI tutor.'),
@@ -41,10 +41,10 @@ const aiTutorFlow = ai.defineFlow(
 
 Respond in the following language: ${language}`;
 
-    // Convert the message history (where content is a string) to the format Genkit expects (where content is an array of parts).
+    // Convert the message history to the format Genkit expects (where content is an array of parts).
     const genkitHistory = history?.map(message => ({
         role: message.role,
-        content: [part(message.content)]
+        content: [{ text: message.content }]
     })) || [];
 
 

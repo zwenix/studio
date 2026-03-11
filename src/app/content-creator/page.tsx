@@ -52,6 +52,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { Class, Teacher, User, GeneratedContent } from '@/lib/types';
 import { StaticTemplates } from '@/lib/templates';
 
+export const dynamic = 'force-dynamic';
+
 const CONTENT_CATEGORIES = {
   "Teaching Tools & Aids": ["Lesson Plans", "Study Guides", "Booklets", "Subject Topic Cutouts", "Other"],
   "Exercises, Tasks & Assessments": ["Exercises & Tasks", "Homework", "Assignments & Group Activities", "Other"],
@@ -73,6 +75,14 @@ function ContentCreatorInner() {
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Camera state
+  const [isCameraOpen, setCameraOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
 
   // AI Generator Form
   const [grade, setGrade] = useState('');
@@ -102,7 +112,7 @@ function ContentCreatorInner() {
   }, [subType, manualType]);
 
   const finalTopic = useMemo(() => {
-    if (topic === 'Other' || (topics && topics.length === 0)) return customTopic;
+    if (topic === 'Other' || (topics && topics?.length === 0)) return customTopic;
     return topic;
   }, [topic, topics, customTopic]);
 
@@ -427,13 +437,13 @@ function ContentCreatorInner() {
                         <SelectTrigger className="bg-white/10 border-white/20 rounded-xl"><SelectValue placeholder="Topic" /></SelectTrigger>
                         <SelectContent>
                           {topics?.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                          {(!topics || topics.length === 0) && <SelectItem value="Other">Custom Topic...</SelectItem>}
+                          {(!topics || topics?.length === 0) && <SelectItem value="Other">Custom Topic...</SelectItem>}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
-                  {(topic === 'Other' || (subject && topics && topics.length === 0)) && (
+                  {(topic === 'Other' || (subject && topics && topics?.length === 0)) && (
                     <div className="space-y-2">
                       <Label className="text-indigo-200">Specify Topic*</Label>
                       <Input 

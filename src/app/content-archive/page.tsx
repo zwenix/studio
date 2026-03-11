@@ -36,6 +36,10 @@ import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
 
+// ✅ A unified type that covers both GeneratedContent (user items) and
+// static template items. Both have 'title'; only GeneratedContent has 'topic'.
+type CombinedItem = (GeneratedContent & { isSystem?: false }) | (typeof StaticTemplates[number] & { createdAt: Timestamp; isSystem: true });
+
 export default function ContentArchivePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -45,7 +49,7 @@ export default function ContentArchivePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
 
   // Content History Query (Last 30 items)
   const contentHistoryQuery = useMemoFirebase(() => {
@@ -65,22 +69,31 @@ export default function ContentArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  const combinedItems = useMemo(() => {
-    const userItems = contentHistory || [];
-    const systemItems = StaticTemplates.map(t => ({
+  const combinedItems = useMemo((): CombinedItem[] => {
+    const userItems: CombinedItem[] = (contentHistory || []).map(item => ({ ...item, isSystem: false as const }));
+    const systemItems: CombinedItem[] = StaticTemplates.map(t => ({
       ...t,
-      createdAt: Timestamp.now(), // Fake timestamp for sorting
-      isSystem: true
+      createdAt: Timestamp.now(),
+      isSystem: true as const,
     }));
     return [...userItems, ...systemItems].sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }, [contentHistory]);
 
-  const filteredItems = combinedItems.filter(item => 
-    (item.topic || item.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItems = combinedItems.filter(item => {
+    // ✅ Use 'topic' only when it exists (user items), fall back to 'title' for system templates
+    const label = ('topic' in item && item.topic) ? item.topic : item.title;
+    return (
+      label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
-  const handleAssign = async (item: any) => {
+  // ✅ Helper to get the display label for any item
+  const getItemLabel = (item: CombinedItem): string => {
+    return ('topic' in item && item.topic) ? item.topic : item.title;
+  };
+
+  const handleAssign = async (item: CombinedItem) => {
     if (!item || !selectedClassId || !user) return;
     setIsAssigning(true);
     try {
@@ -88,11 +101,11 @@ export default function ContentArchivePage() {
             teacherId: user.uid,
             grade: item.grade,
             subject: item.subject,
-            topic: item.topic || item.title,
+            topic: getItemLabel(item),
             contentType: item.contentType,
             content: item.content,
-            memo: item.memo || '',
-            rubric: item.rubric || '',
+            memo: ('memo' in item && item.memo) ? item.memo : '',
+            rubric: ('rubric' in item && item.rubric) ? item.rubric : '',
             createdAt: serverTimestamp(),
         });
 
@@ -109,7 +122,7 @@ export default function ContentArchivePage() {
                 status: 'assigned',
                 dueDate,
                 createdAt: serverTimestamp(),
-                rubric: item.rubric || '' 
+                rubric: ('rubric' in item && item.rubric) ? item.rubric : '',
             });
         });
 
@@ -202,10 +215,14 @@ export default function ContentArchivePage() {
                       {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
                     </Badge>
                     {!item.isSystem && (
-                      <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => handleDelete(item as GeneratedContent)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
-                  <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">{item.topic || item.title}</CardTitle>
+                  <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">
+                    {getItemLabel(item)}
+                  </CardTitle>
                   <CardDescription className="font-bold text-primary">{item.subject}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -241,10 +258,14 @@ export default function ContentArchivePage() {
           <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
               <div>
-                <DialogTitle className="font-patrick-hand text-4xl">{selectedItem?.topic || selectedItem?.title}</DialogTitle>
+                <DialogTitle className="font-patrick-hand text-4xl">
+                  {selectedItem ? getItemLabel(selectedItem) : ''}
+                </DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
               </div>
-              <Badge variant="outline" className="text-white border-white/40 px-6 py-2 rounded-full uppercase text-sm font-black shadow-inner">Grade {selectedItem?.grade}</Badge>
+              <Badge variant="outline" className="text-white border-white/40 px-6 py-2 rounded-full uppercase text-sm font-black shadow-inner">
+                Grade {selectedItem?.grade}
+              </Badge>
             </div>
             
             <div className="flex-1 overflow-hidden bg-muted/20 p-8">
@@ -258,7 +279,7 @@ export default function ContentArchivePage() {
                 variant="outline" 
                 className="rounded-full h-14 px-8 border-2 font-bold"
                 onClick={() => {
-                  if(selectedItem) {
+                  if (selectedItem) {
                     const editParam = selectedItem.isSystem ? `templateId=${selectedItem.id}` : `editId=${selectedItem.id}`;
                     router.push(`/content-creator?${editParam}`);
                   }

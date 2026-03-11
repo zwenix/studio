@@ -41,17 +41,24 @@ const aiTutorFlow = ai.defineFlow(
 
 Respond in the following language: ${language}`;
 
-    // Convert the message history to the format Genkit expects (where content is an array of parts).
-    const genkitHistory = history?.map(message => ({
+    // Build the messages array in the format the current Genkit version expects.
+    // System prompt → conversation history → current user query, all in one array.
+    const messages: { role: 'user' | 'model'; content: { text: string }[] }[] = [
+      // Inject system prompt as the opening user/model exchange so it is
+      // always respected regardless of Genkit version.
+      { role: 'user',  content: [{ text: systemPrompt }] },
+      { role: 'model', content: [{ text: 'Understood. I am ready to help.' }] },
+      // Append any prior conversation turns
+      ...(history?.map(message => ({
         role: message.role,
-        content: [{ text: message.content }]
-    })) || [];
-
+        content: [{ text: message.content }],
+      })) ?? []),
+      // Add the current query as the final user message
+      { role: 'user', content: [{ text: query }] },
+    ];
 
     const { output } = await ai.generate({
-      system: systemPrompt,
-      history: genkitHistory,
-      prompt: query,
+      messages,
       output: {
         schema: AiTutorOutputSchema,
       },

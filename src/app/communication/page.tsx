@@ -32,7 +32,8 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
     const { toast } = useToast();
 
     useEffect(() => {
-        if (!open || !userProfile) return;
+        // ✅ Guard: require both open, userProfile AND user before proceeding
+        if (!open || !userProfile || !user) return;
 
         const fetchRecipients = async () => {
             setIsLoadingRecipients(true);
@@ -41,7 +42,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
             
             try {
                 if (userProfile.role === 'teacher') {
-                    // Fetch all students and parents from all teacher's classes
+                    // ✅ user is guaranteed non-null here due to the guard above
                     const classesQuery = query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
                     const classSnap = await getDocs(classesQuery);
                     const learnerIds = classSnap.docs.flatMap(d => (d.data() as Class).learnerIds);
@@ -60,7 +61,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                          }
                     }
                 } else if (userProfile.role === 'student') {
-                    // Fetch all teachers of the student's classes
+                    // ✅ user is guaranteed non-null here due to the guard above
                     const classesQuery = query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
                     const classSnap = await getDocs(classesQuery);
                     const teacherIds = [...new Set(classSnap.docs.map(d => (d.data() as Class).teacherId))];
@@ -70,7 +71,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                         teachersSnap.forEach(d => userMap.set(d.id, d.data() as User));
                     }
                 } else if (userProfile.role === 'parent') {
-                    // Fetch all teachers of the parent's children's classes
+                    // ✅ user is guaranteed non-null here due to the guard above
                     const parentSnap = await getDocs(query(collection(firestore, 'parents'), where('userId', '==', user.uid)));
                     const childIds = parentSnap.docs.flatMap(d => (d.data() as Parent).childIds);
                      if (childIds.length > 0) {
@@ -211,6 +212,7 @@ export default function CommunicationPage() {
   }, [messages]);
 
   const handleSendMessage = async () => {
+    // ✅ user null check already present here — good
     if (!newMessage.trim() || !selectedConversationId || !user) return;
     
     setIsSending(true);
@@ -231,7 +233,7 @@ export default function CommunicationPage() {
             lastMessage: {
                 text: newMessage,
                 senderId: user.uid,
-                timestamp: new Date(), // Use client-side date for immediate update
+                timestamp: new Date(),
             },
             updatedAt: timestamp,
         });

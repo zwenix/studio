@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serv
 import type { GeneratedContent, Class } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { StaticTemplates } from '@/lib/templates';
 
 export default function ContentArchivePage() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function ContentArchivePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedItem, setSelectedItem] = useState<GeneratedContent | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // Content History Query (Last 30 items)
   const contentHistoryQuery = useMemoFirebase(() => {
@@ -64,12 +65,22 @@ export default function ContentArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  const filteredHistory = contentHistory?.filter(item => 
-    item.topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const combinedItems = useMemo(() => {
+    const userItems = contentHistory || [];
+    const systemItems = StaticTemplates.map(t => ({
+      ...t,
+      createdAt: Timestamp.now(), // Fake timestamp for sorting
+      isSystem: true
+    }));
+    return [...userItems, ...systemItems].sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+  }, [contentHistory]);
+
+  const filteredItems = combinedItems.filter(item => 
+    (item.topic || item.title).toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAssign = async (item: GeneratedContent) => {
+  const handleAssign = async (item: any) => {
     if (!item || !selectedClassId || !user) return;
     setIsAssigning(true);
     try {
@@ -77,7 +88,7 @@ export default function ContentArchivePage() {
             teacherId: user.uid,
             grade: item.grade,
             subject: item.subject,
-            topic: item.topic,
+            topic: item.topic || item.title,
             contentType: item.contentType,
             content: item.content,
             memo: item.memo || '',
@@ -183,32 +194,39 @@ export default function ContentArchivePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {isLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
             
-            {!isLoading && filteredHistory?.map((item) => (
+            {!isLoading && filteredItems?.map((item) => (
               <Card key={item.id} className="hover:shadow-xl transition-all duration-300 rounded-[2.5rem] border-none bg-white dark:bg-slate-900 shadow-sm group">
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary" className="rounded-full">Grade {item.grade}</Badge>
-                    <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                    <Badge variant={item.isSystem ? "default" : "secondary"} className="rounded-full">
+                      {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
+                    </Badge>
+                    {!item.isSystem && (
+                      <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                    )}
                   </div>
-                  <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">{item.topic}</CardTitle>
+                  <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">{item.topic || item.title}</CardTitle>
                   <CardDescription className="font-bold text-primary">{item.subject}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-xs text-muted-foreground uppercase font-black tracking-widest bg-muted/50 px-2 py-1 rounded-full w-fit mb-2">{item.contentType}</div>
-                  <p className="text-xs text-muted-foreground">{format(item.createdAt.toDate(), 'PPP')}</p>
+                  <p className="text-xs text-muted-foreground">{item.createdAt ? format(item.createdAt.toDate(), 'PPP') : 'N/A'}</p>
                 </CardContent>
                 <CardFooter className="gap-2">
                   <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
                     <Eye className="mr-2 h-4 w-4" /> View
                   </Button>
-                  <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => router.push(`/content-creator?editId=${item.id}`)}>
+                  <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => {
+                    const editParam = item.isSystem ? `templateId=${item.id}` : `editId=${item.id}`;
+                    router.push(`/content-creator?${editParam}`);
+                  }}>
                     <Edit3 className="mr-2 h-4 w-4" /> Edit
                   </Button>
                 </CardFooter>
               </Card>
             ))}
 
-            {!isLoading && filteredHistory?.length === 0 && (
+            {!isLoading && filteredItems?.length === 0 && (
               <div className="col-span-full text-center py-20 bg-muted/20 rounded-[3rem] border-2 border-dashed">
                 <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-2xl font-patrick-hand">Your archive is empty</h3>
@@ -223,7 +241,7 @@ export default function ContentArchivePage() {
           <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
               <div>
-                <DialogTitle className="font-patrick-hand text-4xl">{selectedItem?.topic}</DialogTitle>
+                <DialogTitle className="font-patrick-hand text-4xl">{selectedItem?.topic || selectedItem?.title}</DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
               </div>
               <Badge variant="outline" className="text-white border-white/40 px-6 py-2 rounded-full uppercase text-sm font-black shadow-inner">Grade {selectedItem?.grade}</Badge>
@@ -240,15 +258,22 @@ export default function ContentArchivePage() {
                 variant="outline" 
                 className="rounded-full h-14 px-8 border-2 font-bold"
                 onClick={() => {
-                  if(selectedItem) router.push(`/content-creator?editId=${selectedItem.id}`);
+                  if(selectedItem) {
+                    const editParam = selectedItem.isSystem ? `templateId=${selectedItem.id}` : `editId=${selectedItem.id}`;
+                    router.push(`/content-creator?${editParam}`);
+                  }
                 }}
               >
                 <Edit3 className="mr-2 h-5 w-5" /> Tweak in Creator
               </Button>
               <div className="flex-1 w-full flex gap-3">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full rounded-full border-2 h-14 text-lg px-6"><SelectValue placeholder="Assign to Class" /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">{teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="w-full rounded-full border-2 h-14 text-lg px-6">
+                    <SelectValue placeholder="Assign to Class" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
                 <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full shadow-xl text-lg font-bold">
                   {isAssigning ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2 h-5 w-5" />} Assign Now

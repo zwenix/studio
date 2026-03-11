@@ -1,0 +1,798 @@
+'use client';
+
+// src/app/content-creator/content-creator-client.tsx
+// All client-side logic lives here. useSearchParams() is safe inside this
+// component because the parent page.tsx wraps it in <Suspense>.
+
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Loader2,
+  Sparkles,
+  Printer,
+  FileUp,
+  Camera,
+  ScanText,
+  Save,
+  Send,
+  Zap,
+  Palette,
+  Edit3,
+  Box,
+  AlertCircle,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { educationalData } from '@/lib/educational-data';
+import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
+import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
+import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import {
+  collection,
+  query,
+  where,
+  addDoc,
+  writeBatch,
+  doc,
+  serverTimestamp,
+  Timestamp,
+  getDoc,
+} from 'firebase/firestore';
+import { add } from 'date-fns';
+import { useDropzone } from 'react-dropzone';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Alert, AlertTitle } from '@/components/ui/alert';
+import type { Class, Teacher, GeneratedContent } from '@/lib/types';
+import { StaticTemplates } from '@/lib/templates';
+
+const CONTENT_CATEGORIES = {
+  'Teaching Tools & Aids': ['Lesson Plans', 'Study Guides', 'Booklets', 'Subject Topic Cutouts', 'Other'],
+  'Exercises, Tasks & Assessments': ['Exercises & Tasks', 'Homework', 'Assignments & Group Activities', 'Other'],
+  'Class Management & Admin': [
+    'Classroom Labels',
+    'Wall Posters',
+    'Signs',
+    'Illustrations',
+    'Letters to Parents',
+    'Announcements & Notice',
+    'Permission Slips',
+    'Other',
+  ],
+};
+
+export function ContentCreatorClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  // Lab State
+  const [activeTab, setActiveTab] = useState('ai');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // Camera state
+  const [isCameraOpen, setCameraOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  // AI Generator Form
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [topic, setTopic] = useState('');
+  const [customTopic, setCustomTopic] = useState('');
+  const [category, setCategory] = useState<string>('');
+  const [subType, setSubType] = useState<string>('');
+  const [manualType, setManualType] = useState<string>('');
+  const [additionalInstructions, setAdditionalInstructions] = useState('');
+
+  const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
+  const topics =
+    grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+
+  const teacherRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'teachers', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: teacherData } = useDoc<Teacher>(teacherRef);
+
+  const teacherClassesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+  }, [firestore, user]);
+  const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
+
+  const finalContentType = useMemo(() => {
+    if (subType === 'Other') return manualType;
+    return subType;
+  }, [subType, manualType]);
+
+  const finalTopic = useMemo(() => {
+    if (topic === 'Other' || (topics && topics?.length === 0)) return customTopic;
+    return topic;
+  }, [topic, topics, customTopic]);
+
+  // Handle incoming data from Archive
+  useEffect(() => {
+    const editId = searchParams.get('editId');
+    const templateId = searchParams.get('templateId');
+
+    if (user) {
+      if (editId) {
+        const loadEditItem = async () => {
+          setIsLoading(true);
+          try {
+            const docRef = doc(firestore, 'teachers', user.uid, 'generatedContent', editId);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+              const data = snap.data() as GeneratedContent;
+              setGeneratedContent({
+                content: data.content,
+                memo: data.memo || '',
+                rubric: data.rubric || '',
+              });
+              setGrade(data.grade);
+              setSubject(data.subject);
+              setTopic(data.topic);
+              setSubType(data.contentType);
+              setIsEditMode(false);
+              toast({ title: 'Loaded from Archive!' });
+            }
+          } catch (e) {
+            toast({ title: 'Failed to load item', variant: 'destructive' });
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        loadEditItem();
+      } else if (templateId) {
+        const tpl = StaticTemplates.find((t) => t.id === templateId);
+        if (tpl) {
+          setGeneratedContent({
+            content: tpl.content,
+            memo: tpl.memo || '',
+            rubric: tpl.rubric || '',
+          });
+          setGrade(tpl.grade);
+          setSubject(tpl.subject);
+          setTopic(tpl.title);
+          setSubType(tpl.contentType);
+          setIsEditMode(false);
+          toast({ title: 'System Template Loaded!' });
+        }
+      }
+    }
+  }, [searchParams, user, firestore, toast]);
+
+  // --- AI GENERATION ---
+  const handleGenerate = async () => {
+    const missingFields = [];
+    if (!grade) missingFields.push('Grade');
+    if (!category) missingFields.push('Category');
+    if (!subType) missingFields.push('Content Type');
+    if (!subject) missingFields.push('Subject');
+    if (!finalTopic) missingFields.push('Topic');
+    if (subType === 'Other' && !manualType) missingFields.push('Custom Content Specification');
+
+    if (missingFields.length > 0) {
+      toast({
+        title: 'Information Required',
+        description: `Please fill in: ${missingFields.join(', ')}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setGeneratedContent(null);
+    setIsEditMode(false);
+
+    try {
+      const result = await generateCAPSContent({
+        grade: grade as any,
+        subject,
+        topic: finalTopic,
+        contentType: finalContentType,
+        category: category as any,
+        additionalInstructions,
+        teacherName: user?.displayName || 'Educator',
+        signatureUrl: teacherData?.signatureUrl,
+        aiDifficultyAdaptation: teacherData?.aiDifficultyAdaptation,
+        culturalContextIntegration: teacherData?.culturalContextIntegration,
+      });
+      setGeneratedContent(result);
+    } catch (error) {
+      toast({ title: 'Generation Failed', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- OCR / UPLOAD ---
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      const currentFile = acceptedFiles[0];
+      const reader = new FileReader();
+      reader.onloadend = () => setPreview(reader.result as string);
+      reader.readAsDataURL(currentFile);
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': ['.jpeg', '.png', '.jpg', '.webp'] },
+    multiple: false,
+  });
+
+  const handleExtract = async () => {
+    if (!preview) return;
+    setIsLoading(true);
+    try {
+      const result = await extractTextFromImage({ photoDataUri: preview });
+      setGeneratedContent({
+        content: `<div class="p-4">${result.extractedText}</div>`,
+        memo: '',
+        rubric: '',
+      });
+      setIsEditMode(true);
+      toast({ title: 'Text Extracted!' });
+    } catch (error) {
+      toast({ title: 'Extraction Failed', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCameraOpen) {
+      const getCameraPermission = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+          });
+          setHasCameraPermission(true);
+          streamRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+        } catch (error) {
+          setHasCameraPermission(false);
+        }
+      };
+      getCameraPermission();
+    } else if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+  }, [isCameraOpen]);
+
+  const handleCapture = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/png');
+      setPreview(dataUrl);
+      setCameraOpen(false);
+    }
+  };
+
+  // --- UNIFIED ACTIONS ---
+  const handleSaveToLibrary = async () => {
+    if (!generatedContent || !user) return;
+    setIsSaving(true);
+    try {
+      await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
+        ...generatedContent,
+        teacherId: user.uid,
+        grade: grade || 'Any',
+        subject: subject || 'General',
+        topic: finalTopic || 'Custom Content',
+        category: category || 'General',
+        contentType: finalContentType || 'Document',
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Saved to Archive!', description: 'Your content is now in your history.' });
+    } catch (error) {
+      toast({ title: 'Save Failed', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!generatedContent || !selectedClassId || !user) return;
+    setIsAssigning(true);
+    try {
+      const contentRef = await addDoc(collection(firestore, 'content'), {
+        ...generatedContent,
+        teacherId: user.uid,
+        grade: grade || 'Any',
+        subject: subject || 'General',
+        topic: finalTopic || 'Class Assignment',
+        contentType: finalContentType || 'Document',
+        createdAt: serverTimestamp(),
+      });
+
+      const batch = writeBatch(firestore);
+      const selectedClass = teacherClasses?.find((c) => c.id === selectedClassId);
+      const dueDate = Timestamp.fromDate(add(new Date(), { days: 7 }));
+
+      selectedClass?.learnerIds.forEach((learnerId) => {
+        const assignmentRef = doc(
+          collection(firestore, 'classes', selectedClassId, 'assignments')
+        );
+        batch.set(assignmentRef, {
+          contentId: contentRef.id,
+          learnerId,
+          teacherId: user.uid,
+          status: 'assigned',
+          dueDate,
+          createdAt: serverTimestamp(),
+          rubric: generatedContent.rubric || '',
+        });
+      });
+
+      await batch.commit();
+      toast({ title: 'Assigned successfully!' });
+    } catch (error) {
+      toast({ title: 'Assignment Failed', variant: 'destructive' });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!generatedContent) return;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(
+        `<html><head><title>EduAI Creator</title><style>body{font-family:sans-serif;padding:2rem;}img{max-width:100%;}hr{margin:2rem 0;}</style></head><body>${generatedContent.content}${generatedContent.memo ? `<hr/><h2>Memo</h2>${generatedContent.memo}` : ''}</body></html>`
+      );
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  return (
+    <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
+      <div className="flex items-center gap-3">
+        <Palette className="h-10 w-10 text-primary" />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
+          <p className="text-muted-foreground">
+            Unified workshop for generating, scanning, and editing educational materials.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-8 md:grid-cols-2">
+        <Card className="bg-indigo-950 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <CardHeader className="pb-2">
+              <TabsList className="grid grid-cols-3 bg-white/10 rounded-full h-14 p-1">
+                <TabsTrigger
+                  value="ai"
+                  className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" /> Magic AI
+                </TabsTrigger>
+                <TabsTrigger
+                  value="upload"
+                  className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950"
+                >
+                  <Camera className="mr-2 h-4 w-4" /> Scan
+                </TabsTrigger>
+                <TabsTrigger
+                  value="archive"
+                  className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950"
+                >
+                  <Box className="mr-2 h-4 w-4" /> Archive
+                </TabsTrigger>
+              </TabsList>
+            </CardHeader>
+
+            <CardContent className="space-y-4 py-6">
+              <TabsContent value="ai" className="space-y-4 m-0">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-indigo-200">Grade Level*</Label>
+                    <Select value={grade} onValueChange={setGrade}>
+                      <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                        <SelectValue placeholder="Select Grade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(educationalData).map((g) => (
+                          <SelectItem key={g} value={g}>
+                            Grade {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Category*</Label>
+                      <Select
+                        value={category}
+                        onValueChange={(v) => {
+                          setCategory(v);
+                          setSubType('');
+                        }}
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(CONTENT_CATEGORIES).map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Content Type*</Label>
+                      <Select value={subType} onValueChange={setSubType} disabled={!category}>
+                        <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {category &&
+                            CONTENT_CATEGORIES[category as keyof typeof CONTENT_CATEGORIES].map(
+                              (type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              )
+                            )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {subType === 'Other' && (
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Specify Content Type*</Label>
+                      <Input
+                        placeholder="What would you like to create?"
+                        value={manualType}
+                        onChange={(e) => setManualType(e.target.value)}
+                        className="bg-white/10 border-white/20 rounded-xl text-white placeholder:text-white/40"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Subject*</Label>
+                      <Select value={subject} onValueChange={setSubject} disabled={!grade}>
+                        <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                          <SelectValue placeholder="Subject" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects?.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Topic*</Label>
+                      <Select value={topic} onValueChange={setTopic} disabled={!subject}>
+                        <SelectTrigger className="bg-white/10 border-white/20 rounded-xl">
+                          <SelectValue placeholder="Topic" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {topics?.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                          {(!topics || topics?.length === 0) && (
+                            <SelectItem value="Other">Custom Topic...</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {(topic === 'Other' || (subject && topics && topics?.length === 0)) && (
+                    <div className="space-y-2">
+                      <Label className="text-indigo-200">Specify Topic*</Label>
+                      <Input
+                        placeholder="Enter your specific topic..."
+                        value={customTopic}
+                        onChange={(e) => setCustomTopic(e.target.value)}
+                        className="bg-white/10 border-white/20 rounded-xl text-white placeholder:text-white/40"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-indigo-200">Additional Instructions</Label>
+                    <Textarea
+                      placeholder="Magical instructions (e.g. Include lots of space for drawing, focus on subtraction)..."
+                      value={additionalInstructions}
+                      onChange={(e) => setAdditionalInstructions(e.target.value)}
+                      className="bg-white/10 border-white/20 rounded-2xl min-h-[100px]"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isLoading}
+                  className="w-full rounded-full h-14 text-lg font-bold bg-yellow-400 text-indigo-950 hover:bg-yellow-300 shadow-lg"
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <Zap className="mr-2 h-5 w-5" />
+                  )}{' '}
+                  Generate Content
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="upload" className="space-y-4 m-0 text-center">
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-[2.5rem] p-12 text-center transition-all ${
+                    isDragActive
+                      ? 'border-yellow-400 bg-white/10'
+                      : 'border-white/20 hover:border-yellow-400/50 cursor-pointer'
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <FileUp className="h-16 w-16 mx-auto mb-4 text-indigo-200" />
+                  <p className="text-xl font-bold font-patrick-hand">Drag & Drop Documents</p>
+                  <p className="text-sm text-indigo-200 mt-2">OCR will process your file for editing.</p>
+                </div>
+
+                <div className="flex gap-4">
+                  <Dialog open={isCameraOpen} onOpenChange={setCameraOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 rounded-full border-white/20 bg-white/5 h-12 font-bold hover:bg-white/10 text-white"
+                      >
+                        <Camera className="mr-2 h-4 w-4" /> Camera Scan
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-[2rem] bg-indigo-950 text-white border-none">
+                      <DialogHeader>
+                        <DialogTitle className="font-patrick-hand text-2xl">Camera Capture</DialogTitle>
+                      </DialogHeader>
+                      {hasCameraPermission === false ? (
+                        <Alert variant="destructive">
+                          <AlertTitle>Access Denied</AlertTitle>
+                        </Alert>
+                      ) : (
+                        <video
+                          ref={videoRef}
+                          className="w-full aspect-video rounded-2xl bg-black"
+                          autoPlay
+                          muted
+                          playsInline
+                        />
+                      )}
+                      <DialogFooter>
+                        <Button
+                          onClick={handleCapture}
+                          className="w-full rounded-full bg-yellow-400 text-indigo-950 font-bold"
+                        >
+                          Capture Photo
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {preview && (
+                  <div className="relative group">
+                    <img
+                      src={preview}
+                      alt="Scan preview"
+                      className="rounded-2xl max-h-48 w-full object-cover border-2 border-white/10"
+                    />
+                    <div className="absolute inset-0 bg-indigo-950/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setPreview(null)}
+                        className="rounded-full"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleExtract}
+                  disabled={!preview || isLoading}
+                  className="w-full rounded-full h-14 text-lg font-bold bg-yellow-400 text-indigo-950 hover:bg-yellow-300 shadow-lg"
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <ScanText className="mr-2 h-5 w-5" />
+                  )}{' '}
+                  Process with OCR
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="archive" className="space-y-6 m-0 py-8 text-center">
+                <div className="bg-white/5 rounded-[2rem] p-10 border border-white/10">
+                  <Box className="h-20 w-20 mx-auto mb-6 text-yellow-400" />
+                  <h3 className="text-2xl font-patrick-hand mb-4">Content & Templates Archive</h3>
+                  <p className="text-indigo-200 mb-8">
+                    Select an item from your archive to tweak and customize it.
+                  </p>
+                  <Button
+                    asChild
+                    className="w-full rounded-full h-14 bg-white/10 hover:bg-white/20 border-white/20 border text-white font-bold text-lg"
+                  >
+                    <Link href="/content-archive">Browse Archive</Link>
+                  </Button>
+                </div>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
+        </Card>
+
+        <Card className="flex flex-col rounded-[2.5rem] overflow-hidden border-none shadow-xl bg-white dark:bg-slate-900">
+          <CardHeader className="bg-primary/5 border-b pb-4 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="font-patrick-hand text-2xl flex items-center gap-2">
+                Creator Workspace
+              </CardTitle>
+              <CardDescription>Review and tweak your masterpiece.</CardDescription>
+            </div>
+            {generatedContent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className="rounded-full font-bold"
+              >
+                <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View Preview' : 'Edit HTML'}
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto p-6">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full space-y-4 animate-pulse">
+                <div className="h-12 w-12 bg-primary/20 rounded-full flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+                <p className="font-patrick-hand text-xl">Creating magic...</p>
+              </div>
+            ) : generatedContent ? (
+              <div className="h-full">
+                {isEditMode ? (
+                  <div className="space-y-4 h-full flex flex-col">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-100">
+                      <AlertCircle className="h-4 w-4" /> Editing HTML mode - proceed with caution.
+                    </div>
+                    <Label>HTML Content</Label>
+                    <Textarea
+                      className="flex-1 font-mono text-xs resize-none rounded-[1.5rem]"
+                      value={generatedContent.content}
+                      onChange={(e) =>
+                        setGeneratedContent({ ...generatedContent, content: e.target.value })
+                      }
+                    />
+                    {generatedContent.memo !== undefined && (
+                      <>
+                        <Label>Memo (Answers)</Label>
+                        <Textarea
+                          className="h-32 font-mono text-xs resize-none rounded-[1rem]"
+                          value={generatedContent.memo}
+                          onChange={(e) =>
+                            setGeneratedContent({ ...generatedContent, memo: e.target.value })
+                          }
+                        />
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="prose dark:prose-invert max-w-none bg-muted/30 p-6 rounded-[2rem] border shadow-inner">
+                    <div dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                <Palette className="h-20 w-20 mb-4" />
+                <p className="font-patrick-hand text-2xl">Create or load something magical!</p>
+              </div>
+            )}
+          </CardContent>
+
+          {generatedContent && (
+            <CardFooter className="flex flex-col gap-4 border-t p-6 bg-slate-50 dark:bg-slate-950">
+              <div className="flex w-full gap-2">
+                <Button variant="outline" onClick={handlePrint} className="flex-1 rounded-full">
+                  <Printer className="mr-2 h-4 w-4" /> Print / PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSaveToLibrary}
+                  disabled={isSaving}
+                  className="flex-1 rounded-full"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{' '}
+                  Save to History
+                </Button>
+              </div>
+              <div className="flex w-full gap-2 items-center">
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger className="flex-1 rounded-full">
+                    <SelectValue placeholder="Assign to Class" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    {teacherClasses?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  disabled={!selectedClassId || isAssigning}
+                  onClick={handleAssign}
+                  className="rounded-full px-8 bg-primary"
+                >
+                  {isAssigning ? <Loader2 className="animate-spin" /> : <Send className="mr-2 h-4 w-4" />}{' '}
+                  Assign
+                </Button>
+              </div>
+            </CardFooter>
+          )}
+        </Card>
+      </div>
+      {/* Hidden canvas for camera capture */}
+      <canvas ref={canvasRef} className="hidden" />
+    </div>
+  );
+}

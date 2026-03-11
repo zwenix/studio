@@ -108,3 +108,7 @@
 .animate-wiggle {
   animation: wiggle 1s ease-in-out infinite;
 }
+
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect, Suspense } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,8 +35,7 @@ import {
   Palette,
   Edit3,
   Box,
-  Eye,
-  ArrowRight
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -58,7 +57,7 @@ const CONTENT_CATEGORIES = {
   "Class Management & Admin": ["Classroom Labels", "Wall Posters", "Signs", "Illustrations", "Letters to Parents", "Announcements & Notice", "Permission Slips", "Other"]
 };
 
-export default function ContentCreatorPage() {
+function ContentCreatorInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -519,5 +518,13 @@ export default function ContentCreatorPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+export default function ContentCreatorPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>}>
+      <ContentCreatorInner />
+    </Suspense>
   );
 }

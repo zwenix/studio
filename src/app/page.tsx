@@ -47,7 +47,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="bg-transparent p-1 rounded-lg transform group-hover:rotate-12 transition-transform">
-              <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="EduAI" width={32} height={48} />
+              <Image 
+                src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
+                alt="EduAI" 
+                width={32} 
+                height={48} 
+                style={{ width: 'auto', height: '48px' }}
+              />
             </div>
             <h1 className="text-2xl font-bold font-patrick-hand tracking-tight">EduAI <span className="text-yellow-400">Companion</span></h1>
           </Link>
@@ -128,7 +134,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
           <div className="flex items-center gap-4">
             <div className="bg-transparent p-1 rounded-lg">
-              <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="Logo" width={24} height={36} />
+              <Image 
+                src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
+                alt="Logo" 
+                width={24} 
+                height={36} 
+                style={{ width: 'auto', height: '36px' }}
+              />
             </div>
             <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
           </div>

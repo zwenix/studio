@@ -48,10 +48,15 @@ export default function MockAssessmentPage() {
   const [pageState, setPageState] = useState<AssessmentState>('generate');
   
   const [answers, setAnswers] = useState<string[]>([]);
-  const [rawSubmission, setRawSubmission] = useState(''); // To store final formatted submission
+  const [rawSubmission, setRawSubmission] = useState('');
 
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
-  const topics = grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+  const topics = useMemo(() => {
+    if (!grade || !subject) return [];
+    const gradeKey = grade as keyof typeof educationalData;
+    const topicsMap = educationalData[gradeKey]?.topics as Record<string, string[]>;
+    return topicsMap?.[subject] || [];
+  }, [grade, subject]);
 
   const questionCount = useMemo(() => {
     if (!generatedAssessment?.content) return 0;

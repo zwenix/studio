@@ -36,8 +36,7 @@ import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
 
-// ✅ A unified type that covers both GeneratedContent (user items) and
-// static template items. 
+// Unified type for archived items
 type CombinedItem = 
   | (GeneratedContent & { isSystem: false }) 
   | (Template & { createdAt: Timestamp; isSystem: true });
@@ -53,7 +52,7 @@ export default function ContentArchivePage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
 
-  // Content History Query (Last 30 items)
+  // History Query (Last 30 items)
   const contentHistoryQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -71,14 +70,6 @@ export default function ContentArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  // ✅ Helper to get the display label for any item safely using type discrimination
-  const getItemLabel = (item: CombinedItem): string => {
-    if (item.isSystem) {
-      return item.title;
-    }
-    return item.topic;
-  };
-
   const combinedItems = useMemo((): CombinedItem[] => {
     const userItems: CombinedItem[] = (contentHistory || []).map(item => ({ ...item, isSystem: false as const }));
     const systemItems: CombinedItem[] = StaticTemplates.map(t => ({
@@ -90,7 +81,7 @@ export default function ContentArchivePage() {
   }, [contentHistory]);
 
   const filteredItems = combinedItems.filter(item => {
-    const label = getItemLabel(item);
+    const label = item.isSystem ? item.title : item.topic;
     return (
       label.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.subject.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,7 +96,7 @@ export default function ContentArchivePage() {
             teacherId: user.uid,
             grade: item.grade,
             subject: item.subject,
-            topic: getItemLabel(item),
+            topic: item.isSystem ? item.title : item.topic,
             contentType: item.contentType,
             content: item.content,
             memo: ('memo' in item && item.memo) ? item.memo : '',
@@ -156,9 +147,9 @@ export default function ContentArchivePage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-indigo-600 to-blue-500 p-10 rounded-[3rem] text-white shadow-xl">
           <div>
             <h1 className="text-4xl md:text-6xl font-bold font-patrick-hand flex items-center gap-4">
-              <Box className="h-12 w-12 text-yellow-400" /> Content & Templates Archive
+              <Box className="h-12 w-12 text-yellow-400" /> Content & Archive
             </h1>
-            <p className="text-xl text-blue-100 font-medium mt-2">The vault for all your creative materials and official templates.</p>
+            <p className="text-xl text-blue-100 font-medium mt-2">The vault for all your materials and official templates.</p>
           </div>
         </div>
 
@@ -211,47 +202,50 @@ export default function ContentArchivePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {isLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
             
-            {!isLoading && filteredItems?.map((item) => (
-              <Card key={item.id} className="hover:shadow-xl transition-all duration-300 rounded-[2.5rem] border-none bg-white dark:bg-slate-900 shadow-sm group">
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant={item.isSystem ? "default" : "secondary"} className="rounded-full">
-                      {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
-                    </Badge>
-                    {!item.isSystem && (
-                      <button onClick={() => handleDelete(item as GeneratedContent)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                  <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">
-                    {getItemLabel(item)}
-                  </CardTitle>
-                  <CardDescription className="font-bold text-primary">{item.subject}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs text-muted-foreground uppercase font-black tracking-widest bg-muted/50 px-2 py-1 rounded-full w-fit mb-2">{item.contentType}</div>
-                  <p className="text-xs text-muted-foreground">{item.createdAt ? format(item.createdAt.toDate(), 'PPP') : 'N/A'}</p>
-                </CardContent>
-                <CardFooter className="gap-2">
-                  <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
-                    <Eye className="mr-2 h-4 w-4" /> View
-                  </Button>
-                  <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => {
-                    const editParam = item.isSystem ? `templateId=${item.id}` : `editId=${item.id}`;
-                    router.push(`/content-creator?${editParam}`);
-                  }}>
-                    <Edit3 className="mr-2 h-4 w-4" /> Edit
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+            {!isLoading && filteredItems?.map((item) => {
+              const label = item.isSystem ? item.title : item.topic;
+              return (
+                <Card key={item.id} className="hover:shadow-xl transition-all duration-300 rounded-[2.5rem] border-none bg-white dark:bg-slate-900 shadow-sm group">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant={item.isSystem ? "default" : "secondary"} className="rounded-full">
+                        {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
+                      </Badge>
+                      {!item.isSystem && (
+                        <button onClick={() => handleDelete(item as GeneratedContent)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">
+                      {label}
+                    </CardTitle>
+                    <CardDescription className="font-bold text-primary">{item.subject}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xs text-muted-foreground uppercase font-black tracking-widest bg-muted/50 px-2 py-1 rounded-full w-fit mb-2">{item.contentType}</div>
+                    <p className="text-xs text-muted-foreground">{item.createdAt ? format(item.createdAt.toDate(), 'PPP') : 'N/A'}</p>
+                  </CardContent>
+                  <CardFooter className="gap-2">
+                    <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
+                      <Eye className="mr-2 h-4 w-4" /> View
+                    </Button>
+                    <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => {
+                      const editParam = item.isSystem ? `templateId=${item.id}` : `editId=${item.id}`;
+                      router.push(`/content-creator?${editParam}`);
+                    }}>
+                      <Edit3 className="mr-2 h-4 w-4" /> Edit
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
 
             {!isLoading && filteredItems?.length === 0 && (
               <div className="col-span-full text-center py-20 bg-muted/20 rounded-[3rem] border-2 border-dashed">
                 <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-2xl font-patrick-hand">Your archive is empty</h3>
-                <p className="text-muted-foreground">Go to the Content Creator to start your adventure!</p>
+                <p className="text-muted-foreground">Go to the Creator to start your adventure!</p>
               </div>
             )}
           </div>
@@ -263,7 +257,7 @@ export default function ContentArchivePage() {
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">
-                  {selectedItem ? getItemLabel(selectedItem) : ''}
+                  {selectedItem ? (selectedItem.isSystem ? selectedItem.title : selectedItem.topic) : ''}
                 </DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
               </div>

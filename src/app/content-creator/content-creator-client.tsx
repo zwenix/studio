@@ -119,7 +119,6 @@ export function ContentCreatorClient() {
 
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
   
-  // ✅ Fixed TypeScript indexing error with a safe cast
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
     const gradeKey = grade as keyof typeof educationalData;
@@ -201,7 +200,6 @@ export function ContentCreatorClient() {
     }
   }, [searchParams, user, firestore, toast]);
 
-  // --- AI GENERATION ---
   const handleGenerate = async () => {
     const missingFields = [];
     if (!grade) missingFields.push('Grade');
@@ -245,7 +243,6 @@ export function ContentCreatorClient() {
     }
   };
 
-  // --- OCR / UPLOAD ---
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const currentFile = acceptedFiles[0];
@@ -315,7 +312,6 @@ export function ContentCreatorClient() {
     }
   };
 
-  // --- UNIFIED ACTIONS ---
   const handleSaveToLibrary = async () => {
     if (!generatedContent || !user) return;
     setIsSaving(true);
@@ -664,7 +660,7 @@ export function ContentCreatorClient() {
               <TabsContent value="archive" className="space-y-6 m-0 py-8 text-center">
                 <div className="bg-white/5 rounded-[2rem] p-10 border border-white/10">
                   <Box className="h-20 w-20 mx-auto mb-6 text-yellow-400" />
-                  <h3 className="text-2xl font-patrick-hand mb-4">Content & Templates Archive</h3>
+                  <h3 className="text-2xl font-patrick-hand mb-4">Content & Archive</h3>
                   <p className="text-indigo-200 mb-8">
                     Select an item from your archive to tweak and customize it.
                   </p>
@@ -791,7 +787,6 @@ export function ContentCreatorClient() {
           )}
         </Card>
       </div>
-      {/* Hidden canvas for camera capture */}
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );

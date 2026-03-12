@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['genkit', 'require-in-the-middle'],
   images: {
     remotePatterns: [
       {
@@ -12,15 +13,14 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'picsum.photos',
+        hostname: 'firebasestorage.googleapis.com',
       },
       {
         protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-      },
+        hostname: 'picsum.photos',
+      }
     ],
   },
-  serverExternalPackages: ['genkit', 'require-in-the-middle'],
 };
 
 export default nextConfig;

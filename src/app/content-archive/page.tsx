@@ -159,13 +159,13 @@ export default function ContentArchivePage() {
               <div className="p-4 bg-yellow-400 rounded-2xl text-indigo-950"><Library className="h-8 w-8" /></div>
               <div>
                 <CardTitle className="font-patrick-hand text-2xl">Official Repo</CardTitle>
-                <CardDescription className="text-indigo-200">System templates.</CardDescription>
+                <CardDescription className="text-indigo-200">System templates & documentation.</CardDescription>
               </div>
             </CardHeader>
             <CardFooter>
               <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border">
-                <a href="https://github.com/zwenix/eduai-templates" target="_blank" rel="noopener noreferrer">
-                  Browse System Store <ExternalLink className="ml-2 h-4 w-4" />
+                <a href="https://zwenix.github.io/eduai-caps-resources/" target="_blank" rel="noopener noreferrer">
+                  Browse CAPS Resources <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
             </CardFooter>

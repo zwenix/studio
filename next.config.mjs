@@ -4,12 +4,13 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.ibb.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: 'images.pexels.com' },
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: 'picsum.photos' },
     ],
   },
   experimental: {
-    serverExternalPackages: ['genkit', 'require-in-the-middle', 'import-in-the-middle'],
+    serverExternalPackages: ['genkit', 'require-in-the-middle'],
   },
 };
 

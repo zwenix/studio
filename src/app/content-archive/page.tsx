@@ -199,8 +199,7 @@ export default function ContentArchivePage() {
             {isLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
             
             {!isLoading && filteredItems?.map((item) => {
-              const itemAny = item as any;
-              const label = item.isSystem ? itemAny.title : itemAny.topic;
+              const label = item.isSystem ? item.title : item.topic;
               return (
                 <Card key={item.id} className="hover:shadow-xl transition-all rounded-[2.5rem] border-none bg-white dark:bg-slate-900 group">
                   <CardHeader>
@@ -243,7 +242,7 @@ export default function ContentArchivePage() {
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">
-                  {selectedItem ? ((selectedItem as any).title || (selectedItem as any).topic) : ''}
+                  {selectedItem ? (selectedItem.isSystem ? selectedItem.title : selectedItem.topic) : ''}
                 </DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold">Preview and Distribute</DialogDescription>
               </div>

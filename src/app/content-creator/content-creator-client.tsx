@@ -120,7 +120,7 @@ export function ContentCreatorClient() {
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
     const gradeData = (educationalData as any)[grade];
-    return gradeData?.topics?.[subject] || [];
+    return (gradeData?.topics as any)?.[subject] || [];
   }, [grade, subject]);
 
   const teacherRef = useMemoFirebase(

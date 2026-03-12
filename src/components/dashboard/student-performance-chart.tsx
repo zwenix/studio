@@ -22,7 +22,6 @@ export function StudentPerformanceChart({ assignments }: StudentPerformanceChart
     return assignments
       .filter(a => a.status === 'graded' && a.gradeReceived && a.submittedAt)
       .map(a => {
-        // Attempt to parse grade as a number, extract first number found
         const gradeMatch = a.gradeReceived!.match(/\d+/);
         const score = gradeMatch ? parseInt(gradeMatch[0], 10) : 0;
         return {

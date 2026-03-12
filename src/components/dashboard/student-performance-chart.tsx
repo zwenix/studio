@@ -1,7 +1,7 @@
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { Assignment } from '@/lib/types';
 import { useMemo } from 'react';
 import { format } from 'date-fns';

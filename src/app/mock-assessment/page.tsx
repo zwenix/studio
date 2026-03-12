@@ -52,9 +52,11 @@ export default function MockAssessmentPage() {
   const [rawSubmission, setRawSubmission] = useState('');
 
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
+  
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
-    return (educationalData as any)[grade]?.topics?.[subject] || [];
+    const gradeData = (educationalData as Record<string, any>)[grade];
+    return gradeData?.topics?.[subject] || [];
   }, [grade, subject]);
 
   const questionCount = useMemo(() => {

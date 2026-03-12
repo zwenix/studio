@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['genkit', 'require-in-the-middle'],
   images: {
     remotePatterns: [
       {
@@ -18,10 +19,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
     ],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['genkit', '@genkit-ai/google-genai', 'require-in-the-middle'],
   },
 };
 

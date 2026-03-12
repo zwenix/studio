@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -173,7 +174,7 @@ export function ContentCreatorClient() {
       }
     } catch (error) {
       console.error('Generation Failed:', error);
-      toast({ title: 'Generation Failed', description: 'Check your internet connection and try again.', variant: 'destructive' });
+      toast({ title: 'Generation Failed', description: 'Internal server error during content generation.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }

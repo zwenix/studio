@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -36,11 +37,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    // Ensuring the popup is the very first thing called in the stack to avoid blockers
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      // Adding a small delay or ensuring direct user action is preserved
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (error: any) {
@@ -87,6 +86,7 @@ export default function LoginPage() {
                 type="email" 
                 placeholder="m@example.com" 
                 required 
+                autoComplete="username"
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"

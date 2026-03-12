@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -75,7 +76,7 @@ Duration: {{duration}} minutes
 Activities: {{numberOfActivities}}
 Instructions: {{additionalInstructions}}
 
-FORMAT: Return valid HTML for the 'content' field. Use headings (h1, h2), paragraphs, and lists. Use South African context.`,
+FORMAT: Return valid HTML for the 'content' field. Use headings (h1, h2), paragraphs, and lists. Use South African context. Ensure all images are placed using [IMAGE: VAx] tags.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(
@@ -116,6 +117,7 @@ const generateCAPSContentFlow = ai.defineFlow(
               html = html.replace(tag, '');
             }
           } catch (e) {
+            console.error(`Failed to fetch image for ${query}:`, e);
             html = html.replace(tag, '');
           }
         } else {

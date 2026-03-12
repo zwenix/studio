@@ -118,8 +118,14 @@ export function ContentCreatorClient() {
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
-  const topics =
-    grade && subject ? educationalData[grade as keyof typeof educationalData]?.topics[subject] : [];
+  
+  // ✅ Fixed TypeScript indexing error with a safe cast
+  const topics = useMemo(() => {
+    if (!grade || !subject) return [];
+    const gradeKey = grade as keyof typeof educationalData;
+    const topicsMap = educationalData[gradeKey]?.topics as Record<string, string[]>;
+    return topicsMap?.[subject] || [];
+  }, [grade, subject]);
 
   const teacherRef = useMemoFirebase(
     () => (user ? doc(firestore, 'teachers', user.uid) : null),

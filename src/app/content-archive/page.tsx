@@ -31,14 +31,16 @@ import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
-import type { GeneratedContent, Class } from '@/lib/types';
+import type { GeneratedContent, Class, Template } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
 
 // ✅ A unified type that covers both GeneratedContent (user items) and
 // static template items. 
-type CombinedItem = (GeneratedContent & { isSystem: false }) | (typeof StaticTemplates[number] & { createdAt: Timestamp; isSystem: true });
+type CombinedItem = 
+  | (GeneratedContent & { isSystem: false }) 
+  | (Template & { createdAt: Timestamp; isSystem: true });
 
 export default function ContentArchivePage() {
   const router = useRouter();
@@ -69,9 +71,12 @@ export default function ContentArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
-  // ✅ Helper to get the display label for any item safely
+  // ✅ Helper to get the display label for any item safely using type discrimination
   const getItemLabel = (item: CombinedItem): string => {
-    return item.isSystem ? item.title : item.topic;
+    if (item.isSystem) {
+      return item.title;
+    }
+    return item.topic;
   };
 
   const combinedItems = useMemo((): CombinedItem[] => {
@@ -169,7 +174,7 @@ export default function ContentArchivePage() {
             </CardHeader>
             <CardFooter>
               <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
-                <a href="https://github.com/your-username/eduai-templates" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/zwenix/eduai-templates" target="_blank" rel="noopener noreferrer">
                   Browse System Store <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
@@ -186,7 +191,7 @@ export default function ContentArchivePage() {
             </CardHeader>
             <CardFooter>
               <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
-                <a href="https://github.com/your-username/eduai-community-content" target="_blank" rel="noopener noreferrer">
+                <a href="https://github.com/zwenix/eduai-community-content" target="_blank" rel="noopener noreferrer">
                   Explore User Library <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>

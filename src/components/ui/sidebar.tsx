@@ -709,7 +709,7 @@ const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
     asChild?: boolean
-    size?: "sm" | "md"
+    size?: "sm" | "md" | "lg"
     isActive?: boolean
   }
 >(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {

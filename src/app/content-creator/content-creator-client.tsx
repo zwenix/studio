@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -33,6 +33,8 @@ import {
   Clock,
   Target,
   Users as UsersIcon,
+  Printer,
+  FileDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -71,6 +73,7 @@ export function ContentCreatorClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const printableRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
@@ -196,9 +199,13 @@ export function ContentCreatorClient() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 no-print">
         <Palette className="h-10 w-10 text-primary" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
@@ -207,7 +214,7 @@ export function ContentCreatorClient() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
-        <Card className="bg-indigo-950 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+        <Card className="bg-indigo-950 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden no-print">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-2">
               <TabsList className="grid grid-cols-3 bg-white/10 rounded-full h-14 p-1">
@@ -338,26 +345,36 @@ export function ContentCreatorClient() {
           </Tabs>
         </Card>
 
-        <Card className="flex flex-col rounded-[2.5rem] bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
-          <CardHeader className="border-b bg-primary/5">
+        <Card className="flex flex-col rounded-[2.5rem] bg-white dark:bg-slate-900 shadow-xl overflow-hidden min-h-[600px]">
+          <CardHeader className="border-b bg-primary/5 no-print">
             <div className="flex justify-between items-center">
               <CardTitle className="font-patrick-hand text-2xl">Workspace</CardTitle>
-              {generatedContent && (
-                <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
-                  <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {generatedContent && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-full">
+                      <Printer className="mr-2 h-4 w-4" /> Export PDF
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
+                      <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-6">
+          <CardContent className="flex-1 overflow-auto p-6" ref={printableRef}>
             {generatedContent ? (
               isEditMode ? (
-                <Textarea className="h-full font-mono text-xs" value={generatedContent.content} onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})} />
+                <Textarea className="h-full font-mono text-xs no-print" value={generatedContent.content} onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})} />
               ) : (
-                <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
+                <div className="prose dark:prose-invert max-w-none print:text-black" dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
               )
             ) : (
-              <div className="flex flex-col items-center justify-center h-full opacity-50"><Palette className="h-20 w-20 mb-4" /><p className="font-patrick-hand text-2xl">Design Adventure Starts Here!</p></div>
+              <div className="flex flex-col items-center justify-center h-full opacity-50 no-print">
+                <Palette className="h-20 w-20 mb-4" />
+                <p className="font-patrick-hand text-2xl">Design Adventure Starts Here!</p>
+              </div>
             )}
           </CardContent>
         </Card>

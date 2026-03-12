@@ -61,13 +61,13 @@
 .prose {
   @apply text-foreground max-w-none;
 }
-.prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose strong {
-  @apply text-foreground !important;
+.prose :where(h1, h2, h3, h4, p, li, strong, span):not(:where([class~="not-prose"] *)) {
+  color: inherit !important;
 }
 .dark .prose {
   @apply text-slate-200 !important;
 }
-.dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose p, .dark .prose li, .dark .prose strong {
+.dark .prose :where(h1, h2, h3, h4, p, li, strong, span):not(:where([class~="not-prose"] *)) {
   @apply text-slate-100 !important;
 }
 
@@ -104,4 +104,20 @@
 
 .drop-shadow-glow {
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .prose {
+    color: black !important;
+  }
 }

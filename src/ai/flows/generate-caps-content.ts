@@ -85,7 +85,7 @@ const generateCAPSContentFlow = ai.defineFlow(
     const { output } = await prompt(input);
     let html = output!.content;
 
-    // Robust extraction of VA IDs and descriptions from the VISUAL_AIDS section
+    // Extract visual aid IDs and descriptions
     const visualAidsSectionMatch = html.match(/VISUAL_AIDS[\s\S]*$/i);
     const visualAidsSection = visualAidsSectionMatch ? visualAidsSectionMatch[0] : "";
     const vaMap = new Map<string, string>();
@@ -109,7 +109,6 @@ const generateCAPSContentFlow = ai.defineFlow(
             <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-2xl shadow-xl max-h-[450px] mx-auto" />
             <p class="text-sm text-muted-foreground mt-3 italic font-medium">Visual: ${query}</p>
           </div>`;
-          // Replace tag case-insensitively
           const regex = new RegExp(`\\[IMAGE:\\s*${id}\\]`, 'gi');
           html = html.replace(regex, imgHtml);
         } else {
@@ -122,7 +121,7 @@ const generateCAPSContentFlow = ai.defineFlow(
       }
     }
 
-    // Clean up the structural VISUAL_AIDS section from visible output
+    // Clean up VISUAL_AIDS section from the end of html
     html = html.replace(/<[^>]*>VISUAL_AIDS[\s\S]*$/i, '');
     html = html.replace(/VISUAL_AIDS[\s\S]*$/i, '');
 

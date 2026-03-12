@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -34,7 +35,6 @@ import {
   Target,
   Users as UsersIcon,
   Printer,
-  FileDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -173,7 +173,8 @@ export function ContentCreatorClient() {
         });
       }
     } catch (error) {
-      toast({ title: 'Generation Failed', variant: 'destructive' });
+      console.error('Generation Failed:', error);
+      toast({ title: 'Generation Failed', description: 'Check your internet connection and try again.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }

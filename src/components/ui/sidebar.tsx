@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -186,10 +185,8 @@ const Sidebar = React.forwardRef<
           )}
           ref={ref}
           {...props}
-        >
-          {children}
-        </div>
-      )
+        )
+      }
     }
 
     if (isMobile) {

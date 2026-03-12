@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -48,32 +47,35 @@ const prompt = ai.definePrompt({
   name: 'generateCAPSContentPrompt',
   input: { schema: GenerateCAPSContentInputSchema },
   output: { schema: GenerateCAPSContentOutputSchema },
-  prompt: `You are an expert South African primary school teacher (Grades R–7) and curriculum designer.
-  
-  TASK: Generate a high-quality {{contentType}} for Grade {{grade}}.
-  
-  GENERAL PRINCIPLES:
-  - Align all content with the South African CAPS curriculum.
-  - Use South African spelling (e.g., colour, realise) and terminology.
-  - Grade: {{grade}}, Subject: {{subject}}, Topic: {{topic}}.
-  - Term: {{term}}, Language: {{language}}.
-  - Objective: {{objective}}.
-  
-  VISUAL AIDS CONVENTION (CRITICAL):
-  - Mark where a visual aid should appear using: [IMAGE: VA1], [IMAGE: VA2], etc.
-  - At the end of the content, include a section titled VISUAL_AIDS with a list.
-  - Each entry in VISUAL_AIDS must have: id (VA1, etc.) and description (a detailed search query).
-  
-  FORMATTING:
-  - Return valid HTML for the 'content' field.
-  - Use headings (h1, h2), paragraphs, and lists.
-  - Ensure contrast is high for accessibility.
-  
-  INPUT CONTEXT:
-  Learner Profile: {{learnerProfile}}
-  Duration: {{duration}} minutes
-  Activities: {{numberOfActivities}}
-  Instructions: {{additionalInstructions}}`,
+  prompt: `You are an expert South African primary school teacher (Grades R–7) and curriculum designer working with the CAPS curriculum.
+
+GENERAL PRINCIPLES
+- Align all content with the South African CAPS curriculum.
+- Use South African spelling (e.g., colour, realise) and terminology.
+- Always adapt difficulty and wording to Grade {{grade}}.
+
+AGE-APPROPRIATE STYLE
+- Grades R–1: Very simple words, Concrete examples. Activities: matching, circling, colouring.
+- Grades 2–3: Simple sentences, scaffolded instructions.
+- Grades 4–7: Clear, learner-friendly text with problem-solving and higher-order questions.
+
+VISUAL AIDS CONVENTION (CRITICAL)
+- Mark visual aid placement using: [IMAGE: VA1], [IMAGE: VA2], etc.
+- At the end of the content, include a section titled VISUAL_AIDS with a list.
+- Each entry MUST have: id (VA1, etc.) and description (a detailed search query).
+
+TASK: Generate a high-quality {{contentType}} for Grade {{grade}}.
+Subject: {{subject}}
+Topic: {{topic}}
+Term: {{term}}
+Language: {{language}}
+Objective: {{objective}}
+Learner Profile: {{learnerProfile}}
+Duration: {{duration}} minutes
+Activities: {{numberOfActivities}}
+Instructions: {{additionalInstructions}}
+
+FORMAT: Return valid HTML for the 'content' field. Use headings (h1, h2), paragraphs, and lists. Use South African context.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(
@@ -94,10 +96,9 @@ const generateCAPSContentFlow = ai.defineFlow(
     if (vaSectionMatch) {
       const vaSection = vaSectionMatch[0];
       
-      // Parse descriptions for each VA ID
       for (const tag of imageTags) {
         const id = tag.replace(/\[|\]|IMAGE:\s*/gi, '').trim();
-        // Look for the specific ID and its description in the footer section
+        // Extract description from the VISUAL_AIDS list
         const descRegex = new RegExp(`${id}[\\s\\S]*?description:\\s*["']?([^"\\n]+)["']?`, 'i');
         const descMatch = vaSection.match(descRegex);
         

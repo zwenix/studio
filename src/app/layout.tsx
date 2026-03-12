@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, Patrick_Hand, Comic_Neue, Schoolbell } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -28,9 +28,23 @@ const schoolbell = Schoolbell({
   variable: '--font-schoolbell',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#0ea5e9',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: 'EduAI Companion',
   description: 'An AI-powered educational platform for teachers and students.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'EduAI Companion',
+  },
   icons: {
     icon: 'https://i.ibb.co/zHtKKvGg/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x64.jpg',
     apple: 'https://i.ibb.co/6RV1WqHJ/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x128.jpg',
@@ -44,6 +58,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${patrickHand.variable} ${comicNeue.variable} ${schoolbell.variable} font-body antialiased`} suppressHydrationWarning={true}>
         <script
           dangerouslySetInnerHTML={{

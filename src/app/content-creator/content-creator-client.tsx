@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -24,17 +23,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2,
   Sparkles,
-  Printer,
   FileUp,
   Camera,
   ScanText,
   Save,
-  Send,
   Zap,
   Palette,
   Edit3,
   Box,
-  AlertCircle,
+  Layout,
+  Clock,
+  Target,
+  Users as UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -49,40 +49,26 @@ import {
   query,
   where,
   addDoc,
-  writeBatch,
   doc,
   serverTimestamp,
-  Timestamp,
   getDoc,
 } from 'firebase/firestore';
-import { add } from 'date-fns';
 import { useDropzone } from 'react-dropzone';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Alert, AlertTitle } from '@/components/ui/alert';
 import type { Class, Teacher, GeneratedContent } from '@/lib/types';
-import { StaticTemplates } from '@/lib/templates';
 
 const CONTENT_CATEGORIES = {
-  'Teaching Tools & Aids': ['Lesson Plans', 'Study Guides', 'Booklets', 'Subject Topic Cutouts', 'Other'],
-  'Exercises, Tasks & Assessments': ['Exercises & Tasks', 'Homework', 'Assignments & Group Activities', 'Other'],
+  'Teaching Tools & Aids': ['Lesson Plans', 'Study Guides', 'Booklets', 'Poster', 'Other'],
+  'Exercises, Tasks & Assessments': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments', 'Other'],
   'Class Management & Admin': [
+    'Individualised Learning Plan (ILP)',
     'Classroom Labels',
-    'Wall Posters',
-    'Signs',
-    'Illustrations',
     'Letters to Parents',
-    'Announcements & Notice',
     'Permission Slips',
     'Other',
   ],
 };
+
+const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana'];
 
 export function ContentCreatorClient() {
   const router = useRouter();
@@ -93,10 +79,8 @@ export function ContentCreatorClient() {
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAssigning, setIsAssigning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
-  const [selectedClassId, setSelectedClassId] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
 
   // AI Inputs
@@ -110,17 +94,15 @@ export function ContentCreatorClient() {
   const [term, setTerm] = useState('');
   const [language, setLanguage] = useState('English');
   const [learnerProfile, setLearnerProfile] = useState('');
+  const [objective, setObjective] = useState('');
+  const [duration, setDuration] = useState('45');
   const [numActivities, setNumActivities] = useState('3');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
-  // Camera & Upload
-  const [isCameraOpen, setCameraOpen] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  // Scanning State
   const [preview, setPreview] = useState<string | null>(null);
 
+  // ✅ Safe type indexing for educational data
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
@@ -129,12 +111,6 @@ export function ContentCreatorClient() {
 
   const teacherRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
   const { data: teacherData } = useDoc<Teacher>(teacherRef);
-
-  const teacherClassesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
-  }, [firestore, user]);
-  const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
   useEffect(() => {
     const editId = searchParams.get('editId');
@@ -153,7 +129,11 @@ export function ContentCreatorClient() {
 
   const handleGenerate = async () => {
     if (!grade || !category || !subType || !subject) {
-      toast({ title: 'Missing Information', description: 'Please fill in all required fields marked with *', variant: 'destructive' });
+      toast({ 
+        title: 'Missing Information', 
+        description: `Please select a Grade, Subject, and Category.`, 
+        variant: 'destructive' 
+      });
       return;
     }
 
@@ -170,12 +150,29 @@ export function ContentCreatorClient() {
         term,
         language,
         learnerProfile,
+        objective,
+        duration,
         numberOfActivities: numActivities,
         additionalInstructions,
         teacherName: user?.displayName || 'Educator',
         signatureUrl: teacherData?.signatureUrl,
       });
       setGeneratedContent(result);
+      
+      // Save history automatically
+      if (user) {
+        await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
+          teacherId: user.uid,
+          grade,
+          subject,
+          topic: topic === 'Other' ? customTopic : topic,
+          contentType: subType === 'Other' ? manualType : subType,
+          content: result.content,
+          memo: result.memo,
+          rubric: result.rubric,
+          createdAt: serverTimestamp(),
+        });
+      }
     } catch (error) {
       toast({ title: 'Generation Failed', variant: 'destructive' });
     } finally {
@@ -191,7 +188,7 @@ export function ContentCreatorClient() {
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': ['.jpeg', '.png', '.jpg'] }, multiple: false });
+  const { getRootProps, getInputProps } = useDropzone({ onDrop, accept: { 'image/*': ['.jpeg', '.png', '.jpg'] }, multiple: false });
 
   const handleExtract = async () => {
     if (!preview) return;
@@ -234,7 +231,7 @@ export function ContentCreatorClient() {
               </TabsList>
             </CardHeader>
 
-            <CardContent className="space-y-4 py-6">
+            <CardContent className="space-y-4 py-6 scroll-area max-h-[70vh] overflow-y-auto">
               <TabsContent value="ai" className="space-y-4 m-0">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -247,11 +244,11 @@ export function ContentCreatorClient() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-indigo-200">Term</Label>
-                    <Select value={term} onValueChange={setTerm}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Term" /></SelectTrigger>
+                    <Label className="text-indigo-200">Language</Label>
+                    <Select value={language} onValueChange={setLanguage}>
+                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="English" /></SelectTrigger>
                       <SelectContent>
-                        {['1', '2', '3', '4'].map(t => <SelectItem key={t} value={t}>Term {t}</SelectItem>)}
+                        {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -268,7 +265,7 @@ export function ContentCreatorClient() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-indigo-200">Content Type*</Label>
+                    <Label className="text-indigo-200">Type*</Label>
                     <Select value={subType} onValueChange={setSubType} disabled={!category}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Type" /></SelectTrigger>
                       <SelectContent>
@@ -304,9 +301,25 @@ export function ContentCreatorClient() {
                   <Input placeholder="Specify Topic" value={customTopic} onChange={e => setCustomTopic(e.target.value)} className="bg-white/10" />
                 )}
 
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                    <Label className="text-indigo-200 flex items-center gap-2"><Clock className="h-3 w-3" /> Duration (min)</Label>
+                    <Input type="number" value={duration} onChange={e => setDuration(e.target.value)} className="bg-white/10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-indigo-200 flex items-center gap-2"><Layout className="h-3 w-3" /> Activities</Label>
+                    <Input type="number" value={numActivities} onChange={e => setNumActivities(e.target.value)} className="bg-white/10" />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label className="text-indigo-200">Learner Profile / Scaffolding</Label>
-                  <Textarea placeholder="e.g. 'Struggling with fractions; needs visual pizza aids'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
+                  <Label className="text-indigo-200 flex items-center gap-2"><Target className="h-3 w-3" /> Teaching Objective</Label>
+                  <Input placeholder="e.g. Master long division with remainders" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-indigo-200 flex items-center gap-2"><UsersIcon className="h-3 w-3" /> Learner Profile / Barriers</Label>
+                  <Textarea placeholder="e.g. 'Many learners need visual pizza aids for fractions'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
                 </div>
 
                 <Button onClick={handleGenerate} disabled={isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950 font-bold">
@@ -357,7 +370,6 @@ export function ContentCreatorClient() {
           </CardContent>
         </Card>
       </div>
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

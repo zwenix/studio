@@ -51,6 +51,7 @@ export default function MockAssessmentPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [rawSubmission, setRawSubmission] = useState('');
 
+  // ✅ Safe type indexing for educational data
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
   
   const topics = useMemo(() => {

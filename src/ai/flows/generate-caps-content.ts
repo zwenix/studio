@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates CAPS-compliant content for teachers with integrated image searching.
+ * @fileOverview Generates CAPS-compliant educational content for Grades R–7 using expert templates.
  */
 
 import {ai} from '@/ai/genkit';
@@ -13,20 +13,20 @@ const GradeSchema = z.enum([
 ]);
 
 const GenerateCAPSContentInputSchema = z.object({
-  grade: GradeSchema.describe('The grade level for which to generate content.'),
-  subject: z.string().describe('The subject for which to generate content.'),
-  topic: z.string().describe('The specific topic within the subject.'),
-  contentType: z.string().describe('The specific type of content.'),
-  category: z.enum(['Teaching Tools & Aids', 'Exercises, Tasks & Assessments', 'Class Management & Admin']).describe('The high-level category.'),
+  grade: GradeSchema.describe('The grade level.'),
+  subject: z.string().describe('The subject.'),
+  topic: z.string().describe('The topic.'),
+  contentType: z.string().describe('Worksheet, Lesson Plan, Poster, Study Guide, ILP.'),
+  category: z.enum(['Teaching Tools & Aids', 'Exercises, Tasks & Assessments', 'Class Management & Admin']),
   term: z.string().optional().describe('School term (1, 2, 3, 4).'),
   language: z.string().optional().describe('Language of instruction.'),
-  learnerProfile: z.string().optional().describe('Details about learners (e.g. "needs visual support").'),
-  numberOfActivities: z.string().optional().describe('Desired number of activities.'),
-  additionalInstructions: z.string().optional().describe('Any specific instructions.'),
-  teacherName: z.string().optional().describe('Teacher name.'),
-  signatureUrl: z.string().optional().describe('Signature URL.'),
-  aiDifficultyAdaptation: z.boolean().optional().describe('Dynamic difficulty adjustment.'),
-  culturalContextIntegration: z.boolean().optional().describe('Use South African context.'),
+  learnerProfile: z.string().optional().describe('Barriers, strengths, needs.'),
+  objective: z.string().optional().describe('Teacher specific goal.'),
+  duration: z.string().optional().describe('Duration in minutes.'),
+  numberOfActivities: z.string().optional().describe('Desired activities.'),
+  additionalInstructions: z.string().optional().describe('Specific tweaks.'),
+  teacherName: z.string().optional(),
+  signatureUrl: z.string().optional(),
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
@@ -62,24 +62,27 @@ AGE-APPROPRIATE STYLE
 
 VISUAL AIDS (VERY IMPORTANT)
 - Use this convention: Mark where a visual should appear with: [IMAGE: VA1], [IMAGE: VA2], etc.
-- At the end of the content section, include a VISUAL_AIDS list.
-- Use the searchImage tool to suggest real visuals.
+- At the end of the content section, include a VISUAL_AIDS list with structured descriptions.
+- Visual aid entries must include: id, title, purpose, grades, description, alt_text, and tags.
 
 INPUT PARAMETERS:
 Grade: {{{grade}}}
 Subject: {{{subject}}}
 Topic: {{{topic}}}
 Type: {{{contentType}}}
-Category: {{{category}}}
 Term: {{{term}}}
 Language: {{{language}}}
-Learner Profile: {{{learnerProfile}}}
+Learner/Class Profile: {{{learnerProfile}}}
+Objective: {{{objective}}}
+Duration: {{{duration}}} minutes
 Activities requested: {{{numberOfActivities}}}
-Instructions: {{{additionalInstructions}}}
+Additional Instructions: {{{additionalInstructions}}}
 
 OUTPUT FORMAT:
 - Return clean, well-structured HTML.
-- For worksheets, include a Teacher Information section and Learner Instructions.
+- For worksheets, include Teacher Info and Learner Instructions.
+- For lesson plans, include phases (Intro, Development, Consolidation, Conclusion).
+- For ILPs, focus on Practical Home & Classroom strategies.
 - Conclude with footer: "Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026."`,
 });
 

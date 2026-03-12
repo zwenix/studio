@@ -37,8 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
 
 // ✅ A unified type that covers both GeneratedContent (user items) and
-// static template items. Both have 'title'; only GeneratedContent has 'topic'.
-type CombinedItem = (GeneratedContent & { isSystem?: false }) | (typeof StaticTemplates[number] & { createdAt: Timestamp; isSystem: true });
+// static template items. 
+type CombinedItem = (GeneratedContent & { isSystem: false }) | (typeof StaticTemplates[number] & { createdAt: Timestamp; isSystem: true });
 
 export default function ContentArchivePage() {
   const router = useRouter();
@@ -69,6 +69,11 @@ export default function ContentArchivePage() {
   }, [firestore, user]);
   const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
 
+  // ✅ Helper to get the display label for any item safely
+  const getItemLabel = (item: CombinedItem): string => {
+    return item.isSystem ? item.title : item.topic;
+  };
+
   const combinedItems = useMemo((): CombinedItem[] => {
     const userItems: CombinedItem[] = (contentHistory || []).map(item => ({ ...item, isSystem: false as const }));
     const systemItems: CombinedItem[] = StaticTemplates.map(t => ({
@@ -80,18 +85,12 @@ export default function ContentArchivePage() {
   }, [contentHistory]);
 
   const filteredItems = combinedItems.filter(item => {
-    // ✅ Use 'topic' only when it exists (user items), fall back to 'title' for system templates
-    const label = ('topic' in item && item.topic) ? item.topic : item.title;
+    const label = getItemLabel(item);
     return (
       label.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.subject.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
-
-  // ✅ Helper to get the display label for any item
-  const getItemLabel = (item: CombinedItem): string => {
-    return ('topic' in item && item.topic) ? item.topic : item.title;
-  };
 
   const handleAssign = async (item: CombinedItem) => {
     if (!item || !selectedClassId || !user) return;

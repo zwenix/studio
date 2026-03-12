@@ -1,11 +1,10 @@
-
 {
   "name": "EduAI Companion",
   "short_name": "EduAI",
-  "description": "An AI-powered educational platform for South African schools.",
+  "description": "An AI-powered educational platform for teachers and students.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f0f9ff",
+  "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
   "icons": [
     {

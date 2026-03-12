@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -62,8 +61,8 @@ AGE-APPROPRIATE STYLE
 
 VISUAL AIDS CONVENTION (CRITICAL)
 - Mark visual aid placement using: [IMAGE: VA1], [IMAGE: VA2], etc.
-- At the end of the content, include a section titled VISUAL_AIDS with a list.
-- Each entry MUST have: id (VA1, etc.) and description (a detailed search query).
+- At the end of the content, include a section titled VISUAL_AIDS with a bulleted list.
+- Each entry MUST have: id (VA1, etc.) and description (a detailed search query for an educational image).
 
 TASK: Generate a high-quality {{contentType}} for Grade {{grade}}.
 Subject: {{subject}}
@@ -99,8 +98,8 @@ const generateCAPSContentFlow = ai.defineFlow(
       
       for (const tag of imageTags) {
         const id = tag.replace(/\[|\]|IMAGE:\s*/gi, '').trim();
-        // Extract description from the VISUAL_AIDS list
-        const descRegex = new RegExp(`${id}[\\s\\S]*?description:\\s*["']?([^"\\n]+)["']?`, 'i');
+        // Robust extraction: find the ID followed by any text until the next bullet or end of line
+        const descRegex = new RegExp(`${id}[:\\s-]+([^\\n\\r*•]+)`, 'i');
         const descMatch = vaSection.match(descRegex);
         
         if (descMatch) {
@@ -121,7 +120,18 @@ const generateCAPSContentFlow = ai.defineFlow(
             html = html.replace(tag, '');
           }
         } else {
-          html = html.replace(tag, '');
+          // Fallback search based on topic if description is missing
+          try {
+            const query = `${input.subject} ${input.topic} educational`;
+            const imageResult = await imageSearchTool({ query });
+            if (imageResult.imageUrl) {
+               html = html.replace(tag, `<img src="${imageResult.imageUrl}" class="rounded-xl shadow-lg mx-auto my-4 max-h-[300px]" style="width: auto;" />`);
+            } else {
+               html = html.replace(tag, '');
+            }
+          } catch {
+            html = html.replace(tag, '');
+          }
         }
       }
     }

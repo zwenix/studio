@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -64,6 +63,7 @@ export default function SignupPage() {
                 type="email" 
                 placeholder="m@example.com" 
                 required 
+                autoComplete="email"
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"

@@ -55,7 +55,7 @@ export default function MockAssessmentPage() {
   
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
-    const gradeData = (educationalData as Record<string, any>)[grade];
+    const gradeData = (educationalData as any)[grade];
     return gradeData?.topics?.[subject] || [];
   }, [grade, subject]);
 

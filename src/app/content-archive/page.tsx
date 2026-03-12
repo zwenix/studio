@@ -79,6 +79,7 @@ export default function ContentArchivePage() {
   }, [contentHistory]);
 
   const filteredItems = combinedItems.filter(item => {
+    // Correctly handle union property access
     const label = item.isSystem ? (item as any).title : (item as any).topic;
     const subject = item.subject || 'General';
     return (

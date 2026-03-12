@@ -23,7 +23,7 @@ export default function ProgressReportsPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
   const teacherClassesQuery = useMemoFirebase(() => {
-    if (!user || userProfile?.role !== 'teacher') return null;
+    if (!user || !userProfile || userProfile.role !== 'teacher') return null;
     return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
   }, [firestore, user, userProfile]);
   const { data: teacherClasses, isLoading: areClassesLoading } = useCollection<Class>(teacherClassesQuery);
@@ -43,8 +43,6 @@ export default function ProgressReportsPage() {
     return query(collection(firestore, 'users'), where('id', 'in', parentData.childIds));
   }, [firestore, parentData]);
   const { data: children, isLoading: areChildrenLoading } = useCollection<User>(childrenQuery);
-  
-  const isLoading = isUserLoading || isProfileLoading;
   
   const studentIdToReport = useMemo(() => {
     if (userProfile?.role === 'teacher') return selectedStudentId;
@@ -100,13 +98,13 @@ export default function ProgressReportsPage() {
           Progress Reports
         </h1>
 
-        {isLoading && (
+        {isUserLoading && (
             <div className="flex justify-center items-center py-16">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )}
 
-        {!isLoading && userProfile && (
+        {!isUserLoading && userProfile && (
           <>
             {userProfile.role === 'teacher' && renderTeacherView()}
             {userProfile.role === 'parent' && renderParentView()}

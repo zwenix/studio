@@ -26,9 +26,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const isLoading = isAuthLoading || (!!user && isProfileLoading);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    if (isLoading) return;
 
     if (!user && !publicPaths.includes(pathname)) {
       router.push('/login');
@@ -46,7 +44,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         return;
       }
     }
-
   }, [user, userProfile, isLoading, router, pathname]);
 
   if (isLoading && !publicPaths.includes(pathname) && pathname !== roleSelectionPath) {
@@ -57,13 +54,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && !publicPaths.includes(pathname)) {
-    return null;
-  }
-  
-  if (user && !userProfile && pathname !== roleSelectionPath) {
-      return null;
-  }
+  if (!user && !publicPaths.includes(pathname)) return null;
+  if (user && !userProfile && pathname !== roleSelectionPath) return null;
 
   return <>{children}</>;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { Assignment } from '@/lib/types';
 import { useMemo } from 'react';
@@ -41,15 +41,8 @@ export function StudentPerformanceChart({ assignments }: StudentPerformanceChart
      <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
       <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
         <CartesianGrid vertical={false} />
-        <XAxis
-          dataKey="date"
-          tickLine={false}
-          tickMargin={10}
-          axisLine={false}
-        />
-        <YAxis 
-            domain={[0, 100]}
-        />
+        <XAxis dataKey="date" tickLine={false} tickMargin={10} axisLine={false} />
+        <YAxis domain={[0, 100]} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="score" fill="var(--color-score)" radius={4} />
       </BarChart>

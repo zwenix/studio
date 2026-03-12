@@ -104,10 +104,7 @@ export default function MockAssessmentPage() {
       setPageState('practice');
     } catch (error) {
         console.error("Failed to generate assessment:", error);
-        toast({
-            title: "Generation Failed",
-            variant: "destructive",
-        });
+        toast({ title: "Generation Failed", variant: "destructive" });
     } finally {
         setIsGenerating(false);
     }
@@ -142,55 +139,9 @@ export default function MockAssessmentPage() {
       setPageState('result');
     } catch (error) {
         console.error("Failed to autograde:", error);
-        toast({
-            title: "Grading Failed",
-            variant: "destructive",
-        });
+        toast({ title: "Grading Failed", variant: "destructive" });
     } finally {
         setIsGrading(false);
-    }
-  };
-
-  const handleTryAnother = () => {
-    setPageState('generate');
-    setGeneratedAssessment(null);
-    setGradingResult(null);
-    setAnswers([]);
-    setRawSubmission('');
-  };
-
-  const handlePrint = () => {
-    if (!generatedAssessment || !gradingResult || !rawSubmission) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Print Results</title>
-            <style>
-              body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
-              hr { border: 0; border-top: 1px solid #eee; margin: 2rem 0; }
-              .submission { background: #f9f9f9; padding: 1rem; border-radius: 0.5rem; }
-            </style>
-          </head>
-          <body>
-            <h1>${topic}</h1>
-            <p>Grade ${grade} - ${subject}</p>
-            <hr />
-            ${generatedAssessment.content}
-            <hr />
-            <h2>Your Submission</h2>
-            <div class="submission">${rawSubmission}</div>
-            <hr />
-            <h2>Result</h2>
-            <h3>Score: ${gradingResult.grade}</h3>
-            <div>${gradingResult.feedback}</div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
     }
   };
 
@@ -206,9 +157,7 @@ export default function MockAssessmentPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Create Practice Test</CardTitle>
-                    <CardDescription>
-                    Select subject and topic to begin.
-                    </CardDescription>
+                    <CardDescription>Select subject and topic to begin.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,34 +196,6 @@ export default function MockAssessmentPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <Label>Difficulty</Label>
-                            <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
-                                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="easy">Easy</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="hard">Hard</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Format</Label>
-                            <Select value={assessmentFormat} onValueChange={setAssessmentFormat} disabled={isGenerating}>
-                                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="multiple choice">MCQ</SelectItem>
-                                    <SelectItem value="mixed">Mixed</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Length</Label>
-                          <Input type="number" placeholder="Questions" value={length} onChange={(e) => setLength(e.target.value)} disabled={isGenerating} />
-                        </div>
-                    </div>
                 </CardContent>
                 <CardFooter>
                     <Button onClick={handleGenerate} disabled={isGenerating || isGrading} className="w-full">
@@ -285,9 +206,7 @@ export default function MockAssessmentPage() {
             </Card>
 
             <Card className="flex flex-col">
-                <CardHeader>
-                    <CardTitle>Assessment</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Assessment</CardTitle></CardHeader>
                 <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose dark:prose-invert max-w-none">
                     {isGenerating ? (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-pulse">
@@ -306,12 +225,6 @@ export default function MockAssessmentPage() {
                                 <h3 className="font-bold">Feedback</h3>
                                  <div dangerouslySetInnerHTML={{ __html: gradingResult.feedback }} />
                             </div>
-                            <div className="border-t pt-4 mt-4">
-                                <h3 className="font-bold">Your Answers</h3>
-                                <div className="bg-white p-4 rounded-md border text-black prose text-sm">
-                                    <div dangerouslySetInnerHTML={{ __html: rawSubmission }} />
-                                </div>
-                            </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
@@ -323,27 +236,10 @@ export default function MockAssessmentPage() {
                 
                 {pageState === 'practice' && (
                     <CardFooter className="flex-col items-stretch gap-4 pt-4 border-t">
-                        {questionCount > 0 ? (
-                            [...Array(questionCount)].map((_, index) => (
-                                <div key={index} className="space-y-2 w-full">
-                                    <Label>Answer {index + 1}</Label>
-                                    <Textarea value={answers[index] || ''} onChange={(e) => handleAnswerChange(index, e.target.value)} rows={3} disabled={isGrading} />
-                                </div>
-                            ))
-                        ) : (
-                             <Textarea value={answers[0] || ''} onChange={(e) => handleAnswerChange(0, e.target.value)} rows={6} disabled={isGrading} />
-                        )}
                         <Button onClick={handleGrade} disabled={isGrading || isGenerating} className="w-full">
                             {isGrading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
                             Submit & Grade
                         </Button>
-                    </CardFooter>
-                )}
-
-                {pageState === 'result' && (
-                    <CardFooter className="flex gap-2 pt-4 border-t">
-                         <Button onClick={handleTryAnother} variant="outline" className="flex-1">New Test</Button>
-                        <Button onClick={handlePrint} variant="outline" className="flex-1"><Printer className="mr-2 h-4 w-4" />Print</Button>
                     </CardFooter>
                 )}
             </Card>

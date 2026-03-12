@@ -63,7 +63,7 @@ function StudentClassView({ classId, userId }: { classId: string, userId: string
                     <CardTitle className="text-destructive">Error Loading Assignments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-destructive-foreground bg-destructive p-4 rounded-md">There was a problem fetching your assignments. This is likely a permission issue. Please contact your teacher.</p>
+                    <p className="text-sm text-destructive-foreground bg-destructive p-4 rounded-md">There was a problem fetching your assignments. Please contact your teacher.</p>
                 </CardContent>
             </Card>
         )

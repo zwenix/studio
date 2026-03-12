@@ -1,9 +1,5 @@
 'use client';
 
-// src/app/content-creator/content-creator-client.tsx
-// All client-side logic lives here. useSearchParams() is safe inside this
-// component because the parent page.tsx wraps it in <Suspense>.
-
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -529,9 +525,7 @@ export function ContentCreatorClient() {
                               {t}
                             </SelectItem>
                           ))}
-                          {(!topics || topics?.length === 0) && (
-                            <SelectItem value="Other">Custom Topic...</SelectItem>
-                          )}
+                          <SelectItem value="Other">Custom Topic...</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -11,7 +11,7 @@ const publicPaths = ['/', '/login', '/signup'];
 const roleSelectionPath = '/role-selection';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading: isAuthLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
@@ -27,24 +27,20 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading) {
-      return; // Wait until all loading is finished
+      return;
     }
 
-    // If not authenticated and not on a public page, redirect to login
     if (!user && !publicPaths.includes(pathname)) {
       router.push('/login');
       return;
     }
 
-    // If authenticated...
     if (user) {
-      // But no profile exists and they are not on the role selection page, redirect there
       if (!userProfile && pathname !== roleSelectionPath) {
         router.push(roleSelectionPath);
         return;
       }
       
-      // If a profile exists and they land on a public or role selection page, redirect to dashboard
       if (userProfile && (publicPaths.includes(pathname) || pathname === roleSelectionPath)) {
         router.push('/dashboard');
         return;
@@ -53,7 +49,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   }, [user, userProfile, isLoading, router, pathname]);
 
-  // Show a global loader for protected routes while we verify auth and profile status
   if (isLoading && !publicPaths.includes(pathname) && pathname !== roleSelectionPath) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -62,7 +57,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // Prevent rendering children if a redirect is imminent
   if (!user && !publicPaths.includes(pathname)) {
     return null;
   }
@@ -73,5 +67,3 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-
-    

@@ -91,7 +91,6 @@ export function ContentCreatorClient() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Lab State
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -100,7 +99,6 @@ export function ContentCreatorClient() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Camera state
   const [isCameraOpen, setCameraOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,7 +106,6 @@ export function ContentCreatorClient() {
   const streamRef = useRef<MediaStream | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // AI Generator Form
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
@@ -148,7 +145,6 @@ export function ContentCreatorClient() {
     return topic;
   }, [topic, topics, customTopic]);
 
-  // Handle incoming data from Archive
   useEffect(() => {
     const editId = searchParams.get('editId');
     const templateId = searchParams.get('templateId');
@@ -207,11 +203,11 @@ export function ContentCreatorClient() {
     if (!subType) missingFields.push('Content Type');
     if (!subject) missingFields.push('Subject');
     if (!finalTopic) missingFields.push('Topic');
-    if (subType === 'Other' && !manualType) missingFields.push('Custom Content Specification');
+    if (subType === 'Other' && !manualType) missingFields.push('Custom Type Specification');
 
     if (missingFields.length > 0) {
       toast({
-        title: 'Information Required',
+        title: 'Missing Information',
         description: `Please fill in: ${missingFields.join(', ')}.`,
         variant: 'destructive',
       });
@@ -326,7 +322,7 @@ export function ContentCreatorClient() {
         contentType: finalContentType || 'Document',
         createdAt: serverTimestamp(),
       });
-      toast({ title: 'Saved to Archive!', description: 'Your content is now in your history.' });
+      toast({ title: 'Saved to History!' });
     } catch (error) {
       toast({ title: 'Save Failed', variant: 'destructive' });
     } finally {
@@ -395,7 +391,7 @@ export function ContentCreatorClient() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
           <p className="text-muted-foreground">
-            Unified workshop for generating, scanning, and editing educational materials.
+            Unified workshop for magic generation and design.
           </p>
         </div>
       </div>
@@ -475,8 +471,8 @@ export function ContentCreatorClient() {
                         </SelectTrigger>
                         <SelectContent>
                           {category &&
-                            CONTENT_CATEGORIES[category as keyof typeof CONTENT_CATEGORIES].map(
-                              (type) => (
+                            (CONTENT_CATEGORIES as any)[category].map(
+                              (type: string) => (
                                 <SelectItem key={type} value={type}>
                                   {type}
                                 </SelectItem>
@@ -489,9 +485,9 @@ export function ContentCreatorClient() {
 
                   {subType === 'Other' && (
                     <div className="space-y-2">
-                      <Label className="text-indigo-200">Specify Content Type*</Label>
+                      <Label className="text-indigo-200">Specify Custom Type*</Label>
                       <Input
-                        placeholder="What would you like to create?"
+                        placeholder="What should we create?"
                         value={manualType}
                         onChange={(e) => setManualType(e.target.value)}
                         className="bg-white/10 border-white/20 rounded-xl text-white placeholder:text-white/40"
@@ -548,7 +544,7 @@ export function ContentCreatorClient() {
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Additional Instructions</Label>
                     <Textarea
-                      placeholder="Magical instructions (e.g. Include lots of space for drawing, focus on subtraction)..."
+                      placeholder="Add any specific requirements here..."
                       value={additionalInstructions}
                       onChange={(e) => setAdditionalInstructions(e.target.value)}
                       className="bg-white/10 border-white/20 rounded-2xl min-h-[100px]"
@@ -565,7 +561,7 @@ export function ContentCreatorClient() {
                   ) : (
                     <Zap className="mr-2 h-5 w-5" />
                   )}{' '}
-                  Generate Content
+                  Generate Magic
                 </Button>
               </TabsContent>
 
@@ -581,7 +577,7 @@ export function ContentCreatorClient() {
                   <input {...getInputProps()} />
                   <FileUp className="h-16 w-16 mx-auto mb-4 text-indigo-200" />
                   <p className="text-xl font-bold font-patrick-hand">Drag & Drop Documents</p>
-                  <p className="text-sm text-indigo-200 mt-2">OCR will process your file for editing.</p>
+                  <p className="text-sm text-indigo-200 mt-2">Process files for magic editing.</p>
                 </div>
 
                 <div className="flex gap-4">
@@ -596,11 +592,11 @@ export function ContentCreatorClient() {
                     </DialogTrigger>
                     <DialogContent className="rounded-[2rem] bg-indigo-950 text-white border-none">
                       <DialogHeader>
-                        <DialogTitle className="font-patrick-hand text-2xl">Camera Capture</DialogTitle>
+                        <DialogTitle className="font-patrick-hand text-2xl">Capture Image</DialogTitle>
                       </DialogHeader>
                       {hasCameraPermission === false ? (
                         <Alert variant="destructive">
-                          <AlertTitle>Access Denied</AlertTitle>
+                          <AlertTitle>No Camera Access</AlertTitle>
                         </Alert>
                       ) : (
                         <video
@@ -616,7 +612,7 @@ export function ContentCreatorClient() {
                           onClick={handleCapture}
                           className="w-full rounded-full bg-yellow-400 text-indigo-950 font-bold"
                         >
-                          Capture Photo
+                          Take Photo
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -627,7 +623,7 @@ export function ContentCreatorClient() {
                   <div className="relative group">
                     <img
                       src={preview}
-                      alt="Scan preview"
+                      alt="Preview"
                       className="rounded-2xl max-h-48 w-full object-cover border-2 border-white/10"
                     />
                     <div className="absolute inset-0 bg-indigo-950/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
@@ -653,7 +649,7 @@ export function ContentCreatorClient() {
                   ) : (
                     <ScanText className="mr-2 h-5 w-5" />
                   )}{' '}
-                  Process with OCR
+                  Process Scan
                 </Button>
               </TabsContent>
 
@@ -662,13 +658,13 @@ export function ContentCreatorClient() {
                   <Box className="h-20 w-20 mx-auto mb-6 text-yellow-400" />
                   <h3 className="text-2xl font-patrick-hand mb-4">Content & Archive</h3>
                   <p className="text-indigo-200 mb-8">
-                    Select an item from your archive to tweak and customize it.
+                    Choose a stored item to tweak and customize.
                   </p>
                   <Button
                     asChild
                     className="w-full rounded-full h-14 bg-white/10 hover:bg-white/20 border-white/20 border text-white font-bold text-lg"
                   >
-                    <Link href="/content-archive">Browse Archive</Link>
+                    <Link href="/content-archive">Open Archive</Link>
                   </Button>
                 </div>
               </TabsContent>
@@ -679,10 +675,8 @@ export function ContentCreatorClient() {
         <Card className="flex flex-col rounded-[2.5rem] overflow-hidden border-none shadow-xl bg-white dark:bg-slate-900">
           <CardHeader className="bg-primary/5 border-b pb-4 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="font-patrick-hand text-2xl flex items-center gap-2">
-                Creator Workspace
-              </CardTitle>
-              <CardDescription>Review and tweak your masterpiece.</CardDescription>
+              <CardTitle className="font-patrick-hand text-2xl">Workspace</CardTitle>
+              <CardDescription>Preview and edit your work.</CardDescription>
             </div>
             {generatedContent && (
               <Button
@@ -701,16 +695,16 @@ export function ContentCreatorClient() {
                 <div className="h-12 w-12 bg-primary/20 rounded-full flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-                <p className="font-patrick-hand text-xl">Creating magic...</p>
+                <p className="font-patrick-hand text-xl">Loading...</p>
               </div>
             ) : generatedContent ? (
               <div className="h-full">
                 {isEditMode ? (
                   <div className="space-y-4 h-full flex flex-col">
                     <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-100">
-                      <AlertCircle className="h-4 w-4" /> Editing HTML mode - proceed with caution.
+                      <AlertCircle className="h-4 w-4" /> HTML Editor Mode
                     </div>
-                    <Label>HTML Content</Label>
+                    <Label>Main Content</Label>
                     <Textarea
                       className="flex-1 font-mono text-xs resize-none rounded-[1.5rem]"
                       value={generatedContent.content}
@@ -720,7 +714,7 @@ export function ContentCreatorClient() {
                     />
                     {generatedContent.memo !== undefined && (
                       <>
-                        <Label>Memo (Answers)</Label>
+                        <Label>Memo</Label>
                         <Textarea
                           className="h-32 font-mono text-xs resize-none rounded-[1rem]"
                           value={generatedContent.memo}
@@ -740,7 +734,7 @@ export function ContentCreatorClient() {
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
                 <Palette className="h-20 w-20 mb-4" />
-                <p className="font-patrick-hand text-2xl">Create or load something magical!</p>
+                <p className="font-patrick-hand text-2xl">Start your design adventure!</p>
               </div>
             )}
           </CardContent>
@@ -758,7 +752,7 @@ export function ContentCreatorClient() {
                   className="flex-1 rounded-full"
                 >
                   {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{' '}
-                  Save to History
+                  Save Work
                 </Button>
               </div>
               <div className="flex w-full gap-2 items-center">

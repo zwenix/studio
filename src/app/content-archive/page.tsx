@@ -36,7 +36,6 @@ import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
 
-// Unified type for archived items
 type CombinedItem = 
   | (GeneratedContent & { isSystem: false }) 
   | (Template & { createdAt: Timestamp; isSystem: true });
@@ -52,7 +51,6 @@ export default function ContentArchivePage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
 
-  // History Query (Last 30 items)
   const contentHistoryQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -84,8 +82,8 @@ export default function ContentArchivePage() {
     const label = item.isSystem ? (item as any).title : (item as any).topic;
     const subject = item.subject || 'General';
     return (
-      (label && label.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (subject && subject.toLowerCase().includes(searchTerm.toLowerCase()))
+      (label?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subject?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -93,15 +91,16 @@ export default function ContentArchivePage() {
     if (!item || !selectedClassId || !user) return;
     setIsAssigning(true);
     try {
+        const itemAny = item as any;
         const contentRef = await addDoc(collection(firestore, 'content'), {
             teacherId: user.uid,
             grade: item.grade,
             subject: item.subject,
-            topic: item.isSystem ? (item as any).title : (item as any).topic,
+            topic: item.isSystem ? itemAny.title : itemAny.topic,
             contentType: item.contentType,
             content: item.content,
-            memo: ('memo' in item && item.memo) ? item.memo : '',
-            rubric: ('rubric' in item && item.rubric) ? item.rubric : '',
+            memo: itemAny.memo || '',
+            rubric: itemAny.rubric || '',
             createdAt: serverTimestamp(),
         });
 
@@ -118,15 +117,15 @@ export default function ContentArchivePage() {
                 status: 'assigned',
                 dueDate,
                 createdAt: serverTimestamp(),
-                rubric: ('rubric' in item && item.rubric) ? item.rubric : '',
+                rubric: itemAny.rubric || '',
             });
         });
 
         await batch.commit();
-        toast({ title: 'Successfully Assigned!' });
+        toast({ title: 'Success', description: 'Item assigned to class.' });
         setSelectedItem(null);
     } catch (error) {
-        toast({ title: 'Assignment Failed', variant: "destructive" });
+        toast({ title: 'Error', description: 'Failed to assign content.', variant: "destructive" });
     } finally {
         setIsAssigning(false);
     }
@@ -136,9 +135,9 @@ export default function ContentArchivePage() {
     if (!user || item.isSystem) return;
     try {
       await deleteDoc(doc(firestore, 'teachers', user.uid, 'generatedContent', item.id));
-      toast({ title: 'Item removed from Archive' });
+      toast({ title: 'Removed', description: 'Item removed from Archive.' });
     } catch (e) {
-      toast({ title: 'Delete failed', variant: "destructive" });
+      toast({ title: 'Error', variant: "destructive" });
     }
   };
 
@@ -150,21 +149,21 @@ export default function ContentArchivePage() {
             <h1 className="text-4xl md:text-6xl font-bold font-patrick-hand flex items-center gap-4">
               <Box className="h-12 w-12 text-yellow-400" /> Content & Archive
             </h1>
-            <p className="text-xl text-blue-100 font-medium mt-2">The vault for all your materials and official templates.</p>
+            <p className="text-xl text-blue-100 font-medium mt-2">Central hub for all your materials and templates.</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-indigo-950 text-white border-none shadow-lg rounded-[2.5rem] overflow-hidden group">
             <CardHeader className="flex flex-row items-center gap-4">
-              <div className="p-4 bg-yellow-400 rounded-2xl text-indigo-950 group-hover:animate-bounce"><Library className="h-8 w-8" /></div>
+              <div className="p-4 bg-yellow-400 rounded-2xl text-indigo-950"><Library className="h-8 w-8" /></div>
               <div>
-                <CardTitle className="font-patrick-hand text-2xl">Official Repository</CardTitle>
-                <CardDescription className="text-indigo-200">Preloaded CAPS-compliant templates.</CardDescription>
+                <CardTitle className="font-patrick-hand text-2xl">Official Repo</CardTitle>
+                <CardDescription className="text-indigo-200">System templates.</CardDescription>
               </div>
             </CardHeader>
             <CardFooter>
-              <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
+              <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border">
                 <a href="https://github.com/zwenix/eduai-templates" target="_blank" rel="noopener noreferrer">
                   Browse System Store <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
@@ -174,14 +173,14 @@ export default function ContentArchivePage() {
 
           <Card className="bg-indigo-950 text-white border-none shadow-lg rounded-[2.5rem] overflow-hidden group">
             <CardHeader className="flex flex-row items-center gap-4">
-              <div className="p-4 bg-blue-500 rounded-2xl text-white group-hover:animate-bounce"><History className="h-8 w-8" /></div>
+              <div className="p-4 bg-blue-500 rounded-2xl text-white"><History className="h-8 w-8" /></div>
               <div>
-                <CardTitle className="font-patrick-hand text-2xl">User-Generated Store</CardTitle>
-                <CardDescription className="text-indigo-200">Community shared materials.</CardDescription>
+                <CardTitle className="font-patrick-hand text-2xl">Community Store</CardTitle>
+                <CardDescription className="text-indigo-200">Shared materials.</CardDescription>
               </div>
             </CardHeader>
             <CardFooter>
-              <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border h-12 font-bold">
+              <Button asChild className="w-full rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 border">
                 <a href="https://github.com/zwenix/eduai-community-content" target="_blank" rel="noopener noreferrer">
                   Explore User Library <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
@@ -191,45 +190,42 @@ export default function ContentArchivePage() {
         </div>
 
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input placeholder="Search your archive..." className="pl-12 rounded-full h-12 border-2 focus:ring-primary" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input placeholder="Search archive..." className="pl-12 rounded-full h-12" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {isLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
             
             {!isLoading && filteredItems?.map((item) => {
-              const label = item.isSystem ? (item as any).title : (item as any).topic;
+              const itemAny = item as any;
+              const label = item.isSystem ? itemAny.title : itemAny.topic;
               return (
-                <Card key={item.id} className="hover:shadow-xl transition-all duration-300 rounded-[2.5rem] border-none bg-white dark:bg-slate-900 shadow-sm group">
+                <Card key={item.id} className="hover:shadow-xl transition-all rounded-[2.5rem] border-none bg-white dark:bg-slate-900 group">
                   <CardHeader>
                     <div className="flex justify-between items-start mb-2">
-                      <Badge variant={item.isSystem ? "default" : "secondary"} className="rounded-full">
-                        {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
+                      <Badge variant={item.isSystem ? "default" : "secondary"}>
+                        {item.isSystem ? 'Official' : 'History'} - Grade {item.grade}
                       </Badge>
                       {!item.isSystem && (
-                        <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                        <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
-                    <CardTitle className="font-patrick-hand text-2xl group-hover:text-primary transition-colors truncate">
-                      {label}
-                    </CardTitle>
+                    <CardTitle className="font-patrick-hand text-2xl truncate">{label}</CardTitle>
                     <CardDescription className="font-bold text-primary">{item.subject}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-xs text-muted-foreground uppercase font-black tracking-widest bg-muted/50 px-2 py-1 rounded-full w-fit mb-2">{item.contentType}</div>
+                    <div className="text-xs uppercase font-black text-muted-foreground">{item.contentType}</div>
                     <p className="text-xs text-muted-foreground">{item.createdAt ? format(item.createdAt.toDate(), 'PPP') : 'N/A'}</p>
                   </CardContent>
                   <CardFooter className="gap-2">
-                    <Button variant="secondary" className="flex-1 rounded-full h-12 font-bold shadow-sm" onClick={() => setSelectedItem(item)}>
+                    <Button variant="secondary" className="flex-1 rounded-full" onClick={() => setSelectedItem(item)}>
                       <Eye className="mr-2 h-4 w-4" /> View
                     </Button>
-                    <Button variant="outline" className="flex-1 rounded-full h-12 font-bold border-primary text-primary" onClick={() => {
+                    <Button variant="outline" className="flex-1 rounded-full border-primary text-primary" onClick={() => {
                       const editParam = item.isSystem ? `templateId=${item.id}` : `editId=${item.id}`;
                       router.push(`/content-creator?${editParam}`);
                     }}>
@@ -239,61 +235,47 @@ export default function ContentArchivePage() {
                 </Card>
               );
             })}
-
-            {!isLoading && filteredItems?.length === 0 && (
-              <div className="col-span-full text-center py-20 bg-muted/20 rounded-[3rem] border-2 border-dashed">
-                <Box className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-2xl font-patrick-hand">Your archive is empty</h3>
-                <p className="text-muted-foreground">Go to the Creator to start your adventure!</p>
-              </div>
-            )}
           </div>
         </div>
 
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-          <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
+          <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none">
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">
-                  {selectedItem ? (selectedItem.isSystem ? (selectedItem as any).title : (selectedItem as any).topic) : ''}
+                  {selectedItem ? ((selectedItem as any).title || (selectedItem as any).topic) : ''}
                 </DialogTitle>
-                <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
+                <DialogDescription className="text-blue-100 font-bold">Preview and Distribute</DialogDescription>
               </div>
-              <Badge variant="outline" className="text-white border-white/40 px-6 py-2 rounded-full uppercase text-sm font-black shadow-inner">
-                Grade {selectedItem?.grade}
-              </Badge>
+              <Badge variant="outline" className="text-white border-white/40">Grade {selectedItem?.grade}</Badge>
             </div>
             
-            <div className="flex-1 overflow-hidden bg-muted/20 p-8">
-              <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 shadow-xl border h-full overflow-auto prose dark:prose-invert max-w-none">
+            <div className="flex-1 overflow-auto bg-muted/20 p-8">
+              <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 shadow-inner prose dark:prose-invert max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: selectedItem?.content || '' }} />
               </div>
             </div>
             
-            <div className="p-8 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4 items-center shrink-0">
-              <Button 
-                variant="outline" 
-                className="rounded-full h-14 px-8 border-2 font-bold"
-                onClick={() => {
+            <div className="p-8 bg-white dark:bg-slate-900 border-t flex flex-col sm:flex-row gap-4">
+              <Button variant="outline" className="rounded-full h-14 px-8" onClick={() => {
                   if (selectedItem) {
                     const editParam = selectedItem.isSystem ? `templateId=${selectedItem.id}` : `editId=${selectedItem.id}`;
                     router.push(`/content-creator?${editParam}`);
                   }
-                }}
-              >
+                }}>
                 <Edit3 className="mr-2 h-5 w-5" /> Tweak in Creator
               </Button>
-              <div className="flex-1 w-full flex gap-3">
+              <div className="flex-1 flex gap-3">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="w-full rounded-full border-2 h-14 text-lg px-6">
+                  <SelectTrigger className="w-full rounded-full border-2 h-14">
                     <SelectValue placeholder="Assign to Class" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl">
+                  <SelectContent>
                     {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full shadow-xl text-lg font-bold">
-                  {isAssigning ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2 h-5 w-5" />} Assign Now
+                <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full font-bold">
+                  {isAssigning ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2 h-5 w-5" />} Assign
                 </Button>
               </div>
             </div>

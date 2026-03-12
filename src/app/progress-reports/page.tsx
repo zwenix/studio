@@ -22,14 +22,12 @@ export default function ProgressReportsPage() {
   const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
-  // For Teachers: Get their classes
   const teacherClassesQuery = useMemoFirebase(() => {
     if (!user || userProfile?.role !== 'teacher') return null;
     return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
   }, [firestore, user, userProfile]);
   const { data: teacherClasses, isLoading: areClassesLoading } = useCollection<Class>(teacherClassesQuery);
 
-  // For Teachers: Get students in the selected class
   const selectedClass = useMemo(() => teacherClasses?.find(c => c.id === selectedClassId), [teacherClasses, selectedClassId]);
   const studentsInClassQuery = useMemoFirebase(() => {
     if (!selectedClass || !selectedClass.learnerIds || selectedClass.learnerIds.length === 0) return null;
@@ -38,7 +36,6 @@ export default function ProgressReportsPage() {
   }, [firestore, selectedClass]);
   const { data: studentsInClass, isLoading: areStudentsLoading } = useCollection<User>(studentsInClassQuery);
 
-  // For Parents: Get their children
   const parentRef = useMemoFirebase(() => (user && userProfile?.role === 'parent' ? doc(firestore, 'parents', user.uid) : null), [firestore, user, userProfile]);
   const { data: parentData } = useDoc(parentRef);
   const childrenQuery = useMemoFirebase(() => {

@@ -1,4 +1,3 @@
-// Existing file content updated with fixed useUser hook destructuring
 'use client';
 
 import { AppLayout } from '@/components/app-layout';
@@ -127,7 +126,6 @@ function TeacherClassView({ classData }: { classData: Class }) {
   
   const classRef = useMemoFirebase(() => doc(firestore, 'classes', classData.id), [firestore, classData.id]);
   
-  // Get students currently in the class
   const studentsInClassQuery = useMemoFirebase(() => {
     if (!classData?.learnerIds || classData.learnerIds.length === 0) return null;
     const studentIds = classData.learnerIds.length > 30 ? classData.learnerIds.slice(0, 30) : classData.learnerIds;
@@ -135,7 +133,6 @@ function TeacherClassView({ classData }: { classData: Class }) {
   }, [firestore, classData.learnerIds]);
   const { data: studentsInClass, isLoading: areStudentsInClassLoading } = useCollection<User>(studentsInClassQuery);
 
-  // Get all students in the system for the "add" dialog
   const allStudentsQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'student')), [firestore]);
   const { data: allStudents, isLoading: areAllStudentsLoading } = useCollection<User>(allStudentsQuery);
 
@@ -160,7 +157,6 @@ function TeacherClassView({ classData }: { classData: Class }) {
     }
     setIsSubmitting(true);
     try {
-      // Find parent IDs for the new students to enable communication features for them.
       const parentIdsToAdd = new Set<string>();
       for (const studentId of studentsToAdd) {
         const q = query(collection(firestore, 'parents'), where('childIds', 'array-contains', studentId));
@@ -237,7 +233,7 @@ function TeacherClassView({ classData }: { classData: Class }) {
                         {student.firstName} {student.lastName} ({student.email})
                       </Label>
                     </div>
-                  )) : <p className="text-center text-sm text-muted-foreground">No students found or all students are already in the class.</p>}
+                  )) : <p className="text-center text-sm text-muted-foreground">No students found.</p>}
                 </div>
               </ScrollArea>
             </div>
@@ -278,7 +274,7 @@ function TeacherClassView({ classData }: { classData: Class }) {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will remove {student.firstName} {student.lastName} from the class. They will no longer have access to assignments.
+                                        This will remove {student.firstName} {student.lastName} from the class.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -290,7 +286,7 @@ function TeacherClassView({ classData }: { classData: Class }) {
                     </div>
                 ))
               ) : (
-                <p className="text-center text-sm text-muted-foreground py-8">No students have been added to this class yet.</p>
+                <p className="text-center text-sm text-muted-foreground py-8">No students added yet.</p>
               )}
             </div>
         )}
@@ -325,20 +321,18 @@ export default function ClassDetailsPage() {
     }
     
     if (!classData || !userProfile || !user) {
-        return <Card><CardContent className="p-8 text-center text-muted-foreground">Class not found or you do not have permission to view it.</CardContent></Card>;
+        return <Card><CardContent className="p-8 text-center text-muted-foreground">Class not found.</CardContent></Card>;
     }
     
-    // Teacher View
     if (userProfile.role === 'teacher' && classData.teacherId === user.uid) {
         return <TeacherClassView classData={classData} />;
     }
 
-    // Student View
     if (userProfile.role === 'student' && classData.learnerIds.includes(user.uid)) {
         return <StudentClassView classId={classId} userId={user.uid} />;
     }
 
-    return <Card><CardContent className="p-8 text-center text-muted-foreground">You are not enrolled in this class.</CardContent></Card>;
+    return <Card><CardContent className="p-8 text-center text-muted-foreground">Access denied.</CardContent></Card>;
   }
 
   return (

@@ -52,7 +52,10 @@ export default function MockAssessmentPage() {
   const [rawSubmission, setRawSubmission] = useState('');
 
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
-  const topics = grade && subject ? (educationalData as any)[grade]?.topics?.[subject] || [] : [];
+  const topics = useMemo(() => {
+    if (!grade || !subject) return [];
+    return (educationalData as any)[grade]?.topics?.[subject] || [];
+  }, [grade, subject]);
 
   const questionCount = useMemo(() => {
     if (!generatedAssessment?.content) return 0;
@@ -101,7 +104,6 @@ export default function MockAssessmentPage() {
         console.error("Failed to generate assessment:", error);
         toast({
             title: "Generation Failed",
-            description: "Could not generate a practice assessment. Please try again.",
             variant: "destructive",
         });
     } finally {
@@ -117,7 +119,7 @@ export default function MockAssessmentPage() {
     if (answers.every(ans => ans.trim() === '') || !generatedAssessment?.rubric) {
       toast({
         title: "Missing Information",
-        description: "Please enter your answer before submitting.",
+        description: "Please enter your answer.",
         variant: "destructive",
       });
       return;
@@ -140,7 +142,6 @@ export default function MockAssessmentPage() {
         console.error("Failed to autograde:", error);
         toast({
             title: "Grading Failed",
-            description: "Could not grade your assessment. Please try again.",
             variant: "destructive",
         });
     } finally {
@@ -164,39 +165,29 @@ export default function MockAssessmentPage() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Print - Practice Assessment Result</title>
+            <title>Print Results</title>
             <style>
               body { font-family: sans-serif; line-height: 1.5; padding: 2rem; }
-              img { max-width: 100%; height: auto; border-radius: 0.5rem; display: block; margin: 1rem 0; }
-              hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
-              h1, h2, h3, h4 { font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
-              h1 { font-size: 2em; }
-              h2 { font-size: 1.5em; }
-              pre { white-space: pre-wrap; font-family: sans-serif; }
-              .submission { background-color: #f9f9f9; border: 1px solid #ddd; padding: 1rem; border-radius: 0.5rem; }
+              hr { border: 0; border-top: 1px solid #eee; margin: 2rem 0; }
+              .submission { background: #f9f9f9; padding: 1rem; border-radius: 0.5rem; }
             </style>
           </head>
           <body>
-            <h1>Practice Assessment: ${topic}</h1>
-            <h2>Grade ${grade} - ${subject}</h2>
+            <h1>${topic}</h1>
+            <p>Grade ${grade} - ${subject}</p>
             <hr />
             ${generatedAssessment.content}
-
-            <hr style="margin-top: 3rem;" />
+            <hr />
             <h2>Your Submission</h2>
             <div class="submission">${rawSubmission}</div>
-            
-            <hr style="margin-top: 3rem;" />
-            <h2>Grading Result</h2>
-            <h3>Grade/Score</h3>
-            <pre>${gradingResult.grade}</pre>
-            <h3>Feedback</h3>
+            <hr />
+            <h2>Result</h2>
+            <h3>Score: ${gradingResult.grade}</h3>
             <div>${gradingResult.feedback}</div>
           </body>
         </html>
       `);
       printWindow.document.close();
-      printWindow.focus();
       printWindow.print();
     }
   };
@@ -206,15 +197,15 @@ export default function MockAssessmentPage() {
       <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
             <FlaskConical className="mr-3 h-8 w-8" />
-            Practice Assessment
+            Practice Test
         </h1>
         
         <div className="grid gap-8 md:grid-cols-2">
             <Card>
                 <CardHeader>
-                    <CardTitle>Create Your Practice Test</CardTitle>
+                    <CardTitle>Create Practice Test</CardTitle>
                     <CardDescription>
-                    Select your grade, subject, and topic to generate a mock assessment.
+                    Select subject and topic to begin.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -222,7 +213,7 @@ export default function MockAssessmentPage() {
                         <div className="space-y-2">
                             <Label htmlFor="grade">Grade</Label>
                             <Select value={grade} onValueChange={setGrade} disabled={isGenerating || isGrading}>
-                                <SelectTrigger id="grade"><SelectValue placeholder="Select a grade" /></SelectTrigger>
+                                <SelectTrigger id="grade"><SelectValue placeholder="Grade" /></SelectTrigger>
                                 <SelectContent>
                                     {Object.keys(educationalData).map((g) => (
                                     <SelectItem key={g} value={g}>Grade {g}</SelectItem>
@@ -233,7 +224,7 @@ export default function MockAssessmentPage() {
                         <div className="space-y-2">
                              <Label htmlFor="subject">Subject</Label>
                             <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating || isGrading}>
-                                <SelectTrigger id="subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
+                                <SelectTrigger id="subject"><SelectValue placeholder="Subject" /></SelectTrigger>
                                 <SelectContent>
                                 {subjects?.map((s: string) => (
                                     <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -246,7 +237,7 @@ export default function MockAssessmentPage() {
                     <div className="space-y-2">
                         <Label htmlFor="topic">Topic</Label>
                         <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating || isGrading}>
-                            <SelectTrigger id="topic"><SelectValue placeholder="Select a topic" /></SelectTrigger>
+                            <SelectTrigger id="topic"><SelectValue placeholder="Topic" /></SelectTrigger>
                             <SelectContent>
                             {topics?.map((t: string) => (
                                 <SelectItem key={t} value={t}>{t}</SelectItem>
@@ -257,9 +248,9 @@ export default function MockAssessmentPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="difficulty">Difficulty (Optional)</Label>
-                            <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating || isGrading}>
-                                <SelectTrigger id="difficulty"><SelectValue placeholder="Select difficulty" /></SelectTrigger>
+                            <Label>Difficulty</Label>
+                            <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
+                                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="easy">Easy</SelectItem>
                                     <SelectItem value="medium">Medium</SelectItem>
@@ -268,95 +259,64 @@ export default function MockAssessmentPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="assessmentFormat">Format (Optional)</Label>
-                            <Select value={assessmentFormat} onValueChange={setAssessmentFormat} disabled={isGenerating || isGrading}>
-                                <SelectTrigger id="assessmentFormat"><SelectValue placeholder="Select format" /></SelectTrigger>
+                            <Label>Format</Label>
+                            <Select value={assessmentFormat} onValueChange={setAssessmentFormat} disabled={isGenerating}>
+                                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="multiple choice">Multiple Choice</SelectItem>
-                                    <SelectItem value="short answer">Short Answer</SelectItem>
-                                    <SelectItem value="essay">Essay</SelectItem>
-                                    <SelectItem value="fill in the blanks">Fill in the Blanks</SelectItem>
-                                    <SelectItem value="true or false">True / False</SelectItem>
-                                    <SelectItem value="worksheet">Worksheet</SelectItem>
+                                    <SelectItem value="multiple choice">MCQ</SelectItem>
                                     <SelectItem value="mixed">Mixed</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="length">Number of Questions</Label>
-                          <Input
-                              id="length"
-                              type="number"
-                              placeholder="10-100"
-                              value={length}
-                              onChange={(e) => {
-                                  const val = parseInt(e.target.value, 10);
-                                  if (e.target.value === '' || (val >= 10 && val <= 100)) {
-                                      setLength(e.target.value);
-                                  }
-                              }}
-                              min="10"
-                              max="100"
-                              disabled={isGenerating || isGrading}
-                          />
+                          <Label>Length</Label>
+                          <Input type="number" placeholder="Questions" value={length} onChange={(e) => setLength(e.target.value)} disabled={isGenerating} />
                         </div>
                     </div>
                 </CardContent>
                 <CardFooter>
                     <Button onClick={handleGenerate} disabled={isGenerating || isGrading} className="w-full">
                         {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Generate Practice Test
+                        Generate Test
                     </Button>
                 </CardFooter>
             </Card>
 
             <Card className="flex flex-col">
                 <CardHeader>
-                    <CardTitle>Your Assessment</CardTitle>
-                    <CardDescription>
-                       {pageState === 'generate' && "Your practice test will appear here."}
-                       {pageState === 'practice' && "Complete the test below and submit for grading."}
-                       {pageState === 'result' && "Here is your automated feedback."}
-                    </CardDescription>
+                    <CardTitle>Assessment</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-lg p-4 prose dark:prose-invert max-w-none">
-                    {isGenerating && (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    {isGenerating ? (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-pulse">
                             <Loader2 className="h-12 w-12 animate-spin" />
-                            <p className="mt-4">Generating your test...</p>
+                            <p className="mt-4">Preparing your test...</p>
                         </div>
-                    )}
-                    
-                    {!isGenerating && pageState === 'generate' && (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                            <FlaskConical className="h-12 w-12" />
-                            <p className="mt-4 text-center">Generate a test to get started.</p>
-                        </div>
-                    )}
-                    
-                    {!isGenerating && pageState === 'practice' && generatedAssessment && (
+                    ) : pageState === 'practice' && generatedAssessment ? (
                         <div dangerouslySetInnerHTML={{ __html: generatedAssessment.content }} />
-                    )}
-
-                    {!isGenerating && pageState === 'result' && gradingResult && (
+                    ) : pageState === 'result' && gradingResult ? (
                         <div className="space-y-6">
                             <div>
-                                <h3 className="font-bold">Your Grade</h3>
-                                <pre className="whitespace-pre-wrap font-sans text-lg">{gradingResult.grade}</pre>
+                                <h3 className="font-bold">Score</h3>
+                                <div className="text-2xl font-black text-primary">{gradingResult.grade}</div>
                             </div>
                              <div>
-                                <h3 className="font-bold">Feedback & Remarks</h3>
+                                <h3 className="font-bold">Feedback</h3>
                                  <div dangerouslySetInnerHTML={{ __html: gradingResult.feedback }} />
                             </div>
-                            <div>
-                                <h3 className="font-bold">Your Answer</h3>
-                                <div className="whitespace-pre-wrap font-sans text-sm p-4 bg-white rounded-md border text-black prose">
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="font-bold">Your Answers</h3>
+                                <div className="bg-white p-4 rounded-md border text-black prose text-sm">
                                     <div dangerouslySetInnerHTML={{ __html: rawSubmission }} />
                                 </div>
                             </div>
                         </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                            <FlaskConical className="h-12 w-12" />
+                            <p className="mt-4">Generate a test to start practicing.</p>
+                        </div>
                     )}
-
                 </CardContent>
                 
                 {pageState === 'practice' && (
@@ -364,25 +324,12 @@ export default function MockAssessmentPage() {
                         {questionCount > 0 ? (
                             [...Array(questionCount)].map((_, index) => (
                                 <div key={index} className="space-y-2 w-full">
-                                    <Label htmlFor={`submission-q-${index + 1}`}>Answer for Question {index + 1}</Label>
-                                    <Textarea 
-                                        id={`submission-q-${index + 1}`}
-                                        value={answers[index] || ''}
-                                        onChange={(e) => handleAnswerChange(index, e.target.value)}
-                                        rows={3}
-                                        placeholder={`Type your answer for question ${index + 1}...`}
-                                        disabled={isGrading}
-                                    />
+                                    <Label>Answer {index + 1}</Label>
+                                    <Textarea value={answers[index] || ''} onChange={(e) => handleAnswerChange(index, e.target.value)} rows={3} disabled={isGrading} />
                                 </div>
                             ))
                         ) : (
-                             <Textarea 
-                                placeholder="Type your answer here..." 
-                                rows={6}
-                                value={answers[0] || ''}
-                                onChange={(e) => handleAnswerChange(0, e.target.value)}
-                                disabled={isGrading}
-                            />
+                             <Textarea value={answers[0] || ''} onChange={(e) => handleAnswerChange(0, e.target.value)} rows={6} disabled={isGrading} />
                         )}
                         <Button onClick={handleGrade} disabled={isGrading || isGenerating} className="w-full">
                             {isGrading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />}
@@ -392,17 +339,11 @@ export default function MockAssessmentPage() {
                 )}
 
                 {pageState === 'result' && (
-                    <CardFooter className="flex-col sm:flex-row items-stretch gap-2 pt-4 border-t">
-                         <Button onClick={handleTryAnother} variant="outline" className="w-full">
-                            Create Another Practice Test
-                        </Button>
-                        <Button onClick={handlePrint} variant="outline" className="w-full">
-                            <Printer className="mr-2 h-4 w-4" />
-                            Print Result
-                        </Button>
+                    <CardFooter className="flex gap-2 pt-4 border-t">
+                         <Button onClick={handleTryAnother} variant="outline" className="flex-1">New Test</Button>
+                        <Button onClick={handlePrint} variant="outline" className="flex-1"><Printer className="mr-2 h-4 w-4" />Print</Button>
                     </CardFooter>
                 )}
-
             </Card>
         </div>
       </div>

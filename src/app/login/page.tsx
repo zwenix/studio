@@ -36,13 +36,24 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    // Ensuring the popup is the very first thing called in the stack to avoid blockers
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
+      // Adding a small delay or ensuring direct user action is preserved
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (error: any) {
-      toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+      console.error('Google Auth Error:', error);
+      if (error.code === 'auth/popup-blocked') {
+        toast({ 
+          title: 'Popup Blocked', 
+          description: 'Please enable popups for this site or try logging in again.', 
+          variant: 'destructive' 
+        });
+      } else {
+        toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+      }
     } finally {
       setIsGoogleLoading(false);
     }

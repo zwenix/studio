@@ -11,7 +11,7 @@ const publicPaths = ['/', '/login', '/signup'];
 const roleSelectionPath = '/role-selection';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
@@ -23,7 +23,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const isLoading = isAuthLoading || (!!user && isProfileLoading);
+  const isLoading = isUserLoading || (!!user && isProfileLoading);
 
   useEffect(() => {
     if (isLoading) return;

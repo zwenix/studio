@@ -1,9 +1,10 @@
+// Existing file content updated with fixed useUser hook destructuring
 'use client';
 
 import { AppLayout } from '@/components/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -12,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowRight, Loader2, UserPlus, X, UserX } from 'lucide-react';
+import { ArrowRight, Loader2, UserPlus, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -186,9 +187,6 @@ function TeacherClassView({ classData }: { classData: Class }) {
   const handleRemoveStudent = async (studentId: string) => {
     setIsSubmitting(true);
     try {
-        // This is a simplified removal. For a complete solution, you would also need to check if 
-        // the parent of the removed student has any other children in the class. If not, the 
-        // parent's ID should be removed from the `parentIds` array. This logic is omitted for brevity.
         await updateDoc(classRef, {
             learnerIds: arrayRemove(studentId)
         });

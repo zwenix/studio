@@ -27,7 +27,7 @@ import { doc } from 'firebase/firestore';
 const allNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['teacher', 'student', 'parent', 'admin'] },
   { href: '/content-creator', label: 'Content Creator', icon: Palette, roles: ['teacher', 'admin'] },
-  { href: '/content-archive', label: 'Content & Templates Archive', icon: Box, roles: ['teacher', 'admin'] },
+  { href: '/content-archive', label: 'Content & Archive', icon: Box, roles: ['teacher', 'admin'] },
   { href: '/my-classes', label: 'My Classes', icon: GraduationCap, roles: ['teacher', 'student', 'admin'] },
   { href: '/students', label: 'Manage Students', icon: Users, roles: ['teacher', 'admin'] },
   { href: '/progress-reports', label: 'Progress Reports', icon: BarChart, roles: ['teacher', 'student', 'parent', 'admin'] },

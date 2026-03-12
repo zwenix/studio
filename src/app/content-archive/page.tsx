@@ -81,10 +81,11 @@ export default function ContentArchivePage() {
   }, [contentHistory]);
 
   const filteredItems = combinedItems.filter(item => {
-    const label = item.isSystem ? item.title : item.topic;
+    const label = item.isSystem ? (item as any).title : (item as any).topic;
+    const subject = item.subject || 'General';
     return (
-      label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.subject.toLowerCase().includes(searchTerm.toLowerCase())
+      (label && label.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subject && subject.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -96,7 +97,7 @@ export default function ContentArchivePage() {
             teacherId: user.uid,
             grade: item.grade,
             subject: item.subject,
-            topic: item.isSystem ? item.title : item.topic,
+            topic: item.isSystem ? (item as any).title : (item as any).topic,
             contentType: item.contentType,
             content: item.content,
             memo: ('memo' in item && item.memo) ? item.memo : '',
@@ -153,7 +154,6 @@ export default function ContentArchivePage() {
           </div>
         </div>
 
-        {/* Repository Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-indigo-950 text-white border-none shadow-lg rounded-[2.5rem] overflow-hidden group">
             <CardHeader className="flex flex-row items-center gap-4">
@@ -190,7 +190,6 @@ export default function ContentArchivePage() {
           </Card>
         </div>
 
-        {/* Search & History */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative flex-1">
@@ -203,7 +202,7 @@ export default function ContentArchivePage() {
             {isLoading && <div className="col-span-full flex justify-center py-12"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
             
             {!isLoading && filteredItems?.map((item) => {
-              const label = item.isSystem ? item.title : item.topic;
+              const label = item.isSystem ? (item as any).title : (item as any).topic;
               return (
                 <Card key={item.id} className="hover:shadow-xl transition-all duration-300 rounded-[2.5rem] border-none bg-white dark:bg-slate-900 shadow-sm group">
                   <CardHeader>
@@ -234,7 +233,7 @@ export default function ContentArchivePage() {
                       const editParam = item.isSystem ? `templateId=${item.id}` : `editId=${item.id}`;
                       router.push(`/content-creator?${editParam}`);
                     }}>
-                      <Edit3 className="mr-2 h-4 w-4" /> Edit
+                      <Edit3 className="mr-2 h-4 w-4" /> Tweak
                     </Button>
                   </CardFooter>
                 </Card>
@@ -251,13 +250,12 @@ export default function ContentArchivePage() {
           </div>
         </div>
 
-        {/* View Dialog */}
         <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
           <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
             <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-8 text-white flex justify-between items-center shrink-0">
               <div>
                 <DialogTitle className="font-patrick-hand text-4xl">
-                  {selectedItem ? (selectedItem.isSystem ? selectedItem.title : selectedItem.topic) : ''}
+                  {selectedItem ? (selectedItem.isSystem ? (selectedItem as any).title : (selectedItem as any).topic) : ''}
                 </DialogTitle>
                 <DialogDescription className="text-blue-100 font-bold mt-1">Distribute to classes or send to the Creator for tweaking.</DialogDescription>
               </div>

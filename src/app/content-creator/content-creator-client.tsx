@@ -39,7 +39,8 @@ import {
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { educationalData } from '@/lib/educational-data';
-import { generateCAPSContent, GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
+import { generateCAPSContent } from '@/ai/flows/generate-caps-content';
+import type { GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -121,7 +122,8 @@ export function ContentCreatorClient() {
   
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
-    return (educationalData as any)[grade]?.topics?.[subject] || [];
+    const gradeData = (educationalData as any)[grade];
+    return gradeData?.topics?.[subject] || [];
   }, [grade, subject]);
 
   const teacherRef = useMemoFirebase(

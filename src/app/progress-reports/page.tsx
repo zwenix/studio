@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { BarChart, Loader2, GraduationCap } from 'lucide-react';
@@ -24,7 +24,7 @@ export default function ProgressReportsPage() {
 
   // For Teachers: Get their classes
   const teacherClassesQuery = useMemoFirebase(() => {
-    if (userProfile?.role !== 'teacher') return null;
+    if (!user || userProfile?.role !== 'teacher') return null;
     return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
   }, [firestore, user, userProfile]);
   const { data: teacherClasses, isLoading: areClassesLoading } = useCollection<Class>(teacherClassesQuery);
@@ -39,7 +39,7 @@ export default function ProgressReportsPage() {
   const { data: studentsInClass, isLoading: areStudentsLoading } = useCollection<User>(studentsInClassQuery);
 
   // For Parents: Get their children
-  const parentRef = useMemoFirebase(() => (userProfile?.role === 'parent' ? doc(firestore, 'parents', user.uid) : null), [firestore, user, userProfile]);
+  const parentRef = useMemoFirebase(() => (user && userProfile?.role === 'parent' ? doc(firestore, 'parents', user.uid) : null), [firestore, user, userProfile]);
   const { data: parentData } = useDoc(parentRef);
   const childrenQuery = useMemoFirebase(() => {
     if (!parentData || !parentData.childIds || parentData.childIds.length === 0) return null;

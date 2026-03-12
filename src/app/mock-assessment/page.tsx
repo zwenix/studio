@@ -23,9 +23,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, FlaskConical, FileCheck2, Printer } from 'lucide-react';
 import { educationalData } from '@/lib/educational-data';
-import { generateMockAssessment, GenerateMockAssessmentOutput } from '@/ai/flows/generate-mock-assessment';
-import { autograde, AutogradeOutput } from '@/ai/flows/autograder-flow';
-import type { GenerateMockAssessmentInput } from '@/ai/flows/generate-mock-assessment';
+import { generateMockAssessment } from '@/ai/flows/generate-mock-assessment';
+import { autograde } from '@/ai/flows/autograder-flow';
+import type { GenerateMockAssessmentInput, GenerateMockAssessmentOutput } from '@/ai/flows/generate-mock-assessment';
+import type { AutogradeOutput } from '@/ai/flows/autograder-flow';
 import { useToast } from '@/hooks/use-toast';
 
 type AssessmentState = 'generate' | 'practice' | 'result';
@@ -51,7 +52,7 @@ export default function MockAssessmentPage() {
   const [rawSubmission, setRawSubmission] = useState('');
 
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
-  const topics = (grade && subject) ? (educationalData as any)[grade]?.topics?.[subject] || [] : [];
+  const topics = grade && subject ? (educationalData as any)[grade]?.topics?.[subject] || [] : [];
 
   const questionCount = useMemo(() => {
     if (!generatedAssessment?.content) return 0;

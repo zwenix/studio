@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -67,7 +66,7 @@ const prompt = ai.definePrompt({
   FORMATTING:
   - Return valid HTML for the 'content' field.
   - Use headings (h1, h2), paragraphs, and lists.
-  - Ensure contrast is high.
+  - Ensure contrast is high for accessibility.
   
   INPUT CONTEXT:
   Learner Profile: {{learnerProfile}}
@@ -97,7 +96,7 @@ const generateCAPSContentFlow = ai.defineFlow(
       // Parse descriptions for each VA ID
       for (const tag of imageTags) {
         const id = tag.replace(/\[|\]|IMAGE:\s*/gi, '').trim();
-        // Look for "id: VA1" followed by "description: ..."
+        // Look for the specific ID and its description in the footer section
         const descRegex = new RegExp(`${id}[\\s\\S]*?description:\\s*["']?([^"\\n]+)["']?`, 'i');
         const descMatch = vaSection.match(descRegex);
         
@@ -106,8 +105,8 @@ const generateCAPSContentFlow = ai.defineFlow(
           try {
             const imageResult = await imageSearchTool({ query });
             if (imageResult.imageUrl) {
-              const imgHtml = `<div class="my-6 text-center">
-                <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" />
+              const imgHtml = `<div class="my-6 text-center no-print">
+                <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" style="width: auto; height: auto;" />
                 <p class="text-xs text-muted-foreground mt-2 italic">${query}</p>
               </div>`;
               html = html.replace(tag, imgHtml);

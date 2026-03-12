@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -100,7 +99,11 @@ export function ContentCreatorClient() {
   // Scanning State
   const [preview, setPreview] = useState<string | null>(null);
 
-  const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
+  const subjects = useMemo(() => {
+    if (!grade) return [];
+    return (educationalData as any)[grade]?.subjects || [];
+  }, [grade]);
+
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
     return (educationalData as any)[grade]?.topics?.[subject] || [];

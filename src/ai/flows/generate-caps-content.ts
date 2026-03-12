@@ -50,14 +50,15 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert South African primary school teacher (Grades R–7) and curriculum designer working with the CAPS curriculum.
 
 GENERAL PRINCIPLES
-- Align all content with the South African CAPS curriculum.
+- Align all content with the South African CAPS curriculum for Grades R–7.
 - Use South African spelling and terminology.
-- Adapt difficulty to Grade: {{{grade}}}.
+- Always adapt difficulty to Grade: {{{grade}}}.
 
 VISUAL AIDS (VERY IMPORTANT)
+- Visual aids must be DIRECTLY relevant to the concept.
 - Use this convention: Mark where a visual should appear with: [IMAGE: VA1], [IMAGE: VA2], etc.
-- At the end of the content section, include a VISUAL_AIDS list with descriptive queries for an image search tool.
-- Format the list clearly like: "VA1: descriptive query for image search".
+- At the end of the output, include a section titled VISUAL_AIDS with a structured list.
+- Each visual aid entry MUST have a 'description' field containing a search query.
 
 INPUT:
 Grade: {{{grade}}}
@@ -67,10 +68,11 @@ Type: {{{contentType}}}
 Term: {{{term}}}
 Language: {{{language}}}
 Objective: {{{objective}}}
+Learner Profile: {{{learnerProfile}}}
 
 OUTPUT:
-- Return clean HTML.
-- Include the VISUAL_AIDS descriptions at the very end of the content string inside a comment or hidden div so we can parse it.`,
+- Return valid HTML.
+- Ensure all visual descriptions are descriptive for an image search tool.`,
 });
 
 const generateCAPSContentFlow = ai.defineFlow(
@@ -83,35 +85,37 @@ const generateCAPSContentFlow = ai.defineFlow(
     const { output } = await prompt(input);
     let html = output!.content;
 
-    // 1. Extract Visual Aid Descriptions
-    // Looking for lines like VA1: some description
-    const vaRegex = /VA(\d+):\s*([^<>\n]+)/g;
+    // Enhanced regex to find description field within VISUAL_AIDS section
+    const visualAidsSection = html.match(/VISUAL_AIDS[\s\S]*$/i)?.[0] || "";
+    const vaMap = new Map<string, string>();
+    
+    // Find all VA IDs and their associated descriptions
+    const vaRegex = /id:\s*(VA\d+)[\s\S]*?description:\s*["']?([^"'\n]+)["']?/gi;
     let match;
-    const descriptions = new Map<string, string>();
-    while ((match = vaRegex.exec(html)) !== null) {
-      descriptions.set(`VA${match[1]}`, match[2].trim());
+    while ((match = vaRegex.exec(visualAidsSection)) !== null) {
+      vaMap.set(match[1], match[2].trim());
     }
 
-    // 2. Fetch images and replace tags
-    for (const [id, description] of descriptions.entries()) {
+    // Process each visual aid
+    for (const [id, query] of vaMap.entries()) {
       try {
-        const imageResult = await imageSearchTool({ query: description, orientation: 'landscape' });
+        const imageResult = await imageSearchTool({ query, orientation: 'landscape' });
         if (imageResult.imageUrl) {
-          const imgTag = `<div class="my-6 text-center">
-            <img src="${imageResult.imageUrl}" alt="${description}" class="rounded-lg shadow-md max-h-[400px] mx-auto" />
-            <p class="text-xs text-muted-foreground mt-2 italic">Visual: ${description} (via ${imageResult.source})</p>
+          const imgHtml = `<div class="my-8 text-center">
+            <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-2xl shadow-xl max-h-[450px] mx-auto border-4 border-white/10" />
+            <p class="text-sm text-muted-foreground mt-3 italic font-medium">Visual: ${query}</p>
           </div>`;
-          html = html.replace(`[IMAGE: ${id}]`, imgTag);
+          html = html.replace(`[IMAGE: ${id}]`, imgHtml);
         } else {
-          html = html.replace(`[IMAGE: ${id}]`, ''); // Remove tag if no image found
+          html = html.replace(`[IMAGE: ${id}]`, '');
         }
       } catch (e) {
-        console.error(`Failed to fetch image for ${id}:`, e);
         html = html.replace(`[IMAGE: ${id}]`, '');
       }
     }
 
-    // 3. Clean up the VISUAL_AIDS text list from the visible HTML
+    // Clean up the VISUAL_AIDS section from the visible HTML
+    html = html.replace(/<[^>]*>VISUAL_AIDS[\s\S]*$/i, '');
     html = html.replace(/VISUAL_AIDS[\s\S]*$/i, '');
 
     return {

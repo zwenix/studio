@@ -23,19 +23,6 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 195 100% 45%;
-    --chart-1: 195 100% 45%;
-    --chart-2: 80 100% 60%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --sidebar-background: 195 100% 95%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 195 100% 45%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 195 100% 90%;
-    --sidebar-accent-foreground: 222.2 84% 4.9%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 195 100% 45%;
     --radius: 1.5rem;
   }
   .dark {
@@ -58,14 +45,6 @@
     --border: 217 33% 17%;
     --input: 217 33% 17%;
     --ring: 195 100% 60%;
-    --sidebar-background: 222 47% 12%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 195 100% 60%;
-    --sidebar-primary-foreground: 222.2 84% 4.9%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 195 100% 60%;
   }
 }
 
@@ -76,6 +55,20 @@
   body {
     @apply bg-background text-foreground font-body;
   }
+}
+
+/* Fix for Injected AI Content Visibility */
+.prose {
+  @apply text-foreground max-w-none;
+}
+.prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose strong {
+  @apply text-foreground;
+}
+.dark .prose {
+  @apply text-slate-200;
+}
+.dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose p, .dark .prose li, .dark .prose strong {
+  @apply text-slate-100;
 }
 
 .font-patrick-hand {

@@ -5,12 +5,12 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.ibb.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'images.pexels.com' },
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
       { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
     ],
   },
   experimental: {
-    serverExternalPackages: ['genkit', 'require-in-the-middle'],
+    serverExternalPackages: ['genkit', '@genkit-ai/googleai', '@genkit-ai/ai', 'wav'],
   },
 };
 

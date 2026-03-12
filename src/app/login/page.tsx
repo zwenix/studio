@@ -59,7 +59,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
       <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 bg-indigo-950 text-white">
         <CardHeader className="text-center pb-2">
@@ -138,6 +138,9 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      <div className="mt-8 text-white/40 text-[10px] sm:text-xs text-center z-10">
+        <p>© 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu - Owner & Developer</p>
+      </div>
     </div>
   );
 }

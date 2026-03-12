@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -131,20 +132,24 @@ export default function LandingPage() {
       </main>
 
       <footer className="bg-indigo-950/50 py-20 px-6 border-t border-white/5 text-center">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
-          <div className="flex items-center gap-4">
-            <div className="bg-transparent p-1 rounded-lg">
-              <Image 
-                src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
-                alt="Logo" 
-                width={24} 
-                height={36} 
-                style={{ width: 'auto', height: '36px' }}
-              />
+        <div className="max-w-7xl mx-auto flex flex-col gap-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-12">
+            <div className="flex items-center gap-4">
+              <div className="bg-transparent p-1 rounded-lg">
+                <Image 
+                  src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
+                  alt="Logo" 
+                  width={24} 
+                  height={36} 
+                  style={{ width: 'auto', height: '36px' }}
+                />
+              </div>
+              <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
             </div>
-            <span className="font-patrick-hand font-bold text-2xl tracking-tight">EduAI <span className="text-yellow-400">Companion</span></span>
+            <div className="text-white/60 text-sm">
+              <p>© 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu - Owner & Developer</p>
+            </div>
           </div>
-          <p className="text-white/40 font-medium text-lg">&copy; 2026 EduAI Companion. All rights reserved.</p>
         </div>
       </footer>
     </div>

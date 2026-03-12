@@ -50,13 +50,8 @@ export default function MockAssessmentPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [rawSubmission, setRawSubmission] = useState('');
 
-  const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
-  const topics = useMemo(() => {
-    if (!grade || !subject) return [];
-    const gradeKey = grade as keyof typeof educationalData;
-    const topicsMap = educationalData[gradeKey]?.topics as Record<string, string[]>;
-    return topicsMap?.[subject] || [];
-  }, [grade, subject]);
+  const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
+  const topics = (grade && subject) ? (educationalData as any)[grade]?.topics?.[subject] || [] : [];
 
   const questionCount = useMemo(() => {
     if (!generatedAssessment?.content) return 0;
@@ -239,7 +234,7 @@ export default function MockAssessmentPage() {
                             <Select value={subject} onValueChange={setSubject} disabled={!grade || isGenerating || isGrading}>
                                 <SelectTrigger id="subject"><SelectValue placeholder="Select a subject" /></SelectTrigger>
                                 <SelectContent>
-                                {subjects?.map((s) => (
+                                {subjects?.map((s: string) => (
                                     <SelectItem key={s} value={s}>{s}</SelectItem>
                                 ))}
                                 </SelectContent>
@@ -252,7 +247,7 @@ export default function MockAssessmentPage() {
                         <Select value={topic} onValueChange={setTopic} disabled={!subject || isGenerating || isGrading}>
                             <SelectTrigger id="topic"><SelectValue placeholder="Select a topic" /></SelectTrigger>
                             <SelectContent>
-                            {topics?.map((t) => (
+                            {topics?.map((t: string) => (
                                 <SelectItem key={t} value={t}>{t}</SelectItem>
                             ))}
                             </SelectContent>

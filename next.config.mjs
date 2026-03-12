@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['genkit', 'require-in-the-middle'],
+  experimental: {
+    serverExternalPackages: ['genkit', 'require-in-the-middle', 'wav'],
+  },
   images: {
     remotePatterns: [
       {
@@ -18,7 +20,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
-      }
+      },
     ],
   },
 };

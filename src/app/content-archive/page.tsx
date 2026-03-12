@@ -131,8 +131,8 @@ export default function ContentArchivePage() {
     }
   };
 
-  const handleDelete = async (item: GeneratedContent) => {
-    if (!user) return;
+  const handleDelete = async (item: CombinedItem) => {
+    if (!user || item.isSystem) return;
     try {
       await deleteDoc(doc(firestore, 'teachers', user.uid, 'generatedContent', item.id));
       toast({ title: 'Item removed from Archive' });
@@ -212,7 +212,7 @@ export default function ContentArchivePage() {
                         {item.isSystem ? 'Official' : 'My Content'} - Grade {item.grade}
                       </Badge>
                       {!item.isSystem && (
-                        <button onClick={() => handleDelete(item as GeneratedContent)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
+                        <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}

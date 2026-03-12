@@ -306,7 +306,7 @@ export default function ClassDetailsPage() {
   const params = useParams();
   const classId = params.classId as string;
 
-  const { user, loading: isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);

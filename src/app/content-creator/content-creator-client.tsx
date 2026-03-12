@@ -117,13 +117,11 @@ export function ContentCreatorClient() {
   const [manualType, setManualType] = useState<string>('');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
-  const subjects = grade ? educationalData[grade as keyof typeof educationalData]?.subjects : [];
+  const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
   
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
-    const gradeKey = grade as keyof typeof educationalData;
-    const topicsMap = educationalData[gradeKey]?.topics as Record<string, string[]>;
-    return topicsMap?.[subject] || [];
+    return (educationalData as any)[grade]?.topics?.[subject] || [];
   }, [grade, subject]);
 
   const teacherRef = useMemoFirebase(
@@ -507,7 +505,7 @@ export function ContentCreatorClient() {
                           <SelectValue placeholder="Subject" />
                         </SelectTrigger>
                         <SelectContent>
-                          {subjects?.map((s) => (
+                          {subjects?.map((s: string) => (
                             <SelectItem key={s} value={s}>
                               {s}
                             </SelectItem>
@@ -522,7 +520,7 @@ export function ContentCreatorClient() {
                           <SelectValue placeholder="Topic" />
                         </SelectTrigger>
                         <SelectContent>
-                          {topics?.map((t) => (
+                          {topics?.map((t: string) => (
                             <SelectItem key={t} value={t}>
                               {t}
                             </SelectItem>

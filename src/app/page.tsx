@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -101,6 +102,7 @@ export default function LandingPage() {
                   height={600} 
                   className="rounded-[4rem] shadow-2xl border-8 border-white/10 object-cover"
                   priority
+                  style={{ width: '100%', height: 'auto' }}
                   data-ai-hint="multiracial children"
                 />
               </div>

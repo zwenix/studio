@@ -79,7 +79,6 @@ export default function ContentArchivePage() {
   }, [contentHistory]);
 
   const filteredItems = combinedItems.filter(item => {
-    // ✅ Safely access title or topic based on union type
     const label = item.isSystem ? item.title : item.topic;
     const subject = item.subject || 'General';
     return (

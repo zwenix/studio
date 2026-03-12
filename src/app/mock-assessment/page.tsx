@@ -19,9 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, FlaskConical, FileCheck2, Printer } from 'lucide-react';
+import { Loader2, Sparkles, FlaskConical, FileCheck2 } from 'lucide-react';
 import { educationalData } from '@/lib/educational-data';
 import { generateMockAssessment } from '@/ai/flows/generate-mock-assessment';
 import { autograde } from '@/ai/flows/autograder-flow';
@@ -49,15 +47,12 @@ export default function MockAssessmentPage() {
   const [pageState, setPageState] = useState<AssessmentState>('generate');
   
   const [answers, setAnswers] = useState<string[]>([]);
-  const [rawSubmission, setRawSubmission] = useState('');
 
-  // ✅ Safe type indexing for educational data
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
   
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
-    const gradeData = (educationalData as any)[grade];
-    return (gradeData?.topics as any)?.[subject] || [];
+    return (educationalData as any)[grade]?.topics?.[subject] || [];
   }, [grade, subject]);
 
   const questionCount = useMemo(() => {
@@ -68,12 +63,6 @@ export default function MockAssessmentPage() {
     }
     return count;
   }, [generatedAssessment?.content, answers.length]);
-
-  const handleAnswerChange = (index: number, value: string) => {
-    const newAnswers = [...answers];
-    newAnswers[index] = value;
-    setAnswers(newAnswers);
-  };
 
   const handleGenerate = async () => {
     if (!grade || !subject || !topic) {
@@ -89,7 +78,6 @@ export default function MockAssessmentPage() {
     setGeneratedAssessment(null);
     setGradingResult(null);
     setAnswers([]);
-    setRawSubmission('');
 
     try {
       const input: GenerateMockAssessmentInput = {
@@ -127,7 +115,6 @@ export default function MockAssessmentPage() {
     
     setIsGrading(true);
     setGradingResult(null);
-    setRawSubmission(submissionContent);
 
     try {
       const result = await autograde({

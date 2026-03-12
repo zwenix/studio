@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -26,7 +25,6 @@ import {
   FileUp,
   Camera,
   ScanText,
-  Save,
   Zap,
   Palette,
   Edit3,
@@ -37,24 +35,22 @@ import {
   Users as UsersIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent } from '@/ai/flows/generate-caps-content';
 import type { GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import {
   collection,
-  query,
-  where,
   addDoc,
   doc,
   serverTimestamp,
   getDoc,
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
-import type { Class, Teacher, GeneratedContent } from '@/lib/types';
+import type { Teacher, GeneratedContent } from '@/lib/types';
 
 const CONTENT_CATEGORIES = {
   'Teaching Tools & Aids': ['Lesson Plans', 'Study Guides', 'Booklets', 'Poster', 'Other'],
@@ -71,7 +67,6 @@ const CONTENT_CATEGORIES = {
 const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana'];
 
 export function ContentCreatorClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useUser();
@@ -79,7 +74,6 @@ export function ContentCreatorClient() {
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -102,7 +96,6 @@ export function ContentCreatorClient() {
   // Scanning State
   const [preview, setPreview] = useState<string | null>(null);
 
-  // ✅ Safe type indexing for educational data
   const subjects = grade ? (educationalData as any)[grade]?.subjects : [];
   const topics = useMemo(() => {
     if (!grade || !subject) return [];
@@ -159,7 +152,6 @@ export function ContentCreatorClient() {
       });
       setGeneratedContent(result);
       
-      // Save history automatically
       if (user) {
         await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
           teacherId: user.uid,

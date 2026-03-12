@@ -62,13 +62,13 @@
   @apply text-foreground max-w-none;
 }
 .prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose strong {
-  @apply text-foreground;
+  @apply text-foreground !important;
 }
 .dark .prose {
-  @apply text-slate-200;
+  @apply text-slate-200 !important;
 }
 .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose p, .dark .prose li, .dark .prose strong {
-  @apply text-slate-100;
+  @apply text-slate-100 !important;
 }
 
 .font-patrick-hand {

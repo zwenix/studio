@@ -85,36 +85,44 @@ const generateCAPSContentFlow = ai.defineFlow(
     const { output } = await prompt(input);
     let html = output!.content;
 
-    // Enhanced regex to find description field within VISUAL_AIDS section
-    const visualAidsSection = html.match(/VISUAL_AIDS[\s\S]*$/i)?.[0] || "";
+    // Robust extraction of VA IDs and descriptions from the VISUAL_AIDS section
+    const visualAidsSectionMatch = html.match(/VISUAL_AIDS[\s\S]*$/i);
+    const visualAidsSection = visualAidsSectionMatch ? visualAidsSectionMatch[0] : "";
     const vaMap = new Map<string, string>();
     
-    // Find all VA IDs and their associated descriptions
-    const vaRegex = /id:\s*(VA\d+)[\s\S]*?description:\s*["']?([^"'\n]+)["']?/gi;
-    let match;
-    while ((match = vaRegex.exec(visualAidsSection)) !== null) {
-      vaMap.set(match[1], match[2].trim());
+    // Find each VA block and extract the description
+    const vaBlocks = visualAidsSection.split(/- id:\s*/i).slice(1);
+    for (const block of vaBlocks) {
+        const idMatch = block.match(/^(VA\d+)/i);
+        const descMatch = block.match(/description:\s*["']?([^"'\n]+)["']?/i);
+        if (idMatch && descMatch) {
+            vaMap.set(idMatch[1].toUpperCase(), descMatch[1].trim());
+        }
     }
 
-    // Process each visual aid
+    // Process and inject images
     for (const [id, query] of vaMap.entries()) {
       try {
         const imageResult = await imageSearchTool({ query, orientation: 'landscape' });
         if (imageResult.imageUrl) {
-          const imgHtml = `<div class="my-8 text-center">
-            <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-2xl shadow-xl max-h-[450px] mx-auto border-4 border-white/10" />
+          const imgHtml = `<div class="my-8 text-center bg-muted/10 p-4 rounded-3xl border border-border/50">
+            <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-2xl shadow-xl max-h-[450px] mx-auto" />
             <p class="text-sm text-muted-foreground mt-3 italic font-medium">Visual: ${query}</p>
           </div>`;
-          html = html.replace(`[IMAGE: ${id}]`, imgHtml);
+          // Replace tag case-insensitively
+          const regex = new RegExp(`\\[IMAGE:\\s*${id}\\]`, 'gi');
+          html = html.replace(regex, imgHtml);
         } else {
-          html = html.replace(`[IMAGE: ${id}]`, '');
+          const regex = new RegExp(`\\[IMAGE:\\s*${id}\\]`, 'gi');
+          html = html.replace(regex, '');
         }
       } catch (e) {
-        html = html.replace(`[IMAGE: ${id}]`, '');
+        const regex = new RegExp(`\\[IMAGE:\\s*${id}\\]`, 'gi');
+        html = html.replace(regex, '');
       }
     }
 
-    // Clean up the VISUAL_AIDS section from the visible HTML
+    // Clean up the structural VISUAL_AIDS section from visible output
     html = html.replace(/<[^>]*>VISUAL_AIDS[\s\S]*$/i, '');
     html = html.replace(/VISUAL_AIDS[\s\S]*$/i, '');
 

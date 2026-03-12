@@ -4,7 +4,7 @@
   "description": "An AI-powered educational platform for teachers and students.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0ea5e9",
   "theme_color": "#0ea5e9",
   "icons": [
     {
@@ -16,6 +16,11 @@
       "src": "https://i.ibb.co/6RV1WqHJ/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x128.jpg",
       "sizes": "128x128",
       "type": "image/jpeg"
+    },
+    {
+      "src": "https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

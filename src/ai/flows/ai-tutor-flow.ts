@@ -43,7 +43,8 @@ const tutorPrompt = ai.definePrompt({
   
   User Query: {{query}}
   
-  Respond in {{language}}. Provide your response in the 'response' field of the output JSON.`,
+  Respond ONLY in the specified JSON format. Your response MUST be valid JSON with a single field 'response'.
+  Respond in {{language}}.`,
 });
 
 const aiTutorFlow = ai.defineFlow(
@@ -53,10 +54,15 @@ const aiTutorFlow = ai.defineFlow(
     outputSchema: AiTutorOutputSchema,
   },
   async (input) => {
-    const { output } = await tutorPrompt(input);
-    if (!output) {
-      throw new Error('The AI failed to generate a response. Please try again.');
+    try {
+      const { output } = await tutorPrompt(input);
+      if (!output) {
+        throw new Error('The AI failed to generate a response. Please try again.');
+      }
+      return output;
+    } catch (e) {
+      console.error('AI Tutor Flow Error:', e);
+      throw e;
     }
-    return output;
   }
 );

@@ -1,11 +1,7 @@
 'use server';
 
-/**
- * @fileOverview Generates memos and rubrics using Groq.
- */
-
-import { groqGenerateJSON } from '@/ai/groq-client';
 import { z } from 'zod';
+import { groqGenerateJSON } from '@/ai/groq-client';
 
 const GenerateMemosAndRubricsInputSchema = z.object({
   taskDescription: z.string(),
@@ -13,28 +9,25 @@ const GenerateMemosAndRubricsInputSchema = z.object({
   subject: z.string(),
   capsCompliance: z.string().optional().default('Yes'),
 });
-export type GenerateMemosAndRubricsInput = z.infer<typeof GenerateMemosAndRubricsInputSchema>;
 
-const GenerateMemosAndRubricsOutputSchema = z.object({
-  memo: z.string(),
-  rubric: z.string(),
-});
-export type GenerateMemosAndRubricsOutput = z.infer<typeof GenerateMemosAndRubricsOutputSchema>;
+export type GenerateMemosAndRubricsInput = z.infer<typeof GenerateMemosAndRubricsInputSchema>;
+export type GenerateMemosAndRubricsOutput = { memo: string; rubric: string; };
 
 export async function generateMemosAndRubrics(input: GenerateMemosAndRubricsInput): Promise<GenerateMemosAndRubricsOutput> {
-  const prompt = `You are an expert South African educational assistant (CAPS compliant). 
-  
-Generate a detailed Memo (with answers and explanations) and a Rubric (with clear criteria and point allocations) for the following task.
-  
-**FORMAT:** Return JSON with 'memo' and 'rubric' as clean HTML strings. Use <h2> for headings.
-  
-Task Description: ${input.taskDescription}
-Grade Level: ${input.gradeLevel}
-Subject: ${input.subject}
-  
-Ensure the rubric is fair and matches the cognitive levels required for Grade ${input.gradeLevel}.`;
-
   return groqGenerateJSON<GenerateMemosAndRubricsOutput>([
-    { role: 'system', content: prompt }
+    {
+      role: 'system',
+      content: `You are an expert South African CAPS-compliant educational assistant.
+Generate a detailed Memo (answers + explanations) and a Rubric (criteria + mark allocations) for the given task.
+Use clean HTML. Use <h2> for headings, <p> and <ul> for content.
+Return ONLY a JSON object: { "memo": "<HTML>", "rubric": "<HTML>" }`,
+    },
+    {
+      role: 'user',
+      content: `Task: ${input.taskDescription}
+Grade: ${input.gradeLevel}
+Subject: ${input.subject}
+Ensure the rubric matches the cognitive level required for Grade ${input.gradeLevel}.`,
+    },
   ]);
 }

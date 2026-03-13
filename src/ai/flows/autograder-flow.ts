@@ -1,11 +1,7 @@
 'use server';
 
-/**
- * @fileOverview An autograding AI agent powered by Groq.
- */
-
-import { groqGenerateJSON } from '@/ai/groq-client';
 import { z } from 'zod';
+import { groqGenerateJSON } from '@/ai/groq-client';
 
 export const AutogradeInputSchema = z.object({
   assignmentContent: z.string(),
@@ -14,34 +10,29 @@ export const AutogradeInputSchema = z.object({
   grade: z.string().optional(),
   culturalContextIntegration: z.boolean().optional(),
 });
-export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
 
-const AutogradeOutputSchema = z.object({
-  grade: z.string(),
-  feedback: z.string(),
-  rubric: z.string(),
-});
-export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
+export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
+export type AutogradeOutput = { grade: string; feedback: string; rubric: string; };
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
-  const prompt = `You are an expert AI for grading South African student assignments.
-  
-Grade the following assignment based on the provided instructions. Provide a score, detailed feedback, and the rubric used for grading.
-
-${input.culturalContextIntegration ? '**Feedback Style:** Phrase all feedback in a positive, encouraging, and culturally sensitive tone. Where possible, relate feedback to a South African context.' : ''}
-
-Subject: ${input.subject || 'General'}
-Grade: ${input.grade || 'N/A'}
-  
-Grading Instructions:
-${input.gradingInstructions}
-  
-Student's Assignment:
-${input.assignmentContent}
-
-FORMAT: Return JSON with fields 'grade', 'feedback', and 'rubric'.`;
-
   return groqGenerateJSON<AutogradeOutput>([
-    { role: 'system', content: prompt }
+    {
+      role: 'system',
+      content: `You are an expert AI grader for South African school assignments.
+Grade the assignment, provide detailed feedback, and state the rubric used.
+${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}
+Return ONLY a JSON object: { "grade": "<score/percentage>", "feedback": "<HTML feedback>", "rubric": "<HTML rubric used>" }`,
+    },
+    {
+      role: 'user',
+      content: `Subject: ${input.subject || 'General'}
+Grade Level: ${input.grade || 'N/A'}
+
+Grading Instructions / Memo:
+${input.gradingInstructions}
+
+Student's Submission:
+${input.assignmentContent}`,
+    },
   ]);
 }

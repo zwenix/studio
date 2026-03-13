@@ -13,7 +13,7 @@ export async function groqGenerate(
   options?: { temperature?: number; max_tokens?: number }
 ): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error('GROQ_API_KEY is not set in environment variables.');
+  if (!apiKey) throw new Error('GROQ_API_KEY is not set.');
 
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
@@ -38,28 +38,25 @@ export async function groqGenerate(
   return data.choices[0]?.message?.content ?? '';
 }
 
-// For flows that need structured JSON output
 export async function groqGenerateJSON<T>(
   messages: GroqMessage[],
   options?: { temperature?: number; max_tokens?: number }
 ): Promise<T> {
-  const messagesWithJsonInstruction: GroqMessage[] = [
+  const last = messages[messages.length - 1];
+  const augmented: GroqMessage[] = [
     ...messages.slice(0, -1),
     {
-      ...messages[messages.length - 1],
-      content:
-        messages[messages.length - 1].content +
-        '\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no code fences, no explanation.',
+      ...last,
+      content: last.content + '\n\nCRITICAL: Your entire response MUST be a single valid JSON object. No markdown fences, no explanation, no text before or after the JSON.',
     },
   ];
 
-  const raw = await groqGenerate(messagesWithJsonInstruction, options);
+  const raw = await groqGenerate(augmented, options);
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
-  // Strip any accidental markdown fences
-  const cleaned = raw.replace(/```json|```/g, '').trim();
   try {
     return JSON.parse(cleaned) as T;
   } catch {
-    throw new Error(`Groq returned invalid JSON: ${cleaned.substring(0, 200)}`);
+    throw new Error(`Groq returned invalid JSON. Raw response: ${cleaned.substring(0, 300)}`);
   }
 }

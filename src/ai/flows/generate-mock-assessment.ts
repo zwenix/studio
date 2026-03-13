@@ -1,49 +1,47 @@
 'use server';
 
-/**
- * @fileOverview Generates mock assessments using Groq.
- */
-
-import { groqGenerateJSON } from '@/ai/groq-client';
 import { z } from 'zod';
+import { groqGenerateJSON } from '@/ai/groq-client';
+
+const GradeSchema = z.enum(['R','1','2','3','4','5','6','7','8','9','10','11','12']);
+const AssessmentFormatSchema = z.enum(['multiple choice','short answer','essay','fill in the blanks','true or false','worksheet','mixed']);
 
 const GenerateMockAssessmentInputSchema = z.object({
-  grade: z.string(),
+  grade: GradeSchema,
   subject: z.string(),
   topic: z.string(),
   difficulty: z.string().optional(),
-  assessmentFormat: z.string().optional(),
+  assessmentFormat: AssessmentFormatSchema.optional(),
   length: z.string().optional(),
 });
 
 export type GenerateMockAssessmentInput = z.infer<typeof GenerateMockAssessmentInputSchema>;
-
-const GenerateMockAssessmentOutputSchema = z.object({
-  content: z.string(),
-  memo: z.string(),
-  rubric: z.string(),
-});
-
-export type GenerateMockAssessmentOutput = z.infer<typeof GenerateMockAssessmentOutputSchema>;
+export type GenerateMockAssessmentOutput = { content: string; memo: string; rubric: string; };
 
 export async function generateMockAssessment(input: GenerateMockAssessmentInput): Promise<GenerateMockAssessmentOutput> {
-  const prompt = `You are an expert AI assistant that helps students prepare for their exams by creating practice assessments.
+  return groqGenerateJSON<GenerateMockAssessmentOutput>([
+    {
+      role: 'system',
+      content: `You are an expert South African educator creating CAPS-aligned practice assessments.
 
-Generate a short practice assessment based on the grade, subject, and topic specified.
-The assessment should be designed to test the student's knowledge.
+FORMATTING RULES:
+- Return well-structured HTML ready for direct display.
+- Use <h2>Question N</h2> for each question with <hr> separators.
+- NO HTML tables for matching questions — use separate ordered lists instead.
+- For Grades R–7: use emojis frequently, wrap content in <div class="font-patrick-hand">, use big friendly headings.
+- For Grades 8–12: formal but clear structure.
+- End content with: <hr><em style="font-size:9px;color:#666;">Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>
 
-Grade: ${input.grade}
+Return ONLY a JSON object: { "content": "<HTML questions>", "memo": "<HTML answers>", "rubric": "<HTML rubric>" }`,
+    },
+    {
+      role: 'user',
+      content: `Grade: ${input.grade}
 Subject: ${input.subject}
 Topic: ${input.topic}
 Difficulty: ${input.difficulty || 'Medium'}
 Format: ${input.assessmentFormat || 'mixed'}
-Length: ${input.length || '10 questions'}
-
-CRITICAL: Return the output as JSON with 'content', 'memo', and 'rubric' as clean HTML strings. 
-For Grades R-7, wrap content in <div class="font-patrick-hand"> and use emojis.
-Conclude 'content' with a horizontal rule and footnote: <em>Created using EduAICompanion. All rights reserved by Zwelakhe Msuthu 2026.</em>`;
-
-  return groqGenerateJSON<GenerateMockAssessmentOutput>([
-    { role: 'system', content: prompt }
-  ]);
+Number of questions: ${input.length || '10'}`,
+    },
+  ], { max_tokens: 8192 });
 }

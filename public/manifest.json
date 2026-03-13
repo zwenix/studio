@@ -2,8 +2,8 @@
 {
   "name": "EduAI Companion",
   "short_name": "EduAI",
-  "description": "An AI-powered educational platform for teachers and students.",
-  "start_url": "/dashboard",
+  "description": "AI-powered educational platform for teachers and students.",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0ea5e9",
   "theme_color": "#0ea5e9",

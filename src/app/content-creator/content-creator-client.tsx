@@ -54,8 +54,21 @@ import { useDropzone } from 'react-dropzone';
 import type { Teacher, GeneratedContent } from '@/lib/types';
 
 const CONTENT_CATEGORIES = {
-  'Teaching Tools & Aids': ['Lesson Plans', 'Study Guides', 'Booklets', 'Poster', 'Other'],
-  'Exercises, Tasks & Assessments': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments', 'Other'],
+  'Teaching Tools & Aids': ['Lesson Plans', 'Lesson Slides', 'Notes/Learning Aids for Learners', 'Study Guides', 'Booklets', 'Poster', 'Other'],
+  'Assignments, Exercises & Tasks': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments', 'Other'],
+  'Assessments': [
+    'Controlled Test',
+    'Examination',
+    'Formal Assessment Task (FAT)',
+    'Investigation',
+    'Project',
+    'Case Study',
+    'Oral/Speech',
+    'Demonstration',
+    'Practical Task/Experiment',
+    'Portfolio',
+    'Other'
+  ],
   'Class Management & Admin': [
     'Individualised Learning Plan (ILP)',
     'Classroom Labels',
@@ -63,9 +76,10 @@ const CONTENT_CATEGORIES = {
     'Permission Slips',
     'Other',
   ],
+  'Other': ['Other']
 };
 
-const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana'];
+const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana', 'Other'];
 
 export function ContentCreatorClient() {
   const searchParams = useSearchParams();
@@ -81,14 +95,24 @@ export function ContentCreatorClient() {
 
   // AI Inputs
   const [grade, setGrade] = useState('');
+  const [customGrade, setCustomGrade] = useState('');
+  
   const [subject, setSubject] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
+  
   const [topic, setTopic] = useState('');
   const [customTopic, setCustomTopic] = useState('');
+  
   const [category, setCategory] = useState<string>('');
+  const [customCategory, setCustomCategory] = useState('');
+  
   const [subType, setSubType] = useState<string>('');
-  const [manualType, setManualType] = useState<string>('');
+  const [customSubType, setCustomSubType] = useState('');
+  
   const [term, setTerm] = useState('');
   const [language, setLanguage] = useState('English');
+  const [customLanguage, setCustomLanguage] = useState('');
+  
   const [learnerProfile, setLearnerProfile] = useState('');
   const [objective, setObjective] = useState('');
   const [duration, setDuration] = useState('45');
@@ -99,12 +123,12 @@ export function ContentCreatorClient() {
   const [preview, setPreview] = useState<string | null>(null);
 
   const subjects = useMemo(() => {
-    if (!grade) return [];
+    if (!grade || grade === 'Other') return [];
     return (educationalData as any)[grade]?.subjects || [];
   }, [grade]);
 
   const topics = useMemo(() => {
-    if (!grade || !subject) return [];
+    if (!grade || !subject || grade === 'Other' || subject === 'Other') return [];
     return (educationalData as any)[grade]?.topics?.[subject] || [];
   }, [grade, subject]);
 
@@ -127,10 +151,17 @@ export function ContentCreatorClient() {
   }, [searchParams, user, firestore]);
 
   const handleGenerate = async () => {
-    if (!grade || !category || !subType || !subject) {
+    const finalGrade = grade === 'Other' ? customGrade : grade;
+    const finalSubject = subject === 'Other' ? customSubject : subject;
+    const finalCategory = category === 'Other' ? customCategory : category;
+    const finalSubType = subType === 'Other' ? customSubType : subType;
+    const finalTopic = topic === 'Other' ? customTopic : topic;
+    const finalLanguage = language === 'Other' ? customLanguage : language;
+
+    if (!finalGrade || !finalCategory || !finalSubType || !finalSubject || !finalTopic) {
       toast({ 
         title: 'Missing Information', 
-        description: `Please select a Grade, Subject, and Category.`, 
+        description: `Please ensure Grade, Subject, Category, Type, and Topic are provided.`, 
         variant: 'destructive' 
       });
       return;
@@ -141,13 +172,13 @@ export function ContentCreatorClient() {
 
     try {
       const result = await generateCAPSContent({
-        grade: grade as any,
-        subject,
-        topic: topic === 'Other' ? customTopic : topic,
-        contentType: subType === 'Other' ? manualType : subType,
-        category: category as any,
+        grade: finalGrade,
+        subject: finalSubject,
+        topic: finalTopic,
+        contentType: finalSubType,
+        category: finalCategory,
         term,
-        language,
+        language: finalLanguage,
         learnerProfile,
         objective,
         duration,
@@ -161,10 +192,10 @@ export function ContentCreatorClient() {
       if (user) {
         await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
           teacherId: user.uid,
-          grade,
-          subject,
-          topic: topic === 'Other' ? customTopic : topic,
-          contentType: subType === 'Other' ? manualType : subType,
+          grade: finalGrade,
+          subject: finalSubject,
+          topic: finalTopic,
+          contentType: finalSubType,
           content: result.content,
           memo: result.memo,
           rubric: result.rubric,
@@ -243,17 +274,24 @@ export function ContentCreatorClient() {
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>
                         {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {grade === 'Other' && (
+                      <Input placeholder="Specify Grade" value={customGrade} onChange={e => setCustomGrade(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Language</Label>
                     <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="English" /></SelectTrigger>
+                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Language" /></SelectTrigger>
                       <SelectContent>
                         {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {language === 'Other' && (
+                      <Input placeholder="Specify Language" value={customLanguage} onChange={e => setCustomLanguage(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                 </div>
 
@@ -266,43 +304,53 @@ export function ContentCreatorClient() {
                         {Object.keys(CONTENT_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {category === 'Other' && (
+                      <Input placeholder="Specify Category" value={customCategory} onChange={e => setCustomCategory(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Type*</Label>
                     <Select value={subType} onValueChange={setSubType} disabled={!category}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Type" /></SelectTrigger>
                       <SelectContent>
-                        {category && (CONTENT_CATEGORIES as any)[category].map((type: string) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                        {category && category !== 'Other' && (CONTENT_CATEGORIES as any)[category]?.map((type: string) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {subType === 'Other' && (
+                      <Input placeholder="Specify Type" value={customSubType} onChange={e => setCustomSubType(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Subject*</Label>
-                    <Select value={subject} onValueChange={setSubject} disabled={!grade}>
+                    <Select value={subject} onValueChange={setSubject} disabled={grade === ''}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Subject" /></SelectTrigger>
                       <SelectContent>
                         {subjects?.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {subject === 'Other' && (
+                      <Input placeholder="Specify Subject" value={customSubject} onChange={e => setCustomSubject(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Topic*</Label>
-                    <Select value={topic} onValueChange={setTopic} disabled={!subject}>
+                    <Select value={topic} onValueChange={setTopic} disabled={subject === ''}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Topic" /></SelectTrigger>
                       <SelectContent>
                         {topics?.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        <SelectItem value="Other">Other Topic...</SelectItem>
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
+                    {topic === 'Other' && (
+                      <Input placeholder="Specify Topic" value={customTopic} onChange={e => setCustomTopic(e.target.value)} className="bg-white/10 mt-2" />
+                    )}
                   </div>
                 </div>
-
-                {topic === 'Other' && (
-                  <Input placeholder="Specify Topic" value={customTopic} onChange={e => setCustomTopic(e.target.value)} className="bg-white/10" />
-                )}
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">

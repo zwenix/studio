@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, Patrick_Hand, Comic_Neue, Schoolbell } from 'next/font/google';
 import './globals.css';

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -317,12 +316,12 @@ export function ContentCreatorClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-indigo-200 flex items-center gap-2"><Target className="h-3 w-3" /> Teaching Objective</Label>
+                  <Target className="h-3 w-3" /> <Label className="text-indigo-200 inline">Teaching Objective</Label>
                   <Input placeholder="e.g. Master long division with remainders" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-indigo-200 flex items-center gap-2"><UsersIcon className="h-3 w-3" /> Learner Profile / Barriers</Label>
+                  <UsersIcon className="h-3 w-3" /> <Label className="text-indigo-200 inline">Learner Profile / Barriers</Label>
                   <Textarea placeholder="e.g. 'Many learners need visual pizza aids for fractions'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
                 </div>
 

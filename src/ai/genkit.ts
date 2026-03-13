@@ -1,12 +1,10 @@
-
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import { groq } from 'genkitx-groq';
 
+// Gemini-only instance — used exclusively for:
+// 1. extract-text-from-images (vision/OCR)
+// 2. tts-flow (audio generation)
 export const ai = genkit({
-  plugins: [
-    googleAI(),
-    groq({ apiKey: process.env.GROQ_API_KEY }) as any,
-  ],
-  model: 'groq/llama-3.3-70b-versatile',
+  plugins: [googleAI()],
+  model: 'googleai/gemini-2.0-flash',
 });

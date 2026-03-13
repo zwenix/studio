@@ -4,8 +4,8 @@
  * @fileOverview Generates CAPS-compliant educational content using Groq with integrated image search.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { groqGenerateJSON } from '@/ai/groq-client';
+import { z } from 'zod';
 import { imageSearchTool } from '@/ai/tools/image-search-tool';
 
 const GradeSchema = z.enum([
@@ -13,18 +13,18 @@ const GradeSchema = z.enum([
 ]);
 
 const GenerateCAPSContentInputSchema = z.object({
-  grade: GradeSchema.describe('The grade level.'),
-  subject: z.string().describe('The subject.'),
-  topic: z.string().describe('The topic.'),
-  contentType: z.string().describe('Worksheet, Lesson Plan, Poster, Study Guide, ILP.'),
+  grade: GradeSchema,
+  subject: z.string(),
+  topic: z.string(),
+  contentType: z.string(),
   category: z.enum(['Teaching Tools & Aids', 'Exercises, Tasks & Assessments', 'Class Management & Admin']),
-  term: z.string().optional().describe('School term (1, 2, 3, 4).'),
-  language: z.string().optional().describe('Language of instruction.'),
-  learnerProfile: z.string().optional().describe('Barriers, strengths, needs.'),
-  objective: z.string().optional().describe('Teacher specific goal.'),
-  duration: z.string().optional().describe('Duration in minutes.'),
-  numberOfActivities: z.string().optional().describe('Desired activities.'),
-  additionalInstructions: z.string().optional().describe('Specific tweaks.'),
+  term: z.string().optional(),
+  language: z.string().optional(),
+  learnerProfile: z.string().optional(),
+  objective: z.string().optional(),
+  duration: z.string().optional(),
+  numberOfActivities: z.string().optional(),
+  additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),
 });
@@ -32,27 +32,20 @@ const GenerateCAPSContentInputSchema = z.object({
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
 const GenerateCAPSContentOutputSchema = z.object({
-  content: z.string().describe('Generated HTML content.'),
-  memo: z.string().describe('Generated HTML memo.'),
-  rubric: z.string().describe('Generated HTML rubric.'),
+  content: z.string(),
+  memo: z.string(),
+  rubric: z.string(),
 });
 
 export type GenerateCAPSContentOutput = z.infer<typeof GenerateCAPSContentOutputSchema>;
 
 export async function generateCAPSContent(input: GenerateCAPSContentInput): Promise<GenerateCAPSContentOutput> {
-  return generateCAPSContentFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateCAPSContentPrompt',
-  input: { schema: GenerateCAPSContentInputSchema },
-  output: { schema: GenerateCAPSContentOutputSchema },
-  prompt: `You are an expert South African primary school teacher (Grades R–7) and curriculum designer working with the CAPS curriculum.
+  const prompt = `You are an expert South African primary school teacher (Grades R–7) and curriculum designer working with the CAPS curriculum.
 
 GENERAL PRINCIPLES
 - Align all content with the South African CAPS curriculum.
 - Use South African spelling (e.g., colour, realise) and terminology.
-- Always adapt difficulty and wording to Grade {{grade}}.
+- Always adapt difficulty and wording to Grade ${input.grade}.
 
 AGE-APPROPRIATE STYLE
 - Grades R–1: Very simple words, Concrete examples. Activities: matching, circling, colouring.
@@ -64,84 +57,63 @@ VISUAL AIDS CONVENTION (CRITICAL)
 - At the end of the content, include a section titled VISUAL_AIDS with a bulleted list.
 - Each entry MUST have: id (VA1, etc.) and description (a detailed search query for an educational image).
 
-TASK: Generate a high-quality {{contentType}} for Grade {{grade}}.
-Subject: {{subject}}
-Topic: {{topic}}
-Term: {{term}}
-Language: {{language}}
-Objective: {{objective}}
-Learner Profile: {{learnerProfile}}
-Duration: {{duration}} minutes
-Activities: {{numberOfActivities}}
-Instructions: {{additionalInstructions}}
+TASK: Generate a high-quality ${input.contentType} for Grade ${input.grade}.
+Subject: ${input.subject}
+Topic: ${input.topic}
+Term: ${input.term || 'N/A'}
+Language: ${input.language || 'English'}
+Objective: ${input.objective || 'N/A'}
+Learner Profile: ${input.learnerProfile || 'N/A'}
+Duration: ${input.duration || '45'} minutes
+Activities: ${input.numberOfActivities || '3'}
+Instructions: ${input.additionalInstructions || 'None'}
 
-FORMAT: Return valid HTML for the 'content' field. Use headings (h1, h2), paragraphs, and lists. Use South African context. Ensure all images are placed using [IMAGE: VAx] tags.`,
-});
+FORMAT: Return a JSON object with 'content' (HTML string), 'memo' (HTML string), and 'rubric' (HTML string). Use headings (h1, h2), paragraphs, and lists.`;
 
-const generateCAPSContentFlow = ai.defineFlow(
-  {
-    name: 'generateCAPSContentFlow',
-    inputSchema: GenerateCAPSContentInputSchema,
-    outputSchema: GenerateCAPSContentOutputSchema,
-  },
-  async input => {
-    const { output } = await prompt(input);
-    let html = output!.content;
+  const output = await groqGenerateJSON<GenerateCAPSContentOutput>([
+    { role: 'system', content: prompt }
+  ]);
 
-    // 1. Identify all [IMAGE: VAx] tags
-    const imageTags = html.match(/\[IMAGE:\s*VA\d+\]/gi) || [];
+  let html = output.content;
+
+  // 1. Identify all [IMAGE: VAx] tags
+  const imageTags = html.match(/\[IMAGE:\s*VA\d+\]/gi) || [];
+  
+  // 2. Identify the VISUAL_AIDS section
+  const vaSectionMatch = html.match(/VISUAL_AIDS[\s\S]*$/i);
+  if (vaSectionMatch) {
+    const vaSection = vaSectionMatch[0];
     
-    // 2. Identify the VISUAL_AIDS section
-    const vaSectionMatch = html.match(/VISUAL_AIDS[\s\S]*$/i);
-    if (vaSectionMatch) {
-      const vaSection = vaSectionMatch[0];
+    for (const tag of imageTags) {
+      const id = tag.replace(/\[|\]|IMAGE:\s*/gi, '').trim();
+      const descRegex = new RegExp(`${id}[:\\s-]+([^\\n\\r*•]+)`, 'i');
+      const descMatch = vaSection.match(descRegex);
       
-      for (const tag of imageTags) {
-        const id = tag.replace(/\[|\]|IMAGE:\s*/gi, '').trim();
-        // Robust extraction: find the ID followed by any text until the next bullet or end of line
-        const descRegex = new RegExp(`${id}[:\\s-]+([^\\n\\r*•]+)`, 'i');
-        const descMatch = vaSection.match(descRegex);
-        
-        if (descMatch) {
-          const query = descMatch[1].trim();
-          try {
-            const imageResult = await imageSearchTool({ query });
-            if (imageResult.imageUrl) {
-              const imgHtml = `<div class="my-6 text-center no-print">
-                <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" style="width: auto; height: auto;" />
-                <p class="text-xs text-muted-foreground mt-2 italic">${query}</p>
-              </div>`;
-              html = html.replace(tag, imgHtml);
-            } else {
-              html = html.replace(tag, '');
-            }
-          } catch (e) {
-            console.error(`Failed to fetch image for ${query}:`, e);
+      if (descMatch) {
+        const query = descMatch[1].trim();
+        try {
+          const imageResult = await imageSearchTool({ query });
+          if (imageResult.imageUrl) {
+            const imgHtml = `<div class="my-6 text-center no-print">
+              <img src="${imageResult.imageUrl}" alt="${query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" style="width: auto; height: auto;" />
+              <p class="text-xs text-muted-foreground mt-2 italic">${query}</p>
+            </div>`;
+            html = html.replace(tag, imgHtml);
+          } else {
             html = html.replace(tag, '');
           }
-        } else {
-          // Fallback search based on topic if description is missing
-          try {
-            const query = `${input.subject} ${input.topic} educational`;
-            const imageResult = await imageSearchTool({ query });
-            if (imageResult.imageUrl) {
-               html = html.replace(tag, `<img src="${imageResult.imageUrl}" class="rounded-xl shadow-lg mx-auto my-4 max-h-[300px]" style="width: auto;" />`);
-            } else {
-               html = html.replace(tag, '');
-            }
-          } catch {
-            html = html.replace(tag, '');
-          }
+        } catch (e) {
+          html = html.replace(tag, '');
         }
       }
     }
-
-    // Clean up the raw VISUAL_AIDS text from the end of the output
-    html = html.replace(/VISUAL_AIDS[\s\S]*$/i, '').trim();
-
-    return {
-      ...output!,
-      content: html,
-    };
   }
-);
+
+  // Clean up the raw VISUAL_AIDS text
+  html = html.replace(/VISUAL_AIDS[\s\S]*$/i, '').trim();
+
+  return {
+    ...output,
+    content: html,
+  };
+}

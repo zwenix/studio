@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,10 +66,10 @@
   color: inherit !important;
 }
 .dark .prose {
-  color: #e2e8f0 !important; /* slate-200 */
+  color: #e2e8f0 !important;
 }
 .dark .prose :where(h1, h2, h3, h4, p, li, strong, span):not(:where([class~="not-prose"] *)) {
-  color: #f1f5f9 !important; /* slate-100 */
+  color: #f1f5f9 !important;
 }
 
 .font-patrick-hand {

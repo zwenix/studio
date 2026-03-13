@@ -1,69 +1,43 @@
-
 'use server';
 
 /**
- * @fileOverview An AI tutor flow that supports multiple languages.
+ * @fileOverview An AI tutor flow powered by Groq.
  */
 
-import {ai} from '@/ai/genkit';
-import { z } from 'genkit';
+import { groqGenerate } from '@/ai/groq-client';
+import { z } from 'zod';
 
 const AiTutorInputSchema = z.object({
-  query: z.string().describe('The user query to the AI tutor.'),
-  language: z.string().describe('The language for the AI tutor to respond in.'),
+  query: z.string(),
+  language: z.string(),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
-  })).optional().describe('The conversation history.'),
+  })).optional(),
 });
 export type AiTutorInput = z.infer<typeof AiTutorInputSchema>;
 
 const AiTutorOutputSchema = z.object({
-  response: z.string().describe('The AI tutor response.'),
+  response: z.string(),
 });
 export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
-  return aiTutorFlow(input);
+  const historyMessages = (input.history ?? []).map(h => ({
+    role: h.role === 'model' ? ('assistant' as const) : ('user' as const),
+    content: h.content,
+  }));
+
+  const response = await groqGenerate([
+    {
+      role: 'system',
+      content: `You are an expert AI Tutor for South African students and teachers. 
+Be helpful, encouraging, and answer questions clearly. 
+Always respond in: ${input.language}.`,
+    },
+    ...historyMessages,
+    { role: 'user', content: input.query },
+  ]);
+
+  return { response };
 }
-
-const tutorPrompt = ai.definePrompt({
-  name: 'tutorPrompt',
-  input: { schema: AiTutorInputSchema },
-  output: { schema: AiTutorOutputSchema },
-  prompt: `You are an expert AI Tutor for students and teachers. Be helpful and answer questions clearly.
-  
-  Current Language: {{language}}
-  
-  {{#if history}}
-  Conversation History:
-  {{#each history}}
-  {{role}}: {{content}}
-  {{/each}}
-  {{/if}}
-  
-  User Query: {{query}}
-  
-  Respond ONLY in the specified JSON format. Your response MUST be valid JSON with a single field 'response'.
-  Respond in {{language}}.`,
-});
-
-const aiTutorFlow = ai.defineFlow(
-  {
-    name: 'aiTutorFlow',
-    inputSchema: AiTutorInputSchema,
-    outputSchema: AiTutorOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { output } = await tutorPrompt(input);
-      if (!output) {
-        throw new Error('The AI failed to generate a response. Please try again.');
-      }
-      return output;
-    } catch (e) {
-      console.error('AI Tutor Flow Error:', e);
-      throw e;
-    }
-  }
-);

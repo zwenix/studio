@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGoogleLoading, setIsLoadingGoogle] = useState(false);
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -37,7 +37,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
+    setIsLoadingGoogle(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
@@ -54,7 +54,7 @@ export default function LoginPage() {
         toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
       }
     } finally {
-      setIsGoogleLoading(false);
+      setIsLoadingGoogle(false);
     }
   };
 

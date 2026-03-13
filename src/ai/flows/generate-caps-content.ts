@@ -1,10 +1,8 @@
+// src/ai/flows/generate-caps-content.ts
 'use server';
 
 import { z } from 'zod';
-import { groqGenerateJSON } from '@/ai/groq-client';
-import { createClient } from 'pexels';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { groqGenerate, groqGenerateJSON } from '@/ai/groq-client';
 
 const GradeSchema = z.enum(['R','1','2','3','4','5','6','7','8','9','10','11','12']);
 
@@ -26,99 +24,114 @@ const GenerateCAPSContentInputSchema = z.object({
 });
 
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
+export type GenerateCAPSContentOutput = { content: string; memo: string; rubric: string; };
 
-export type GenerateCAPSContentOutput = {
-  content: string;
-  memo: string;
-  rubric: string;
-};
-
-// Internal type Groq returns — images as a clean separate array
 type GroqCAPSResponse = {
   content: string;
   memo: string;
   rubric: string;
-  visualAids: Array<{ id: string; query: string }>;
+  visualAids: Array<{ id: string; description: string; }>;
 };
 
-// ─── Image fetcher (direct, no Genkit tool dependency) ───────────────────────
+// ─── Generate a clean inline SVG for a given educational description ──────────
 
-async function fetchImage(query: string): Promise<string> {
-  // 1. Try Pexels
-  const pexelsKey = process.env.PEXELS_API_KEY;
-  if (pexelsKey) {
-    try {
-      const client = createClient(pexelsKey);
-      const response = await client.photos.search({ query, per_page: 1, orientation: 'landscape' });
-      if ('photos' in response && response.photos.length > 0) {
-        return response.photos[0].src.large;
-      }
-    } catch (e) {
-      console.error('Pexels failed for query:', query, e);
-    }
+async function generateSVG(description: string, grade: string): Promise<string> {
+  const isEarlyGrade = ['R','1','2','3','4'].includes(grade);
+
+  const svgText = await groqGenerate([
+    {
+      role: 'system',
+      content: `You are an expert SVG illustrator for South African educational materials.
+Generate a single self-contained SVG illustration based on the description provided.
+
+RULES:
+- Output ONLY the raw SVG code. Start with <svg and end with </svg>. Nothing else.
+- Use viewBox="0 0 400 300" width="400" height="300"
+- Use bright, cheerful colours suitable for children: blues, greens, yellows, oranges
+- ${isEarlyGrade ? 'Make it very simple, bold, cartoon-like — suitable for Grade R to 4 learners' : 'Make it clear, accurate and educational — suitable for Grade 5 to 12 learners'}
+- Include a short descriptive <title> element as the first child of <svg>
+- For diagrams: include clear labels using <text> elements
+- For objects/scenes: use simple shapes (rect, circle, ellipse, path, polygon)
+- NO external images, NO scripts, NO CSS classes that reference external stylesheets
+- The SVG must be fully self-contained and render correctly inline in HTML`,
+    },
+    {
+      role: 'user',
+      content: `Create an educational SVG illustration for: "${description}"
+This is for Grade ${grade} learners in South Africa.`,
+    },
+  ], { temperature: 0.4, max_tokens: 2048 });
+
+  // Extract just the SVG tag in case Groq adds any surrounding text
+  const svgMatch = svgText.match(/<svg[\s\S]*<\/svg>/i);
+
+  if (svgMatch) {
+    return `<div class="my-6 text-center">
+  ${svgMatch[0]}
+  <p class="text-xs text-muted-foreground mt-2 italic">${description}</p>
+</div>`;
   }
 
-  // 2. Fallback to Pixabay
-  const pixabayKey = process.env.PIXABAY_API_KEY;
-  if (pixabayKey) {
-    try {
-      const url = `https://pixabay.com/api/?key=${pixabayKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.hits?.length > 0) {
-        return data.hits[0].largeImageURL;
-      }
-    } catch (e) {
-      console.error('Pixabay failed for query:', query, e);
-    }
+  // SVG generation failed — fall back to Wikimedia image
+  const wikiUrl = await fetchWikimediaImage(description);
+  if (wikiUrl) {
+    return `<div class="my-6 text-center">
+  <img
+    src="${wikiUrl}"
+    alt="${description}"
+    class="rounded-xl shadow-lg mx-auto max-h-[400px]"
+    style="width:auto;height:auto;max-width:100%;"
+  />
+  <p class="text-xs text-muted-foreground mt-2 italic">${description}</p>
+</div>`;
   }
 
   return '';
 }
 
-// ─── Main exported function ───────────────────────────────────────────────────
+// ─── Main function ────────────────────────────────────────────────────────────
 
 export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
 
-  // Step 1: Ask Groq to generate content WITH image placeholders and a clean visualAids array
-  const output = await groqGenerateJSON<GroqCAPSResponse>(
-    [
-      {
-        role: 'system',
-        content: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
+  // Step 1: Generate content + get visual aid descriptions
+  const output = await groqGenerateJSON<GroqCAPSResponse>([
+    {
+      role: 'system',
+      content: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
 
 CONTENT RULES:
 - Strictly align to the South African CAPS curriculum.
 - Use South African English spelling (colour, realise, learner, etc.).
-- Adapt language and cognitive demand to the specified grade:
-  - Grades R–1: Very simple words, concrete examples, matching/circling/colouring activities.
+- Adapt to grade level:
+  - Grades R–1: Very simple words, concrete examples, matching/circling/colouring.
   - Grades 2–3: Simple sentences, scaffolded instructions.
   - Grades 4–7: Clear learner-friendly text, problem-solving, higher-order questions.
-  - Grades 8–12: Subject-appropriate academic rigour.
+  - Grades 8–12: Academic rigour appropriate to the subject.
 
-IMAGE PLACEHOLDER RULES (CRITICAL):
-- Where an image would enhance learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
-- Use 2 to 4 images per piece of content — place them at logical points in the HTML.
-- In the "visualAids" array in your JSON response, list each image with its id and a detailed English search query.
-- Example visualAids entry: { "id": "VA1", "query": "South African children learning mathematics classroom" }
-- DO NOT include a VISUAL_AIDS text section in the content HTML — use only the JSON array.
+VISUAL AID RULES (CRITICAL):
+- Embed 2 to 4 image placeholders in the HTML where visuals would genuinely help learners understand.
+- Placeholder format (no spaces): [IMAGE:VA1], [IMAGE:VA2], [IMAGE:VA3], [IMAGE:VA4]
+- In the visualAids array, write a SPECIFIC, DETAILED description of what the illustration should show.
+- Good description: "A labelled diagram of the human digestive system showing mouth, oesophagus, stomach, small intestine and large intestine"
+- Bad description: "an image" or "a picture of the topic"
+- The SVG illustrator will draw exactly what you describe — be precise.
 
-OUTPUT FORMAT — return ONLY this JSON object, nothing else:
+RETURN FORMAT — ONLY this JSON object:
 {
-  "content": "<HTML string with [IMAGE:VA1] placeholders embedded at appropriate points>",
-  "memo": "<HTML memo with answers and explanations>",
-  "rubric": "<HTML rubric with criteria and mark allocations>",
+  "content": "<full HTML with [IMAGE:VA1] placeholders at appropriate points>",
+  "memo": "<HTML memo>",
+  "rubric": "<HTML rubric>",
   "visualAids": [
-    { "id": "VA1", "query": "detailed search query for image 1" },
-    { "id": "VA2", "query": "detailed search query for image 2" }
+    { "id": "VA1", "description": "detailed illustration description" },
+    { "id": "VA2", "description": "detailed illustration description" }
   ]
 }`,
-      },
-      {
-        role: 'user',
-        content: `Generate a ${input.contentType} for Grade ${input.grade}.
+    },
+    {
+      role: 'user',
+      content: `Generate a ${input.contentType} for Grade ${input.grade}.
 Subject: ${input.subject}
 Topic: ${input.topic}
 Term: ${input.term || 'N/A'}
@@ -128,47 +141,28 @@ Learner Profile: ${input.learnerProfile || 'General class'}
 Duration: ${input.duration || 'N/A'} minutes
 Number of Activities: ${input.numberOfActivities || 'N/A'}
 Additional Instructions: ${input.additionalInstructions || 'None'}`,
-      },
-    ],
-    { max_tokens: 8192, temperature: 0.7 }
+    },
+  ], { max_tokens: 8192, temperature: 0.7 });
+
+  const visualAids = Array.isArray(output.visualAids) ? output.visualAids : [];
+
+  // Step 2: Generate SVGs for all visual aids in parallel
+  const svgResults = await Promise.all(
+    visualAids.map(async (va) => ({
+      id: va.id,
+      svg: await generateSVG(va.description, input.grade),
+    }))
   );
 
-  // Step 2: Replace [IMAGE:VAx] placeholders with real images
+  // Step 3: Replace placeholders with generated SVGs
   let html = output.content || '';
-  const visualAids: Array<{ id: string; query: string }> = output.visualAids || [];
 
-  if (visualAids.length > 0) {
-    // Fetch all images in parallel for speed
-    const imageResults = await Promise.all(
-      visualAids.map(async (va) => ({
-        id: va.id,
-        query: va.query,
-        url: await fetchImage(va.query),
-      }))
-    );
-
-    for (const result of imageResults) {
-      // Match both [IMAGE:VA1] and [IMAGE: VA1] (with or without space)
-      const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
-      if (result.url) {
-        const imgHtml = `<div class="my-6 text-center">
-  <img
-    src="${result.url}"
-    alt="${result.query}"
-    class="rounded-xl shadow-lg mx-auto max-h-[400px]"
-    style="width:auto;height:auto;max-width:100%;"
-  />
-  <p class="text-xs text-muted-foreground mt-2 italic">${result.query}</p>
-</div>`;
-        html = html.replace(tagRegex, imgHtml);
-      } else {
-        // No image found — remove placeholder silently
-        html = html.replace(tagRegex, '');
-      }
-    }
+  for (const result of svgResults) {
+    const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
+    html = html.replace(tagRegex, result.svg || '');
   }
 
-  // Step 3: Clean up any stray [IMAGE:VAx] tags that didn't get matched
+  // Clean up any unmatched placeholders
   html = html.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
 
   return {

@@ -17,20 +17,14 @@ import { groqGenerate, groqGenerateJSON } from '@/ai/groq-client';
 
 // ─── Schemas & Types ──────────────────────────────────────────────────────────
 
-const GradeSchema = z.enum([
-  'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
-]);
-
 const GenerateCAPSContentInputSchema = z.object({
-  grade: GradeSchema.describe('The grade level.'),
+  // Using z.string() for grade and category so the UI can pass custom values
+  // (e.g. "Other" grades or extra category types) without TypeScript errors.
+  grade: z.string().describe('The grade level (R, 1–12, or custom).'),
   subject: z.string().describe('The subject.'),
   topic: z.string().describe('The topic.'),
-  contentType: z.string().describe('Worksheet, Lesson Plan, Poster, Study Guide, ILP.'),
-  category: z.enum([
-    'Teaching Tools & Aids',
-    'Exercises, Tasks & Assessments',
-    'Class Management & Admin',
-  ]),
+  contentType: z.string().describe('Worksheet, Lesson Plan, Poster, Study Guide, ILP, etc.'),
+  category: z.string().describe('The content category.'),
   term: z.string().optional().describe('School term (1, 2, 3, 4).'),
   language: z.string().optional().describe('Language of instruction.'),
   learnerProfile: z.string().optional().describe('Barriers, strengths, needs.'),

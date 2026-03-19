@@ -34,6 +34,9 @@ import {
   Target,
   Users as UsersIcon,
   Printer,
+  Save,
+  Trash2,
+  Type,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -52,10 +55,11 @@ import {
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import type { Teacher, GeneratedContent } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 const CONTENT_CATEGORIES = {
-  'Teaching Tools & Aids': ['Lesson Plans', 'Lesson Slides', 'Notes/Learning Aids for Learners', 'Study Guides', 'Booklets', 'Poster', 'Other'],
-  'Assignments, Exercises & Tasks': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments', 'Other'],
+  'Teaching Tools & Aids': ['Lesson Plans', 'Lesson Slides', 'Notes/Learning Aids for Learners', 'Study Guides', 'Booklets', 'Poster'],
+  'Assignments, Exercises & Tasks': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments'],
   'Assessments': [
     'Controlled Test',
     'Examination',
@@ -66,20 +70,25 @@ const CONTENT_CATEGORIES = {
     'Oral/Speech',
     'Demonstration',
     'Practical Task/Experiment',
-    'Portfolio',
-    'Other'
+    'Portfolio'
   ],
   'Class Management & Admin': [
     'Individualised Learning Plan (ILP)',
     'Classroom Labels',
     'Letters to Parents',
     'Permission Slips',
-    'Other',
   ],
-  'Other': ['Other']
+  'Other': []
 };
 
-const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana', 'Other'];
+const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana'];
+
+const FONT_OPTIONS = [
+  { value: 'font-body', label: 'Modern Sans' },
+  { value: 'font-patrick-hand', label: 'Teacher\'s Pet' },
+  { value: 'font-comic-neue', label: 'School Friendly' },
+  { value: 'font-schoolbell', label: 'Classic Handwriting' },
+];
 
 export function ContentCreatorClient() {
   const searchParams = useSearchParams();
@@ -90,8 +99,10 @@ export function ContentCreatorClient() {
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [fontFamily, setFontFamily] = useState('font-body');
 
   // AI Inputs
   const [grade, setGrade] = useState('');
@@ -188,26 +199,46 @@ export function ContentCreatorClient() {
         signatureUrl: teacherData?.signatureUrl,
       });
       setGeneratedContent(result);
-      
-      if (user) {
-        await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
-          teacherId: user.uid,
-          grade: finalGrade,
-          subject: finalSubject,
-          topic: finalTopic,
-          contentType: finalSubType,
-          content: result.content,
-          memo: result.memo,
-          rubric: result.rubric,
-          createdAt: serverTimestamp(),
-        });
-      }
     } catch (error) {
       console.error('Generation Failed:', error);
       toast({ title: 'Generation Failed', description: 'Internal server error during content generation.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveToArchive = async () => {
+    if (!user || !generatedContent) return;
+    
+    setIsSaving(true);
+    try {
+      const finalGrade = grade === 'Other' ? customGrade : grade;
+      const finalSubject = subject === 'Other' ? customSubject : subject;
+      const finalTopic = topic === 'Other' ? customTopic : topic;
+      const finalSubType = subType === 'Other' ? customSubType : subType;
+
+      await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
+        teacherId: user.uid,
+        grade: finalGrade,
+        subject: finalSubject,
+        topic: finalTopic,
+        contentType: finalSubType,
+        content: generatedContent.content,
+        memo: generatedContent.memo,
+        rubric: generatedContent.rubric,
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Saved!', description: 'Content added to your archive.' });
+    } catch (e) {
+      toast({ title: 'Save Failed', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    setGeneratedContent(null);
+    toast({ title: 'Discarded', description: 'Generated content cleared.' });
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -240,12 +271,25 @@ export function ContentCreatorClient() {
 
   return (
     <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-      <div className="flex items-center gap-3 no-print">
-        <Palette className="h-10 w-10 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
-          <p className="text-muted-foreground">Unified workshop for magic generation and design.</p>
+      <div className="flex items-center justify-between no-print">
+        <div className="flex items-center gap-3">
+          <Palette className="h-10 w-10 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
+            <p className="text-muted-foreground">Unified workshop for magic generation and design.</p>
+          </div>
         </div>
+        
+        {generatedContent && (
+          <div className="flex gap-2">
+            <Button variant="outline" className="rounded-full" onClick={handleDiscard}>
+              <Trash2 className="mr-2 h-4 w-4" /> Discard
+            </Button>
+            <Button className="rounded-full bg-green-600 hover:bg-green-700 text-white" onClick={handleSaveToArchive} disabled={isSaving}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save to Archive
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -287,6 +331,7 @@ export function ContentCreatorClient() {
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Language" /></SelectTrigger>
                       <SelectContent>
                         {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
                     {language === 'Other' && (
@@ -302,6 +347,7 @@ export function ContentCreatorClient() {
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Category" /></SelectTrigger>
                       <SelectContent>
                         {Object.keys(CONTENT_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
                     {category === 'Other' && (
@@ -404,6 +450,15 @@ export function ContentCreatorClient() {
               <div className="flex gap-2">
                 {generatedContent && (
                   <>
+                    <Select value={fontFamily} onValueChange={setFontFamily}>
+                      <SelectTrigger className="w-[160px] rounded-full h-9">
+                        <Type className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Font" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FONT_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-full">
                       <Printer className="mr-2 h-4 w-4" /> Export PDF
                     </Button>
@@ -420,7 +475,7 @@ export function ContentCreatorClient() {
               isEditMode ? (
                 <Textarea className="h-full font-mono text-xs no-print" value={generatedContent.content} onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})} />
               ) : (
-                <div className="prose dark:prose-invert max-w-none print:text-black" dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
+                <div className={cn("prose dark:prose-invert max-w-none print:text-black", fontFamily)} dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
               )
             ) : (
               <div className="flex flex-col items-center justify-center h-full opacity-50 no-print">

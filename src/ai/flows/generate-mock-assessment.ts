@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { ai } from '@/ai/genkit';
 
-const GradeSchema = z.enum(['R','1','2','3','4','5','6','7','8','9','10','11','12']);
+const GradeSchema = z.string().describe('The grade level (R, 1–12, or custom).');
 const AssessmentFormatSchema = z.enum(['multiple choice','short answer','essay','fill in the blanks','true or false','worksheet','mixed']);
 
 const GenerateMockAssessmentInputSchema = z.object({

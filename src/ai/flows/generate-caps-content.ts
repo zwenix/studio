@@ -23,7 +23,7 @@ const GenerateCAPSContentInputSchema = z.object({
   language: z.string().optional(),
   learnerProfile: z.string().optional(),
   objective: z.string().optional(),
-  duration: z.string().optional(), // Now "Length & Duration" free text
+  duration: z.string().optional(), // "Length & Duration" free text
   additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),

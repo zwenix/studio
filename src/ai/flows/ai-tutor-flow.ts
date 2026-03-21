@@ -6,6 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import type { MessageData } from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string(),
@@ -23,8 +24,8 @@ const AiTutorOutputSchema = z.object({
 export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
-  const history = (input.history ?? []).map(h => ({
-    role: h.role,
+  const history: MessageData[] = (input.history ?? []).map(h => ({
+    role: h.role as 'user' | 'model',
     content: [{ text: h.content }]
   }));
 
@@ -34,7 +35,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
     Be helpful, encouraging, and answer questions clearly. 
     Always respond in: ${input.language}.`,
     prompt: input.query,
-    history: history as any
+    history: history
   });
 
   return { response: response.text };

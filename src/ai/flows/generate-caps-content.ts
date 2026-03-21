@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates CAPS-compliant educational content using Gemini 2.0 Flash.
+ * @fileOverview Generates CAPS-compliant educational content using Gemini 1.5 Pro.
  * Optimized for high-quality pedagogical reasoning and structured image injection.
  */
 
@@ -87,7 +87,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
 
   const response = await ai.generate({
-    model: 'googleai/gemini-2.0-flash',
+    model: 'googleai/gemini-1.5-pro',
     system: `You are an expert South African teacher and CAPS curriculum designer.
     
 CONTENT RULES:

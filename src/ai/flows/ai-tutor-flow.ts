@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview An AI tutor flow powered by Gemini 1.5 Pro via Genkit.
+ * @fileOverview An AI tutor flow powered by Gemini 2.5 Pro via Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -29,7 +29,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   }));
 
   const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
+    model: 'googleai/gemini-2.5-pro',
     system: `You are an expert AI Tutor for South African students and teachers. 
     Be helpful, encouraging, and answer questions clearly. 
     Always respond in: ${input.language}.`,

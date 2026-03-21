@@ -15,7 +15,7 @@ export type GenerateMemosAndRubricsOutput = { memo: string; rubric: string; };
 
 export async function generateMemosAndRubrics(input: GenerateMemosAndRubricsInput): Promise<GenerateMemosAndRubricsOutput> {
   const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
+    model: 'googleai/gemini-2.5-pro',
     system: 'You are an expert South African CAPS-compliant educational assistant. Generate a detailed Memo and Rubric in clean HTML.',
     prompt: `Task: ${input.taskDescription}\nGrade: ${input.gradeLevel}\nSubject: ${input.subject}`,
     output: {

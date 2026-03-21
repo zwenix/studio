@@ -29,7 +29,6 @@ import {
   Palette,
   Edit3,
   Box,
-  Layout,
   Clock,
   Target,
   Users as UsersIcon,
@@ -126,8 +125,7 @@ export function ContentCreatorClient() {
   
   const [learnerProfile, setLearnerProfile] = useState('');
   const [objective, setObjective] = useState('');
-  const [duration, setDuration] = useState('45');
-  const [numActivities, setNumActivities] = useState('3');
+  const [duration, setDuration] = useState(''); // This is now Length & Duration free text
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   // Scanning State
@@ -193,7 +191,6 @@ export function ContentCreatorClient() {
         learnerProfile,
         objective,
         duration,
-        numberOfActivities: numActivities,
         additionalInstructions,
         teacherName: user?.displayName || 'Educator',
         signatureUrl: teacherData?.signatureUrl,
@@ -398,24 +395,23 @@ export function ContentCreatorClient() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                    <Label className="text-indigo-200 flex items-center gap-2"><Clock className="h-3 w-3" /> Duration (min)</Label>
-                    <Input type="number" value={duration} onChange={e => setDuration(e.target.value)} className="bg-white/10" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200 flex items-center gap-2"><Layout className="h-3 w-3" /> Activities</Label>
-                    <Input type="number" value={numActivities} onChange={e => setNumActivities(e.target.value)} className="bg-white/10" />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-indigo-200 flex items-center gap-2"><Clock className="h-3 w-3" /> Length & Duration (Optional)</Label>
+                  <Input 
+                    placeholder="e.g. 45 minutes, 15 questions..." 
+                    value={duration} 
+                    onChange={e => setDuration(e.target.value)} 
+                    className="bg-white/10" 
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Target className="h-3 w-3" /> <Label className="text-indigo-200 inline">Teaching Objective</Label>
+                  <Label className="text-indigo-200 flex items-center gap-2"><Target className="h-3 w-3" /> Teaching Objective</Label>
                   <Input placeholder="e.g. Master long division with remainders" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
                 </div>
 
                 <div className="space-y-2">
-                  <UsersIcon className="h-3 w-3" /> <Label className="text-indigo-200 inline">Learner Profile / Barriers</Label>
+                  <Label className="text-indigo-200 flex items-center gap-2"><UsersIcon className="h-3 w-3" /> Learner Profile / Barriers</Label>
                   <Textarea placeholder="e.g. 'Many learners need visual pizza aids for fractions'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
                 </div>
 

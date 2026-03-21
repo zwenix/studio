@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates CAPS-compliant educational content using Gemini 1.5 Pro.
+ * @fileOverview Generates CAPS-compliant educational content using Gemini 2.0 Flash.
  * Optimized for high-quality pedagogical reasoning and structured image injection.
  */
 
@@ -23,8 +23,7 @@ const GenerateCAPSContentInputSchema = z.object({
   language: z.string().optional(),
   learnerProfile: z.string().optional(),
   objective: z.string().optional(),
-  duration: z.string().optional(),
-  numberOfActivities: z.string().optional(),
+  duration: z.string().optional(), // Now "Length & Duration" free text
   additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),
@@ -88,7 +87,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
 
   const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
+    model: 'googleai/gemini-2.0-flash',
     system: `You are an expert South African teacher and CAPS curriculum designer.
     
 CONTENT RULES:
@@ -96,6 +95,10 @@ CONTENT RULES:
 - Use South African English spelling (colour, realise, learner, etc.).
 - Adapt language and cognitive demand to the specified grade.
 - Use South African contexts, names, and Rands (ZAR).
+
+LENGTH & DURATION RULES:
+- If the user provided specific requirements for length or duration, strictly follow them.
+- If no requirements were provided, default to a 30-minute lesson/task and/or 10 questions/activities.
 
 IMAGE PLACEHOLDER RULES:
 - Where an image enhances learning, insert: [IMAGE:VA1], [IMAGE:VA2], etc.
@@ -107,8 +110,7 @@ Term: ${input.term || 'N/A'}
 Language: ${input.language || 'English'}
 Objective: ${input.objective || 'N/A'}
 Learner Profile: ${input.learnerProfile || 'General class'}
-Duration: ${input.duration || 'N/A'} minutes
-Activities: ${input.numberOfActivities || 'N/A'}
+Length & Duration: ${input.duration || 'Default (30 min / 10 items)'}
 Instructions: ${input.additionalInstructions || 'None'}`,
     output: { format: 'json', schema: CapsResponseSchema }
   });

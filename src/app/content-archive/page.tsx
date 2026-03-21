@@ -201,16 +201,21 @@ export default function ContentArchivePage() {
             {!isLoading && filteredItems?.map((item) => {
               const label = item.isSystem ? item.title : item.topic;
               return (
-                <Card key={item.id} className="hover:shadow-xl transition-all rounded-[2.5rem] border-none bg-white dark:bg-slate-900 group">
+                <Card key={item.id} className="hover:shadow-xl transition-all rounded-[2.5rem] border-none bg-white dark:bg-slate-900 group relative">
                   <CardHeader>
                     <div className="flex justify-between items-start mb-2">
                       <Badge variant={item.isSystem ? "default" : "secondary"}>
                         {item.isSystem ? 'Official' : 'History'} - Grade {item.grade}
                       </Badge>
                       {!item.isSystem && (
-                        <button onClick={() => handleDelete(item)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDelete(item)} 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                     <CardTitle className="font-patrick-hand text-2xl truncate">{label}</CardTitle>

@@ -20,7 +20,7 @@ export type GenerateMockAssessmentOutput = { content: string; memo: string; rubr
 
 export async function generateMockAssessment(input: GenerateMockAssessmentInput): Promise<GenerateMockAssessmentOutput> {
   const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
+    model: 'googleai/gemini-1.5-pro',
     system: `You are an expert South African educator creating CAPS-aligned practice assessments in HTML.
     For Grades R–7: use emojis, friendly headings.
     For Grades 8–12: formal structure.`,

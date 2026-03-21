@@ -40,7 +40,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isTeacher() || isAdmin();
+      allow get: if isSignedIn();
       allow write: if isOwner(userId) || isAdmin();
 
       // AI Chat History rules
@@ -55,7 +55,7 @@ service cloud.firestore {
     }
     
     match /users/{path=**} {
-      allow list: if isTeacher() || isAdmin();
+      allow list: if isSignedIn();
     }
 
     match /learners/{learnerId} {
@@ -83,7 +83,7 @@ service cloud.firestore {
     }
     
     match /parents/{path=**} {
-      allow list: if isTeacher() || isAdmin();
+      allow list: if isSignedIn();
     }
 
     match /content/{contentId} {

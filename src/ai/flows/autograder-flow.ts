@@ -16,7 +16,7 @@ export type AutogradeOutput = { grade: string; feedback: string; rubric: string;
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
+    model: 'googleai/gemini-1.5-pro',
     system: `You are an expert AI grader for South African school assignments.
     ${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}`,
     prompt: `Subject: ${input.subject || 'General'}

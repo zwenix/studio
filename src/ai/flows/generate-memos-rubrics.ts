@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { groqGenerateJSON } from '@/ai/groq-client';
+import { ai } from '@/ai/genkit';
 
 const GenerateMemosAndRubricsInputSchema = z.object({
   taskDescription: z.string(),
@@ -14,20 +14,18 @@ export type GenerateMemosAndRubricsInput = z.infer<typeof GenerateMemosAndRubric
 export type GenerateMemosAndRubricsOutput = { memo: string; rubric: string; };
 
 export async function generateMemosAndRubrics(input: GenerateMemosAndRubricsInput): Promise<GenerateMemosAndRubricsOutput> {
-  return groqGenerateJSON<GenerateMemosAndRubricsOutput>([
-    {
-      role: 'system',
-      content: `You are an expert South African CAPS-compliant educational assistant.
-Generate a detailed Memo (answers + explanations) and a Rubric (criteria + mark allocations) for the given task.
-Use clean HTML. Use <h2> for headings, <p> and <ul> for content.
-Return ONLY a JSON object: { "memo": "<HTML>", "rubric": "<HTML>" }`,
-    },
-    {
-      role: 'user',
-      content: `Task: ${input.taskDescription}
-Grade: ${input.gradeLevel}
-Subject: ${input.subject}
-Ensure the rubric matches the cognitive level required for Grade ${input.gradeLevel}.`,
-    },
-  ]);
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-pro',
+    system: 'You are an expert South African CAPS-compliant educational assistant. Generate a detailed Memo and Rubric in clean HTML.',
+    prompt: `Task: ${input.taskDescription}\nGrade: ${input.gradeLevel}\nSubject: ${input.subject}`,
+    output: {
+      format: 'json',
+      schema: z.object({
+        memo: z.string(),
+        rubric: z.string()
+      })
+    }
+  });
+
+  return response.output!;
 }

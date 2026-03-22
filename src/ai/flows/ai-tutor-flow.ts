@@ -1,12 +1,7 @@
 'use server';
 
-/**
- * @fileOverview An AI tutor flow powered by Gemini 1.5 Pro via Genkit.
- */
-
-import { ai } from '@/ai/genkit';
+import { groqGenerate, GroqMessage } from '@/ai/groq-client';
 import { z } from 'zod';
-import type { MessageData } from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string(),
@@ -24,19 +19,21 @@ const AiTutorOutputSchema = z.object({
 export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
-  const history: MessageData[] = (input.history ?? []).map(h => ({
-    role: h.role as 'user' | 'model',
-    content: [{ text: h.content }]
+  const historyMessages: GroqMessage[] = (input.history ?? []).map(h => ({
+    role: h.role === 'model' ? 'assistant' : 'user',
+    content: h.content
   }));
 
-  const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
-    system: `You are an expert AI Tutor for South African students and teachers. 
-    Be helpful, encouraging, and answer questions clearly. 
-    Always respond in: ${input.language}.`,
-    prompt: input.query,
-    history: history
-  });
+  const response = await groqGenerate([
+    {
+      role: 'system',
+      content: `You are an expert AI Tutor for South African students and teachers. 
+      Be helpful, encouraging, and answer questions clearly. 
+      Always respond in: ${input.language}.`
+    },
+    ...historyMessages,
+    { role: 'user', content: input.query }
+  ]);
 
-  return { response: response.text };
+  return { response };
 }

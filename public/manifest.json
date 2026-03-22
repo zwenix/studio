@@ -2,10 +2,10 @@
   "name": "EduAI Companion",
   "short_name": "EduAI",
   "description": "Personalized Learning, Powered by AI.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0ea5e9",
+  "background_color": "#E5F2FF",
+  "theme_color": "#3399FF",
   "icons": [
     {
       "src": "https://i.ibb.co/zHtKKvGg/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x64.jpg",
@@ -16,6 +16,11 @@
       "src": "https://i.ibb.co/6RV1WqHJ/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046-x128.jpg",
       "sizes": "128x128",
       "type": "image/jpeg"
+    },
+    {
+      "src": "https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

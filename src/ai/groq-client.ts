@@ -8,6 +8,9 @@ export interface GroqMessage {
   content: string;
 }
 
+/**
+ * Direct REST caller for Groq API to avoid incompatible Genkit plugins.
+ */
 export async function groqGenerate(
   messages: GroqMessage[],
   options?: { temperature?: number; max_tokens?: number }
@@ -38,6 +41,9 @@ export async function groqGenerate(
   return data.choices[0]?.message?.content ?? '';
 }
 
+/**
+ * Structured JSON generator for Groq.
+ */
 export async function groqGenerateJSON<T>(
   messages: GroqMessage[],
   options?: { temperature?: number; max_tokens?: number }

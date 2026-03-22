@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { ai } from '@/ai/genkit';
+import { groqGenerateJSON } from '@/ai/groq-client';
 
 export const AutogradeInputSchema = z.object({
   assignmentContent: z.string(),
@@ -15,23 +15,16 @@ export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
 export type AutogradeOutput = { grade: string; feedback: string; rubric: string; };
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
-  const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
-    system: `You are an expert AI grader for South African school assignments.
-    ${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}`,
-    prompt: `Subject: ${input.subject || 'General'}
-Grade Level: ${input.grade || 'N/A'}
-Grading Instructions / Memo: ${input.gradingInstructions}
-Student's Submission: ${input.assignmentContent}`,
-    output: {
-      format: 'json',
-      schema: z.object({
-        grade: z.string().describe('Score or percentage'),
-        feedback: z.string().describe('HTML feedback'),
-        rubric: z.string().describe('HTML rubric used')
-      })
+  return groqGenerateJSON<AutogradeOutput>([
+    {
+      role: 'system',
+      content: `You are an expert AI grader for South African school assignments.
+      Grade the work, provide feedback, and show the rubric.
+      ${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}`
+    },
+    {
+      role: 'user',
+      content: `Subject: ${input.subject || 'General'}\nGrade Level: ${input.grade || 'N/A'}\nGrading Instructions / Memo: ${input.gradingInstructions}\nStudent's Submission: ${input.assignmentContent}`
     }
-  });
-
-  return response.output!;
+  ]);
 }

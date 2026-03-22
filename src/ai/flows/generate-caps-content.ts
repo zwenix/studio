@@ -1,17 +1,12 @@
 'use server';
 
-/**
- * @fileOverview Generates CAPS-compliant educational content using Gemini 1.5 Pro.
- * Optimized for high-quality pedagogical reasoning and structured image injection.
- */
-
 import { z } from 'zod';
-import { ai } from '@/ai/genkit';
+import { groqGenerateJSON } from '@/ai/groq-client';
 import { createClient } from 'pexels';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-const GradeSchema = z.string().describe('The grade level (R, 1–12, or custom).');
+const GradeSchema = z.string(); // Supports "Other" manual entry
 
 const GenerateCAPSContentInputSchema = z.object({
   grade: GradeSchema,
@@ -23,7 +18,7 @@ const GenerateCAPSContentInputSchema = z.object({
   language: z.string().optional(),
   learnerProfile: z.string().optional(),
   objective: z.string().optional(),
-  duration: z.string().optional(), // "Length & Duration" free text
+  duration: z.string().optional(), // Length & Duration free text
   additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),
@@ -37,19 +32,18 @@ export type GenerateCAPSContentOutput = {
   rubric: string;
 };
 
-const CapsResponseSchema = z.object({
-  content: z.string().describe('HTML content with [IMAGE:VA1] placeholders'),
-  memo: z.string().describe('HTML memo'),
-  rubric: z.string().describe('HTML rubric'),
-  visualAids: z.array(z.object({
-    id: z.string(),
-    query: z.string().describe('English search query for the image')
-  }))
-});
+// Internal type Groq returns — images as a clean separate array
+type GroqCAPSResponse = {
+  content: string;
+  memo: string;
+  rubric: string;
+  visualAids: Array<{ id: string; query: string }>;
+};
 
-// ─── Image fetcher ──────────────────────────────────────────────────────────
+// ─── Image fetcher (direct API calls) ────────────────────────────────────────
 
 async function fetchImage(query: string): Promise<string> {
+  // 1. Try Pexels
   const pexelsKey = process.env.PEXELS_API_KEY;
   if (pexelsKey) {
     try {
@@ -63,6 +57,7 @@ async function fetchImage(query: string): Promise<string> {
     }
   }
 
+  // 2. Fallback to Pixabay
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (pixabayKey) {
     try {
@@ -86,24 +81,31 @@ export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
 
-  const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
-    system: `You are an expert South African teacher and CAPS curriculum designer.
-    
+  const output = await groqGenerateJSON<GroqCAPSResponse>(
+    [
+      {
+        role: 'system',
+        content: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
+
 CONTENT RULES:
 - Strictly align to the South African CAPS curriculum.
 - Use South African English spelling (colour, realise, learner, etc.).
 - Adapt language and cognitive demand to the specified grade.
-- Use South African contexts, names, and Rands (ZAR).
+- Use South African contexts, names, and currency (Rands/ZAR).
 
 LENGTH & DURATION RULES:
-- If the user provided specific requirements for length or duration, strictly follow them.
-- If no requirements were provided, default to a 30-minute lesson/task and/or 10 questions/activities.
+- If the user provided requirements for Length & Duration, strictly follow them.
+- If blank, default to a 30-minute lesson/task and/or 10 questions/activities.
 
-IMAGE PLACEHOLDER RULES:
-- Where an image enhances learning, insert: [IMAGE:VA1], [IMAGE:VA2], etc.
-- In the "visualAids" array, provide a detailed English search query for each ID.`,
-    prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
+IMAGE PLACEHOLDER RULES (CRITICAL):
+- Where an image enhances learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
+- Use 2 to 4 images per piece of content.
+- In the "visualAids" array in your JSON response, list each image with its id and a detailed English search query.
+- Example visualAids entry: { "id": "VA1", "query": "South African children learning mathematics classroom" }`,
+      },
+      {
+        role: 'user',
+        content: `Generate a ${input.contentType} for Grade ${input.grade}.
 Subject: ${input.subject}
 Topic: ${input.topic}
 Term: ${input.term || 'N/A'}
@@ -111,16 +113,17 @@ Language: ${input.language || 'English'}
 Objective: ${input.objective || 'N/A'}
 Learner Profile: ${input.learnerProfile || 'General class'}
 Length & Duration: ${input.duration || 'Default (30 min / 10 items)'}
-Instructions: ${input.additionalInstructions || 'None'}`,
-    output: { format: 'json', schema: CapsResponseSchema }
-  });
-
-  const output = response.output!;
+Additional Instructions: ${input.additionalInstructions || 'None'}`,
+      },
+    ],
+    { max_tokens: 8192, temperature: 0.7 }
+  );
 
   let html = output.content || '';
-  const visualAids = output.visualAids || [];
+  const visualAids: Array<{ id: string; query: string }> = output.visualAids || [];
 
   if (visualAids.length > 0) {
+    // Fetch all images in parallel for speed
     const imageResults = await Promise.all(
       visualAids.map(async (va) => ({
         id: va.id,
@@ -132,7 +135,7 @@ Instructions: ${input.additionalInstructions || 'None'}`,
     for (const result of imageResults) {
       const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
       if (result.url) {
-        const imgHtml = `<div class="my-6 text-center">
+        const imgHtml = `<div class="my-6 text-center no-print">
           <img src="${result.url}" alt="${result.query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" style="width:auto;height:auto;max-width:100%;" />
           <p class="text-xs text-muted-foreground mt-2 italic">${result.query}</p>
         </div>`;

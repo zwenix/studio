@@ -60,15 +60,34 @@
 
 /* Force visibility for generated content */
 .prose {
-  @apply text-foreground max-w-none;
+  @apply text-foreground max-w-none w-full;
+  line-height: 1.6;
 }
 
-.prose h1, .prose h2, .prose h3, .prose h4, .prose p, .prose li, .prose span {
-  color: inherit !important;
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  @apply font-headline font-bold mb-4 mt-6 text-foreground;
+  color: hsl(var(--foreground)) !important;
+}
+
+.prose p, .prose li, .prose span, .prose div {
+  @apply mb-4 text-foreground;
+  color: hsl(var(--foreground)) !important;
+}
+
+.prose ul, .prose ol {
+  @apply ml-6 mb-4 list-disc;
+}
+
+.prose hr {
+  @apply my-8 border-t-2 border-border;
 }
 
 .dark .prose {
   @apply text-slate-200;
+}
+
+.dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose p, .dark .prose li, .dark .prose span {
+  color: hsl(var(--foreground)) !important;
 }
 
 .font-patrick-hand {
@@ -126,6 +145,9 @@
     color: black !important;
   }
   .prose {
+    color: black !important;
+  }
+  .prose * {
     color: black !important;
   }
 }

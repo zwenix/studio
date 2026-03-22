@@ -43,8 +43,8 @@ export async function groqGenerate(
 
 /**
  * Robust JSON generator for Groq.
- * Uses a regex-based extractor to find the first '{' and last '}' to handle 
- * cases where the model includes extra text or markdown fences.
+ * Uses a robust extractor to find the first '{' and last '}' to handle 
+ * cases where the model includes markdown fences or extra conversational text.
  */
 export async function groqGenerateJSON<T>(
   messages: GroqMessage[],
@@ -55,17 +55,18 @@ export async function groqGenerateJSON<T>(
     ...messages.slice(0, -1),
     {
       ...last,
-      content: last.content + '\n\nCRITICAL: Your entire response MUST be a single valid JSON object. Do not include any text before or after the JSON.',
+      content: last.content + '\n\nCRITICAL: Your entire response MUST be a single valid JSON object. Do not include any text before or after the JSON. Ensure all keys and strings are double-quoted.',
     },
   ];
 
   const raw = await groqGenerate(augmented, options);
   
-  // Robust extraction: find the first { and the last }
+  // Find the boundaries of the JSON object
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
 
   if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    console.error('Raw non-JSON response from Groq:', raw);
     throw new Error(`Groq did not return a valid JSON object. Raw response was: ${raw.substring(0, 300)}...`);
   }
 
@@ -74,7 +75,13 @@ export async function groqGenerateJSON<T>(
   try {
     return JSON.parse(cleaned) as T;
   } catch (e) {
-    console.error('Failed to parse Groq JSON:', cleaned);
-    throw new Error('Groq returned malformed JSON. Please try again.');
+    console.error('Failed to parse Groq JSON. Cleaned string:', cleaned);
+    // If standard parse fails, try basic cleanup of escaped characters that shouldn't be there
+    try {
+        const fallbackCleaned = cleaned.replace(/\\n/g, ' ').replace(/\\r/g, '');
+        return JSON.parse(fallbackCleaned) as T;
+    } catch (e2) {
+        throw new Error('Groq returned malformed JSON. Please try again.');
+    }
   }
 }

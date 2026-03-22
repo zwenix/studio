@@ -9,7 +9,7 @@ export interface GroqMessage {
 }
 
 /**
- * Direct REST caller for Groq API to avoid incompatible Genkit plugins.
+ * Direct REST caller for Groq API.
  */
 export async function groqGenerate(
   messages: GroqMessage[],
@@ -42,7 +42,9 @@ export async function groqGenerate(
 }
 
 /**
- * Structured JSON generator for Groq.
+ * Robust JSON generator for Groq.
+ * Uses a regex-based extractor to find the first '{' and last '}' to handle 
+ * cases where the model includes extra text or markdown fences.
  */
 export async function groqGenerateJSON<T>(
   messages: GroqMessage[],
@@ -53,16 +55,26 @@ export async function groqGenerateJSON<T>(
     ...messages.slice(0, -1),
     {
       ...last,
-      content: last.content + '\n\nCRITICAL: Your entire response MUST be a single valid JSON object. No markdown fences, no explanation, no text before or after the JSON.',
+      content: last.content + '\n\nCRITICAL: Your entire response MUST be a single valid JSON object. Do not include any text before or after the JSON.',
     },
   ];
 
   const raw = await groqGenerate(augmented, options);
-  const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  
+  // Robust extraction: find the first { and the last }
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    throw new Error(`Groq did not return a valid JSON object. Raw response was: ${raw.substring(0, 300)}...`);
+  }
+
+  const cleaned = raw.substring(firstBrace, lastBrace + 1);
 
   try {
     return JSON.parse(cleaned) as T;
-  } catch {
-    throw new Error(`Groq returned invalid JSON. Raw response: ${cleaned.substring(0, 300)}`);
+  } catch (e) {
+    console.error('Failed to parse Groq JSON:', cleaned);
+    throw new Error('Groq returned malformed JSON. Please try again.');
   }
 }

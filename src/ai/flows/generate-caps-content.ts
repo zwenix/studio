@@ -6,7 +6,7 @@ import { createClient } from 'pexels';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-const GradeSchema = z.string(); // Supports "Other" manual entry
+const GradeSchema = z.string();
 
 const GenerateCAPSContentInputSchema = z.object({
   grade: GradeSchema,
@@ -18,7 +18,7 @@ const GenerateCAPSContentInputSchema = z.object({
   language: z.string().optional(),
   learnerProfile: z.string().optional(),
   objective: z.string().optional(),
-  duration: z.string().optional(), // Length & Duration free text
+  duration: z.string().optional(),
   additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),
@@ -32,7 +32,6 @@ export type GenerateCAPSContentOutput = {
   rubric: string;
 };
 
-// Internal type Groq returns — images as a clean separate array
 type GroqCAPSResponse = {
   content: string;
   memo: string;
@@ -40,10 +39,9 @@ type GroqCAPSResponse = {
   visualAids: Array<{ id: string; query: string }>;
 };
 
-// ─── Image fetcher (direct API calls) ────────────────────────────────────────
+// ─── Image fetcher ────────────────────────────────────────────────────────────
 
 async function fetchImage(query: string): Promise<string> {
-  // 1. Try Pexels
   const pexelsKey = process.env.PEXELS_API_KEY;
   if (pexelsKey) {
     try {
@@ -53,11 +51,10 @@ async function fetchImage(query: string): Promise<string> {
         return response.photos[0].src.large;
       }
     } catch (e) {
-      console.error('Pexels failed for query:', query, e);
+      console.error('Pexels failed:', e);
     }
   }
 
-  // 2. Fallback to Pixabay
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (pixabayKey) {
     try {
@@ -68,7 +65,7 @@ async function fetchImage(query: string): Promise<string> {
         return data.hits[0].largeImageURL;
       }
     } catch (e) {
-      console.error('Pixabay failed for query:', query, e);
+      console.error('Pixabay failed:', e);
     }
   }
 
@@ -90,25 +87,22 @@ export async function generateCAPSContent(
 CONTENT RULES:
 - Strictly align to the South African CAPS curriculum.
 - Use South African English spelling (colour, realise, learner, etc.).
-- Adapt language and cognitive demand to the specified grade.
 - Use South African contexts, names, and currency (Rands/ZAR).
+- Return content in clean, semantic HTML. Use <h2> for headings, <p> for text, <ul> for lists.
 
-LENGTH & DURATION RULES:
-- If the user provided requirements for Length & Duration, strictly follow them.
-- If blank, default to a 30-minute lesson/task and/or 10 questions/activities.
-
-IMAGE PLACEHOLDER RULES (CRITICAL):
-- Where an image enhances learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
+IMAGE PLACEHOLDER RULES:
+- Where an image enhances learning, insert: [IMAGE:VA1], [IMAGE:VA2], etc.
 - Use 2 to 4 images per piece of content.
-- In the "visualAids" array in your JSON response, list each image with its id and a detailed English search query.
-- Example visualAids entry: { "id": "VA1", "query": "South African children learning mathematics classroom" }`,
+- In the "visualAids" array, list each image with its id and a detailed English search query.
+
+OUTPUT FORMAT:
+Return a JSON object with fields: "content", "memo", "rubric", and "visualAids".`,
       },
       {
         role: 'user',
         content: `Generate a ${input.contentType} for Grade ${input.grade}.
 Subject: ${input.subject}
 Topic: ${input.topic}
-Term: ${input.term || 'N/A'}
 Language: ${input.language || 'English'}
 Objective: ${input.objective || 'N/A'}
 Learner Profile: ${input.learnerProfile || 'General class'}
@@ -119,11 +113,10 @@ Additional Instructions: ${input.additionalInstructions || 'None'}`,
     { max_tokens: 8192, temperature: 0.7 }
   );
 
-  let html = output.content || '';
-  const visualAids: Array<{ id: string; query: string }> = output.visualAids || [];
+  let html = output.content || '<p>No content generated. Please try again.</p>';
+  const visualAids = output.visualAids || [];
 
   if (visualAids.length > 0) {
-    // Fetch all images in parallel for speed
     const imageResults = await Promise.all(
       visualAids.map(async (va) => ({
         id: va.id,

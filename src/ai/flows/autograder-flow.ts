@@ -27,17 +27,22 @@ const AutogradeOutputSchema = z.object({
 export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
-  const response = await ai.generate({
-    model: googleAI.model('gemini-1.5-pro'),
-    output: { schema: AutogradeOutputSchema },
-    system: `You are an expert AI grader for South African school assignments.
-    Grade the work accurately and provide encouraging, constructive feedback.
-    ${input.culturalContextIntegration ? 'Use local examples and a culturally sensitive tone.' : ''}`,
-    prompt: `Subject: ${input.subject || 'General'}
-    Grade Level: ${input.grade || 'N/A'}
-    Instructions/Memo: ${input.gradingInstructions}
-    Student Submission: ${input.assignmentContent}`,
-  });
+  try {
+    const response = await ai.generate({
+      model: googleAI.model('gemini-1.5-pro'),
+      output: { schema: AutogradeOutputSchema },
+      system: `You are an expert AI grader for South African school assignments.
+      Grade the work accurately and provide encouraging, constructive feedback.
+      ${input.culturalContextIntegration ? 'Use local examples and a culturally sensitive tone.' : ''}`,
+      prompt: `Subject: ${input.subject || 'General'}
+      Grade Level: ${input.grade || 'N/A'}
+      Instructions/Memo: ${input.gradingInstructions}
+      Student Submission: ${input.assignmentContent}`,
+    });
 
-  return response.output!;
+    return response.output!;
+  } catch (error) {
+    console.error('Autograder error:', error);
+    throw new Error(`Autograding failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

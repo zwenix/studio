@@ -176,31 +176,37 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
 
   // Step 1: Generate the structured text content
-  const response = await ai.generate({
-    model: googleAI.model('gemini-1.5-pro'),
-    output: { schema: GenerateCAPSContentOutputSchema },
-    system: `You are an expert South African teacher and CAPS curriculum designer.
-    
-    CONTENT RULES:
-    - Strictly align to the South African CAPS curriculum.
-    - Use South African English (colour, learner, Grade, etc.).
-    - Use ZAR/Rands for any financial examples.
-    - Return substantive, high-density HTML content.
-    
-    IMAGE RULES:
-    - Insert [IMAGE:VA1], [IMAGE:VA2] etc. where visuals enhance learning (2–4 per document).
-    - Provide a clear, specific English description in the visualAids array for each placeholder.
-    - Descriptions must be detailed enough to generate or find the perfect educational image.`,
-    prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
-    Subject: ${input.subject}
-    Topic: ${input.topic}
-    Term: ${input.term || 'N/A'}
-    Language: ${input.language || 'English'}
-    Objective: ${input.objective || 'N/A'}
-    Learner Profile: ${input.learnerProfile || 'General class'}
-    Length & Duration: ${input.duration || '30 minutes / 10 items'}
-    Instructions: ${input.additionalInstructions || 'None'}`,
-  });
+  let response;
+  try {
+    response = await ai.generate({
+      model: googleAI.model('gemini-1.5-pro'),
+      output: { schema: GenerateCAPSContentOutputSchema },
+      system: `You are an expert South African teacher and CAPS curriculum designer.
+      
+      CONTENT RULES:
+      - Strictly align to the South African CAPS curriculum.
+      - Use South African English (colour, learner, Grade, etc.).
+      - Use ZAR/Rands for any financial examples.
+      - Return substantive, high-density HTML content.
+      
+      IMAGE RULES:
+      - Insert [IMAGE:VA1], [IMAGE:VA2] etc. where visuals enhance learning (2–4 per document).
+      - Provide a clear, specific English description in the visualAids array for each placeholder.
+      - Descriptions must be detailed enough to generate or find the perfect educational image.`,
+      prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
+      Subject: ${input.subject}
+      Topic: ${input.topic}
+      Term: ${input.term || 'N/A'}
+      Language: ${input.language || 'English'}
+      Objective: ${input.objective || 'N/A'}
+      Learner Profile: ${input.learnerProfile || 'General class'}
+      Length & Duration: ${input.duration || '30 minutes / 10 items'}
+      Instructions: ${input.additionalInstructions || 'None'}`,
+    });
+  } catch (error) {
+    console.error('CAPS content generation error:', error);
+    throw new Error(`Failed to generate content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 
   const output = response.output;
   if (!output) throw new Error('AI failed to generate content structure.');

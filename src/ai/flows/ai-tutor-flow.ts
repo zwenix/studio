@@ -33,16 +33,21 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
     content: [{ text: h.content }]
   }));
 
-  const response = await ai.generate({
-    model: googleAI.model('gemini-1.5-pro'),
-    system: `You are an expert AI Tutor for South African students and teachers. 
-    Be helpful, encouraging, and answer questions clearly. 
-    Always respond in: ${input.language}.`,
-    messages: [
-      ...historyMessages,
-      { role: 'user', content: [{ text: input.query }] }
-    ],
-  });
+  try {
+    const response = await ai.generate({
+      model: googleAI.model('gemini-1.5-pro'),
+      system: `You are an expert AI Tutor for South African students and teachers. 
+      Be helpful, encouraging, and answer questions clearly. 
+      Always respond in: ${input.language}.`,
+      messages: [
+        ...historyMessages,
+        { role: 'user', content: [{ text: input.query }] }
+      ],
+    });
 
-  return { response: response.text };
+    return { response: response.text };
+  } catch (error) {
+    console.error('AI Tutor error:', error);
+    throw new Error(`AI Tutor failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

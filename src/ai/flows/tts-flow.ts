@@ -45,11 +45,12 @@ async function toWav(
 
     const bufs: Buffer[] = [];
     writer.on('error', reject);
-    writer.on('data', function (d: Buffer) {  // ✅ explicit Buffer type fixes the TS error
-      bufs.push(d);
+    writer.on('data', function (d: Buffer | Uint8Array) {
+      bufs.push(d as Buffer);
     });
     writer.on('end', function () {
-      resolve(Buffer.concat(bufs).toString('base64'));
+      const result = Buffer.concat(bufs);
+      resolve(result.toString('base64'));
     });
 
     writer.write(pcmData);
@@ -64,27 +65,32 @@ const ttsFlow = ai.defineFlow(
     outputSchema: TextToSpeechOutputSchema,
   },
   async ({text, voice}) => {
-    const {media} = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-preview-tts'),
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {voiceName: voice},
+    try {
+      const {media} = await ai.generate({
+        model: googleAI.model('gemini-2.5-flash-preview-tts'),
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {voiceName: voice},
+            },
           },
         },
-      },
-      prompt: text,
-    });
-    if (!media) {
-      throw new Error('no media returned');
+        prompt: text,
+      });
+      if (!media) {
+        throw new Error('no media returned');
+      }
+      const audioBuffer = Buffer.from(
+        media.url.substring(media.url.indexOf(',') + 1),
+        'base64'
+      );
+      return {
+        audio: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
+      };
+    } catch (error) {
+      console.error('TTS error:', error);
+      throw new Error(`Text-to-speech failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    const audioBuffer = Buffer.from(
-      media.url.substring(media.url.indexOf(',') + 1),
-      'base64'
-    );
-    return {
-      audio: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
-    };
   }
 );

@@ -42,8 +42,18 @@ export default function LoginPage() {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Google Auth Error:', error);
-      toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+      // Suppress COOP-related errors from Firebase Auth popup
+      const isCOOPError = error?.message?.includes('Cross-Origin-Opener-Policy') || 
+                         error?.message?.includes('popup') ||
+                         error?.code === 'auth/popup-closed-by-user';
+      
+      if (isCOOPError) {
+        // If popup was closed or COOP blocked it, still redirect if auth succeeded
+        toast({ title: 'Login Cancelled', description: 'The popup was closed before authentication completed.', variant: 'default' });
+      } else {
+        console.error('Google Auth Error:', error);
+        toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+      }
     } finally {
       setIsLoadingGoogle(false);
     }

@@ -2,10 +2,15 @@
 
 /**
  * @fileOverview An AI Tutor flow using Gemini 1.5 Pro.
+ * 
+ * - aiTutor - A function that handles the conversation with the AI Tutor.
+ * - AiTutorInput - Input schema for the tutor.
+ * - AiTutorOutput - Output schema for the tutor.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { googleAI } from '@genkit-ai/google-genai';
+import { z } from 'genkit';
 
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user question or message.'),
@@ -24,12 +29,12 @@ export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   const historyMessages = (input.history ?? []).map(h => ({
-    role: h.role === 'model' ? 'model' : 'user' as const,
+    role: h.role === 'model' ? 'model' as const : 'user' as const,
     content: [{ text: h.content }]
   }));
 
   const response = await ai.generate({
-    model: 'googleai/gemini-1.5-pro',
+    model: googleAI.model('gemini-1.5-pro'),
     system: `You are an expert AI Tutor for South African students and teachers. 
     Be helpful, encouraging, and answer questions clearly. 
     Always respond in: ${input.language}.`,

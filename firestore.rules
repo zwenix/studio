@@ -54,7 +54,7 @@ service cloud.firestore {
 
     match /parents/{parentId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(parentId) || isAdmin();
+      allow write: if isOwner(parentId) || isAdmin() || isTeacher();
     }
 
     match /content/{contentId} {

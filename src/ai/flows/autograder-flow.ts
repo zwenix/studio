@@ -1,7 +1,12 @@
 'use server';
 
-import { z } from 'zod';
-import { groqGenerateJSON } from '@/ai/groq-client';
+/**
+ * @fileOverview AI Autograder flow using Gemini 1.5 Pro.
+ */
+
+import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+import { z } from 'genkit';
 
 export const AutogradeInputSchema = z.object({
   assignmentContent: z.string(),
@@ -12,19 +17,27 @@ export const AutogradeInputSchema = z.object({
 });
 
 export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
-export type AutogradeOutput = { grade: string; feedback: string; rubric: string; };
+
+const AutogradeOutputSchema = z.object({
+  grade: z.string().describe('The score or level awarded.'),
+  feedback: z.string().describe('HTML feedback for the student.'),
+  rubric: z.string().describe('HTML showing how criteria were applied.')
+});
+
+export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
-  return groqGenerateJSON<AutogradeOutput>([
-    {
-      role: 'system',
-      content: `You are an expert AI grader for South African school assignments.
-      Grade the work, provide feedback, and show the rubric.
-      ${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}`
-    },
-    {
-      role: 'user',
-      content: `Subject: ${input.subject || 'General'}\nGrade Level: ${input.grade || 'N/A'}\nGrading Instructions / Memo: ${input.gradingInstructions}\nStudent's Submission: ${input.assignmentContent}`
-    }
-  ]);
+  const response = await ai.generate({
+    model: googleAI.model('gemini-1.5-pro'),
+    output: { schema: AutogradeOutputSchema },
+    system: `You are an expert AI grader for South African school assignments.
+    Grade the work accurately and provide encouraging, constructive feedback.
+    ${input.culturalContextIntegration ? 'Use local examples and a culturally sensitive tone.' : ''}`,
+    prompt: `Subject: ${input.subject || 'General'}
+    Grade Level: ${input.grade || 'N/A'}
+    Instructions/Memo: ${input.gradingInstructions}
+    Student Submission: ${input.assignmentContent}`,
+  });
+
+  return response.output!;
 }

@@ -43,15 +43,15 @@ async function toWav(
       bitDepth: sampleWidth * 8,
     });
 
-    const bufs: Buffer[] = [];
-    writer.on('error', reject);
-    writer.on('data', function (d: Buffer | Uint8Array) {
-      bufs.push(d as Buffer);
-    });
-    writer.on('end', function () {
-      const result = Buffer.concat(bufs);
-      resolve(result.toString('base64'));
-    });
+         const bufs: Uint8Array[] = [];
+         writer.on('error', reject);
+         writer.on('data', function (d: Buffer | Uint8Array) {
+           bufs.push(d instanceof Buffer ? new Uint8Array(d) : d);
+         });
+          writer.on('end', function () {
+            const result = Buffer.concat(bufs as readonly Uint8Array[]);
+            resolve(result.toString('base64'));
+          });
 
     writer.write(pcmData);
     writer.end();

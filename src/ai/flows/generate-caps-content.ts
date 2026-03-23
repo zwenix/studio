@@ -47,6 +47,7 @@ const GenerateCAPSContentOutputSchema = z.object({
   })).describe('Metadata for images to be injected.')
 });
 
+// The public output strips visualAids (resolved internally into HTML before returning)
 export type GenerateCAPSContentOutput = {
   content: string;
   memo: string;

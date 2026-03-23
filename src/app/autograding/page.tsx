@@ -83,12 +83,17 @@ export default function AutogradingPage() {
       setFile(currentFile);
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const dataUri = reader.result as string;
-        await processImageDataUri(dataUri);
+        try {
+          const dataUri = reader.result as string;
+          await processImageDataUri(dataUri);
+        } catch (error) {
+          console.error('Failed to process dropped file:', error);
+          toast({ title: 'Processing failed', description: 'Could not extract text from the file.', variant: 'destructive' });
+        }
       };
       reader.readAsDataURL(currentFile);
     }
-  }, [processImageDataUri]);
+  }, [processImageDataUri, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -97,41 +102,50 @@ export default function AutogradingPage() {
   });
 
   useEffect(() => {
-    if (isCameraOpen) {
-      const getCameraPermission = async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          setHasCameraPermission(true);
-          streamRef.current = stream;
-
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
-          });
-        }
-      };
-      getCameraPermission();
-    } else {
+    if (!isCameraOpen) {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
+      return;
     }
+
+    let cancelled = false;
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (cancelled) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        setHasCameraPermission(true);
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings.',
+        });
+      }
+    };
+    getCameraPermission();
+
     return () => {
+      cancelled = true;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     };
   }, [isCameraOpen, toast]);
   
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -151,7 +165,7 @@ export default function AutogradingPage() {
                 setFile(capturedFile);
             });
         
-        processImageDataUri(dataUrl);
+        await processImageDataUri(dataUrl);
         setCameraOpen(false);
     }
   };

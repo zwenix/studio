@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppLayout } from '@/components/app-layout';
@@ -17,7 +16,7 @@ import { ArrowRight, Loader2, UserPlus, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, updateDoc, arrayUnion, arrayRemove, getDocs, documentId } from 'firebase/firestore';
 import type { Class, Assignment, Content, User } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -130,7 +129,7 @@ function TeacherClassView({ classData }: { classData: Class }) {
   const studentsInClassQuery = useMemoFirebase(() => {
     if (!classData?.learnerIds || classData.learnerIds.length === 0) return null;
     const studentIds = classData.learnerIds.length > 30 ? classData.learnerIds.slice(0, 30) : classData.learnerIds;
-    return query(collection(firestore, 'users'), where('id', 'in', studentIds));
+    return query(collection(firestore, 'users'), where(documentId(), 'in', studentIds));
   }, [firestore, classData.learnerIds]);
   const { data: studentsInClass, isLoading: areStudentsInClassLoading } = useCollection<User>(studentsInClassQuery);
 
@@ -329,7 +328,7 @@ export default function ClassDetailsPage() {
         return <TeacherClassView classData={classData} />;
     }
 
-    if (userProfile.role === 'student' && classData.learnerIds.includes(user.uid)) {
+    if (userProfile.role === 'student' && (classData.learnerIds ?? []).includes(user.uid)) {
         return <StudentClassView classId={classId} userId={user.uid} />;
     }
 

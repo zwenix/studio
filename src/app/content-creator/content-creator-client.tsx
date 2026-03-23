@@ -158,9 +158,12 @@ export function ContentCreatorClient() {
           setSubject(data.subject);
           setTopic(data.topic);
         }
+      }).catch(err => {
+        console.error('Failed to load content for editing:', err);
+        toast({ title: 'Failed to load content', description: 'Could not retrieve the selected content for editing.', variant: 'destructive' });
       });
     }
-  }, [searchParams, user, firestore]);
+  }, [searchParams, user, firestore, toast]);
 
   const handleGenerate = async () => {
     const finalGrade = grade === 'Other' ? customGrade : grade;

@@ -90,14 +90,18 @@ export default function AiTutorPage() {
   useEffect(() => {
     if (!user) return;
     const cleanupOldMessages = async () => {
-      const q = query(
-        collection(firestore, 'users', user.uid, 'aiChatMessages'),
-        where('createdAt', '<', threeDaysAgo)
-      );
-      const snap = await getDocs(q);
-      snap.forEach(async (d) => {
-        await deleteDoc(doc(firestore, 'users', user!.uid, 'aiChatMessages', d.id));
-      });
+      try {
+        const q = query(
+          collection(firestore, 'users', user.uid, 'aiChatMessages'),
+          where('createdAt', '<', threeDaysAgo)
+        );
+        const snap = await getDocs(q);
+        await Promise.all(snap.docs.map(d =>
+          deleteDoc(doc(firestore, 'users', user!.uid, 'aiChatMessages', d.id))
+        ));
+      } catch (e) {
+        console.warn('Failed to clean up old chat messages:', e);
+      }
     };
     cleanupOldMessages();
   }, [user, firestore, threeDaysAgo]);

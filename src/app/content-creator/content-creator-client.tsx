@@ -36,7 +36,9 @@ import {
   Save,
   Trash2,
   Type,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { educationalData } from '@/lib/educational-data';
@@ -102,6 +104,7 @@ export function ContentCreatorClient() {
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [fontFamily, setFontFamily] = useState('font-body');
+  const [useAiImages, setUseAiImages] = useState(true);
 
   // AI Inputs
   const [grade, setGrade] = useState('');
@@ -194,6 +197,7 @@ export function ContentCreatorClient() {
         additionalInstructions,
         teacherName: user?.displayName || 'Educator',
         signatureUrl: teacherData?.signatureUrl,
+        useAiImages,
       });
       setGeneratedContent(result);
     } catch (error) {
@@ -413,6 +417,23 @@ export function ContentCreatorClient() {
                 <div className="space-y-2">
                   <Label className="text-indigo-200 flex items-center gap-2"><UsersIcon className="h-3 w-3" /> Learner Profile / Barriers</Label>
                   <Textarea placeholder="e.g. 'Many learners need visual pizza aids for fractions'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white/10 border border-white/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-400/20 rounded-lg">
+                      <ImageIcon className="h-4 w-4 text-yellow-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">AI-Generated Images</p>
+                      <p className="text-xs text-indigo-300">Use Gemini to create custom illustrations</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={useAiImages}
+                    onCheckedChange={setUseAiImages}
+                    className="data-[state=checked]:bg-yellow-400"
+                  />
                 </div>
 
                 <Button onClick={handleGenerate} disabled={isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950 font-bold">

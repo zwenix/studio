@@ -40,8 +40,6 @@ export async function autograde(input: AutogradeInput): Promise<AutogradeOutput>
       Student Submission: ${input.assignmentContent}`,
     });
 
-<<<<<<< HEAD
 if (!response.output) throw new Error('AI autograder returned no structured output.');
   return response.output;
->>>>>>> 2677a26 (fix(ui): harden autograding flow and UI error handling)
 }

@@ -200,7 +200,6 @@ export function ContentCreatorClient() {
         additionalInstructions,
         teacherName: user?.displayName || 'Educator',
         signatureUrl: teacherData?.signatureUrl,
-        useAiImages,
       });
       setGeneratedContent(result);
     } catch (error) {

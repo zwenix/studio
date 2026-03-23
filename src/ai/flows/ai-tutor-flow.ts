@@ -5,7 +5,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'zod';
 
 const AiTutorInputSchema = z.object({
@@ -30,12 +29,14 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   }));
 
   const response = await ai.generate({
-    model: googleAI.model('gemini-1.5-pro'),
+    model: 'googleai/gemini-1.5-pro',
     system: `You are an expert AI Tutor for South African students and teachers. 
     Be helpful, encouraging, and answer questions clearly. 
     Always respond in: ${input.language}.`,
-    history: historyMessages,
-    prompt: input.query,
+    messages: [
+      ...historyMessages,
+      { role: 'user', content: [{ text: input.query }] }
+    ],
   });
 
   return { response: response.text };

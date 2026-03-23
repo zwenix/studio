@@ -32,7 +32,7 @@ export type GenerateCAPSContentOutput = {
   rubric: string;
 };
 
-// Internal type Groq returns — images as a clean separate array for 100% reliability
+// Internal type Groq returns — images as a clean separate array
 type GroqCAPSResponse = {
   content: string;
   memo: string;
@@ -81,7 +81,7 @@ export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
 
-  // Step 1: Ask Groq to generate content with image placeholders and a structured visualAids array
+  // Step 1: Ask Groq to generate content
   const output = await groqGenerateJSON<GroqCAPSResponse>(
     [
       {
@@ -94,22 +94,20 @@ CONTENT RULES:
 - Use South African contexts, names, and currency (Rands/ZAR).
 - Adapt language and cognitive demand to the specified grade level.
 - Return content in clean, semantic HTML. Use <h2> for headings, <p> for text, <ul> for lists.
+- CRITICAL: Provide substantial text and activities. Do not return empty fields.
 
-IMAGE PLACEHOLDER RULES (CRITICAL):
+IMAGE PLACEHOLDER RULES:
 - Where an image would enhance learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
-- Use 2 to 4 images per piece of content — place them at logical points in the HTML.
 - In the "visualAids" array in your JSON response, list each image with its id and a detailed English search query.
-- Example visualAids entry: { "id": "VA1", "query": "South African children learning mathematics classroom" }
-- DO NOT include a VISUAL_AIDS text section in the content HTML — use ONLY the JSON array for image metadata.
+- DO NOT include a VISUAL_AIDS text section in the content HTML.
 
-OUTPUT FORMAT — return ONLY this JSON object, nothing else:
+OUTPUT FORMAT — return ONLY this JSON object:
 {
-  "content": "<HTML string with [IMAGE:VA1] placeholders embedded>",
-  "memo": "<HTML memo with answers and explanations>",
-  "rubric": "<HTML rubric with criteria and mark allocations>",
+  "content": "<HTML string with [IMAGE:VA1] placeholders>",
+  "memo": "<HTML memo>",
+  "rubric": "<HTML rubric>",
   "visualAids": [
-    { "id": "VA1", "query": "detailed search query for image 1" },
-    { "id": "VA2", "query": "detailed search query for image 2" }
+    { "id": "VA1", "query": "detailed search query" }
   ]
 }`,
       },
@@ -122,19 +120,18 @@ Term: ${input.term || 'N/A'}
 Language: ${input.language || 'English'}
 Objective: ${input.objective || 'N/A'}
 Learner Profile: ${input.learnerProfile || 'General class'}
-Length & Duration: ${input.duration || 'Default (30 min / 10 items)'}
+Length & Duration: ${input.duration || '30 minutes / 10 items'}
 Additional Instructions: ${input.additionalInstructions || 'None'}`,
       },
     ],
     { max_tokens: 8192, temperature: 0.7 }
   );
 
-  // Step 2: Replace [IMAGE:VAx] placeholders with real images
-  let html = output.content || '<p>Content generation failed. Please try again with a more specific topic.</p>';
+  // Step 2: Replace placeholders with images
+  let html = output.content || '<p>Content generation failed. Please try again.</p>';
   const visualAids: Array<{ id: string; query: string }> = output.visualAids || [];
 
   if (visualAids.length > 0) {
-    // Fetch all images in parallel for speed
     const imageResults = await Promise.all(
       visualAids.map(async (va) => ({
         id: va.id,
@@ -144,27 +141,20 @@ Additional Instructions: ${input.additionalInstructions || 'None'}`,
     );
 
     for (const result of imageResults) {
-      // Match both [IMAGE:VA1] and [IMAGE: VA1] (with or without space)
       const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
       if (result.url) {
         const imgHtml = `<div class="my-6 text-center no-print">
-  <img
-    src="${result.url}"
-    alt="${result.query}"
-    class="rounded-xl shadow-lg mx-auto max-h-[400px] border-4 border-white"
-    style="width:auto;height:auto;max-width:100%;"
-  />
+  <img src="${result.url}" alt="${result.query}" class="rounded-xl shadow-lg mx-auto max-h-[400px] border-4 border-white" style="width:auto;height:auto;max-width:100%;" />
   <p class="text-xs text-muted-foreground mt-2 italic font-sans">${result.query}</p>
 </div>`;
         html = html.replace(tagRegex, imgHtml);
       } else {
-        // No image found — remove placeholder silently
         html = html.replace(tagRegex, '');
       }
     }
   }
 
-  // Step 3: Clean up any stray [IMAGE:VAx] tags that didn't get matched
+  // Step 3: Cleanup
   html = html.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
 
   return {

@@ -15,29 +15,26 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userDoc) && get(userDoc).data.role == 'admin';
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn();
+      allow read: if isSignedIn();
       allow write: if isOwner(userId) || isAdmin();
 
       match /aiChatMessages/{messageId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
       
       match /ocrUploads/{uploadId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
-    }
-    
-    match /users/{path=**} {
-      allow list: if isSignedIn();
     }
 
     match /learners/{learnerId} {
-      allow get: if isOwner(learnerId) || isTeacher() || isAdmin();
+      allow read: if isOwner(learnerId) || isTeacher() || isAdmin();
       allow write: if isOwner(learnerId) || isAdmin();
       
       match /academicRecords/{recordId} {
@@ -47,7 +44,8 @@ service cloud.firestore {
     }
 
     match /teachers/{teacherId} {
-      allow read, write: if isOwner(teacherId) || isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isOwner(teacherId) || isAdmin();
 
       match /generatedContent/{contentId} {
         allow read, write: if isOwner(teacherId) || isAdmin();
@@ -55,47 +53,32 @@ service cloud.firestore {
     }
 
     match /parents/{parentId} {
-      allow get: if isOwner(parentId) || isTeacher() || isAdmin();
+      allow read: if isSignedIn();
       allow write: if isOwner(parentId) || isAdmin();
-    }
-    
-    match /parents/{path=**} {
-      allow list: if isSignedIn();
     }
 
     match /content/{contentId} {
-      allow get, list: if isSignedIn();
-      allow create: if (isSignedIn() && request.resource.data.teacherId == request.auth.uid) || isAdmin();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if (isSignedIn() && resource.data.teacherId == request.auth.uid) || isAdmin();
     }
 
     match /classes/{classId} {
-      allow get: if isSignedIn() && (resource.data.teacherId == request.auth.uid || request.auth.uid in resource.data.learnerIds || isAdmin());
-      allow list: if isSignedIn();
-      allow create: if isTeacher() || isAdmin();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if (isSignedIn() && resource.data.teacherId == request.auth.uid) || isAdmin();
 
       match /assignments/{assignmentId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
-        allow create: if (isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) || isAdmin();
-        allow update: if isSignedIn();
-        allow delete: if (isSignedIn() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid) || isAdmin();
+        allow read, write: if isSignedIn();
       }
     }
 
-    match /{path=**}/assignments/{assignmentId} {
-      allow read, list: if isSignedIn();
-    }
-
     match /conversations/{conversationId} {
-      allow get, list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow read, write: if isSignedIn() && request.auth.uid in resource.data.participantIds;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
 
       match /messages/{messageId} {
-        allow get, list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow read, write: if isSignedIn();
       }
     }
   }

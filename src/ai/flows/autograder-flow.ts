@@ -40,6 +40,10 @@ export async function autograde(input: AutogradeInput): Promise<AutogradeOutput>
       Student Submission: ${input.assignmentContent}`,
     });
 
-if (!response.output) throw new Error('AI autograder returned no structured output.');
-  return response.output;
+    if (!response.output) throw new Error('AI autograder returned no structured output.');
+    return response.output;
+  } catch (error) {
+    console.error('AI Autograder error:', error);
+    throw new Error(`AI Autograder failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

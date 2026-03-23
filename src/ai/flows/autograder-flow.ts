@@ -4,7 +4,7 @@
  * @fileOverview AI Autograder flow using Gemini 1.5 Pro.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
@@ -29,7 +29,7 @@ export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-2.5-flash'),
       output: { schema: AutogradeOutputSchema },
       system: `You are an expert AI grader for South African school assignments.
       Grade the work accurately and provide encouraging, constructive feedback.

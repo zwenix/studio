@@ -7,7 +7,8 @@
  * - ExtractTextFromImageOutput - The return type for the extractTextFromImage function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/genkit';
+import {googleAI} from '@genkit-ai/google-genai';
 import {z} from 'genkit';
 
 const ExtractTextFromImageInputSchema = z.object({
@@ -30,6 +31,7 @@ export async function extractTextFromImage(input: ExtractTextFromImageInput): Pr
 
 const prompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
+  model: googleAI.model('gemini-2.0-flash'),
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
   prompt: `You are an expert OCR and handwriting recognition AI.

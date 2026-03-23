@@ -1,7 +1,7 @@
 
 'use server';
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 import { z } from 'genkit';
 import { createClient } from 'pexels';
 

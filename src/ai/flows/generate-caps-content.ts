@@ -11,7 +11,7 @@
  *  4. Empty string                       — placeholder removed silently
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 import { createClient } from 'pexels';
@@ -180,7 +180,7 @@ export async function generateCAPSContent(
   let response;
   try {
     response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-2.5-pro'),
       output: { schema: GenerateCAPSContentOutputSchema },
       system: `You are an expert South African teacher and CAPS curriculum designer.
       

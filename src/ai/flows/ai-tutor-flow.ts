@@ -8,7 +8,7 @@
  * - AiTutorOutput - Output schema for the tutor.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
@@ -35,7 +35,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
 
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-2.5-flash'),
       system: `You are an expert AI Tutor for South African students and teachers. 
       Be helpful, encouraging, and answer questions clearly. 
       Always respond in: ${input.language}.`,

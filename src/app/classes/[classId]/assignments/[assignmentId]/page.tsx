@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { autograde, AutogradeInput } from '@/ai/flows/autograder-flow';
-import { Loader2, Sparkles, FileCheck2, ArrowLeft, Download, Eye } from 'lucide-react';
+import { Loader2, Sparkles, FileCheck2, ArrowLeft, Download } from 'lucide-react';
 import type { Assignment, Content, Teacher } from '@/lib/types';
 
 export default function AssignmentPage() {
@@ -38,7 +38,7 @@ export default function AssignmentPage() {
     if (!assignment?.contentId) return null;
     return doc(firestore, 'content', assignment.contentId);
   }, [firestore, assignment?.contentId]);
-  const { data: content, isLoading: isContentLoaded } = useDoc<Content>(contentRef);
+  const { data: content, isLoading: isContentLoading } = useDoc<Content>(contentRef);
 
   // Fetch the teacher's settings using the teacherId from the content
   const teacherRef = useMemoFirebase(() => {
@@ -51,12 +51,15 @@ export default function AssignmentPage() {
   const questionCount = useMemo(() => {
     if (!content?.content) return 0;
     // Match "<h2>Question X", "<h3>Question X" etc.
-    const count = (content.content.match(/<h[2-6]>\s*Question \d+/gi) || []).length;
-    if (count > 0 && answers.length !== count) {
-        setAnswers(Array(count).fill(''));
+    return (content.content.match(/<h[2-6]>\s*Question \d+/gi) || []).length;
+  }, [content?.content]);
+
+  // Synchronize answers array length with question count (side-effect must be in useEffect, not useMemo)
+  useEffect(() => {
+    if (questionCount > 0) {
+      setAnswers(prev => prev.length === questionCount ? prev : Array(questionCount).fill(''));
     }
-    return count;
-  }, [content?.content, answers.length]);
+  }, [questionCount]);
 
   const handleAnswerChange = (index: number, value: string) => {
     const newAnswers = [...answers];
@@ -110,7 +113,7 @@ export default function AssignmentPage() {
     }
   };
   
-  const pageLoading = isAssignmentLoading || isContentLoaded;
+  const pageLoading = isAssignmentLoading || isContentLoading;
 
   return (
     <AppLayout>

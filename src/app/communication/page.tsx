@@ -8,16 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Mail, Send, Loader2, Plus, Users, School } from 'lucide-react';
+import { Mail, Send, Loader2, Plus } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDocs, writeBatch, limit, setDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDocs, writeBatch, limit, setDoc, documentId } from 'firebase/firestore';
 import type { Class, User, Parent, Conversation, ChatMessage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNowStrict } from 'date-fns';
 
 const getInitials = (firstName: string = '', lastName: string = '') => {
-    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
+    return `${firstName.trim()[0] || ''}${lastName.trim()[0] || ''}`.toUpperCase() || 'U';
 };
 
 // --- New Message Dialog Component ---
@@ -47,7 +46,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                     const classSnap = await getDocs(classesQuery);
                     const learnerIds = classSnap.docs.flatMap(d => (d.data() as Class).learnerIds);
                     if (learnerIds.length > 0) {
-                         const learnersQuery = query(collection(firestore, 'users'), where('id', 'in', learnerIds.slice(0, 30)));
+                         const learnersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', learnerIds.slice(0, 30)));
                          const learnersSnap = await getDocs(learnersQuery);
                          learnersSnap.forEach(d => userMap.set(d.id, d.data() as User));
 
@@ -55,7 +54,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                          const parentsSnap = await getDocs(parentsQuery);
                          const parentUserIds = parentsSnap.docs.map(d => d.id);
                          if (parentUserIds.length > 0) {
-                             const parentUsersQuery = query(collection(firestore, 'users'), where('id', 'in', parentUserIds.slice(0, 30)));
+                             const parentUsersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', parentUserIds.slice(0, 30)));
                              const parentUsersSnap = await getDocs(parentUsersQuery);
                              parentUsersSnap.forEach(d => userMap.set(d.id, d.data() as User));
                          }
@@ -66,7 +65,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                     const classSnap = await getDocs(classesQuery);
                     const teacherIds = [...new Set(classSnap.docs.map(d => (d.data() as Class).teacherId))];
                     if (teacherIds.length > 0) {
-                        const teachersQuery = query(collection(firestore, 'users'), where('id', 'in', teacherIds.slice(0, 30)));
+                        const teachersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', teacherIds.slice(0, 30)));
                         const teachersSnap = await getDocs(teachersQuery);
                         teachersSnap.forEach(d => userMap.set(d.id, d.data() as User));
                     }
@@ -79,7 +78,7 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
                         const classSnap = await getDocs(classesQuery);
                         const teacherIds = [...new Set(classSnap.docs.map(d => (d.data() as Class).teacherId))];
                          if (teacherIds.length > 0) {
-                            const teachersQuery = query(collection(firestore, 'users'), where('id', 'in', teacherIds.slice(0, 30)));
+                            const teachersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', teacherIds.slice(0, 30)));
                             const teachersSnap = await getDocs(teachersQuery);
                             teachersSnap.forEach(d => userMap.set(d.id, d.data() as User));
                         }
@@ -101,31 +100,36 @@ function NewMessageDialog({ onConversationStarted }: { onConversationStarted: (c
     const handleSelectRecipient = async (recipient: User) => {
         if (!user || !userProfile) return;
 
-        const participantIds = [user.uid, recipient.id].sort();
-        const q = query(collection(firestore, 'conversations'), where('participantIds', '==', participantIds), limit(1));
-        const existingConvoSnap = await getDocs(q);
+        try {
+            const participantIds = [user.uid, recipient.id].sort();
+            const q = query(collection(firestore, 'conversations'), where('participantIds', '==', participantIds), limit(1));
+            const existingConvoSnap = await getDocs(q);
 
-        let convoId: string;
-        if (!existingConvoSnap.empty) {
-            convoId = existingConvoSnap.docs[0].id;
-        } else {
-            const newConvoRef = doc(collection(firestore, 'conversations'));
-            const participantInfo = {
-                [user.uid]: { firstName: userProfile.firstName, lastName: userProfile.lastName, role: userProfile.role },
-                [recipient.id]: { firstName: recipient.firstName, lastName: recipient.lastName, role: recipient.role },
-            };
-            await setDoc(newConvoRef, {
-                id: newConvoRef.id,
-                participantIds,
-                participantInfo,
-                lastMessage: null,
-                updatedAt: serverTimestamp(),
-            });
-            convoId = newConvoRef.id;
+            let convoId: string;
+            if (!existingConvoSnap.empty) {
+                convoId = existingConvoSnap.docs[0].id;
+            } else {
+                const newConvoRef = doc(collection(firestore, 'conversations'));
+                const participantInfo = {
+                    [user.uid]: { firstName: userProfile.firstName, lastName: userProfile.lastName, role: userProfile.role },
+                    [recipient.id]: { firstName: recipient.firstName, lastName: recipient.lastName, role: recipient.role },
+                };
+                await setDoc(newConvoRef, {
+                    id: newConvoRef.id,
+                    participantIds,
+                    participantInfo,
+                    lastMessage: null,
+                    updatedAt: serverTimestamp(),
+                });
+                convoId = newConvoRef.id;
+            }
+
+            onConversationStarted(convoId);
+            setOpen(false);
+        } catch (e: any) {
+            console.error('Failed to start conversation:', e);
+            toast({ title: 'Error', description: 'Could not start the conversation. Please try again.', variant: 'destructive' });
         }
-        
-        onConversationStarted(convoId);
-        setOpen(false);
     };
 
     return (

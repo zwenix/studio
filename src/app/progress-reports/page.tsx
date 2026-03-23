@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { BarChart, Loader2, GraduationCap } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, documentId } from 'firebase/firestore';
 import type { Class, User } from '@/lib/types';
 import { StudentReport } from '@/components/dashboard/student-report';
 
@@ -33,7 +32,7 @@ export default function ProgressReportsPage() {
   const studentsInClassQuery = useMemoFirebase(() => {
     if (!selectedClass || !selectedClass.learnerIds || selectedClass.learnerIds.length === 0) return null;
     const studentIds = selectedClass.learnerIds.length > 30 ? selectedClass.learnerIds.slice(0, 30) : selectedClass.learnerIds;
-    return query(collection(firestore, 'users'), where('id', 'in', studentIds));
+    return query(collection(firestore, 'users'), where(documentId(), 'in', studentIds));
   }, [firestore, selectedClass]);
   const { data: studentsInClass, isLoading: areStudentsLoading } = useCollection<User>(studentsInClassQuery);
 
@@ -41,7 +40,7 @@ export default function ProgressReportsPage() {
   const { data: parentData } = useDoc(parentRef);
   const childrenQuery = useMemoFirebase(() => {
     if (!parentData || !parentData.childIds || parentData.childIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('id', 'in', parentData.childIds));
+    return query(collection(firestore, 'users'), where(documentId(), 'in', parentData.childIds));
   }, [firestore, parentData]);
   const { data: children, isLoading: areChildrenLoading } = useCollection<User>(childrenQuery);
   

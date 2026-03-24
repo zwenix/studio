@@ -98,7 +98,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: 'googleai/gemini-1.5-pro',
       output: { schema: CapsResponseSchema },
       system: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
 
@@ -113,14 +113,13 @@ CONTENT RULES:
 - Use South African contexts, names, and Rands (ZAR).
 
 LENGTH & DURATION RULES:
-- If the user provided specific requirements for length or duration, strictly follow them.
-- If no requirements were provided, default to a 30-minute lesson/task and/or 10 questions/activities.
+- If the user provided specific requirements for length or duration (in the duration field), strictly follow them.
+- If no requirements were provided (duration is blank), default to generating a 30-minute lesson/task and/or 10 questions/activities.
 
 IMAGE PLACEHOLDER RULES:
 - Where an image enhances learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
 - Use 2 to 4 images per piece of content — place them at logical points in the HTML.
 - In the "visualAids" array, list each image with its id and a detailed English search query.
-- Example: { "id": "VA1", "query": "South African Grade 4 children learning mathematics" }
 - DO NOT embed a VISUAL_AIDS text block inside the HTML — use the JSON array only.`,
 
       prompt: `Generate a ${input.contentType} for Grade ${input.grade}.

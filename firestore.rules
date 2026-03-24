@@ -27,7 +27,6 @@ service cloud.firestore {
       allow write: if isOwner(userId) || isAdmin();
 
       match /aiChatMessages/{messageId} {
-        // Users must be able to list (read) their own message history for the cleanup/3-day logic
         allow read, write: if isOwner(userId) || isAdmin();
       }
       
@@ -56,7 +55,6 @@ service cloud.firestore {
     }
 
     match /parents/{parentId} {
-      // Teachers need to query parent documents when adding students to classes
       allow read: if isSignedIn();
       allow write: if isOwner(parentId) || isAdmin() || isTeacher();
     }

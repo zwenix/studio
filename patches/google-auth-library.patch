@@ -1,0 +1,81 @@
+--- node_modules/google-auth-library/build/src/auth/oauth2client.js
++++ node_modules/google-auth-library/build/src/auth/oauth2client.js
+@@ -246,11 +246,12 @@
+     }
+     async refreshAccessTokenAsync() {
+         const r = await this.refreshToken(this.credentials.refresh_token);
+         const tokens = r.tokens;
+-        tokens.refresh_token = this.credentials.refresh_token;
+         // Persist the old refresh token if the new one is missing.
+         tokens.refresh_token = tokens.refresh_token || this.credentials.refresh_token;
++        // Ensure we use the latest refresh token if provided, otherwise keep the old one.
++        tokens.refresh_token = tokens.refresh_token || this.credentials.refresh_token;
+         this.credentials = tokens;
+         return { credentials: this.credentials, res: r.res };
+     }
+     getAccessToken(callback) {
+@@ -346,14 +347,15 @@
+             throw e;
+         }
+         const credentials = this.credentials;
+         credentials.token_type = credentials.token_type || 'Bearer';
+-        tokens.refresh_token = credentials.refresh_token;
+         // Persist the old refresh token if the new one is missing.
+         tokens.refresh_token = tokens.refresh_token || this.credentials.refresh_token;
++        // Ensure we use the latest refresh token if provided, otherwise keep the old one.
++        tokens.refresh_token = tokens.refresh_token || this.credentials.refresh_token;
+         this.credentials = tokens;
+-        const headers = {
+-            Authorization: credentials.token_type + ' ' + tokens.access_token,
+-        };
++        const headers = new Headers({
++            authorization: (this.credentials.token_type || 'Bearer') + ' ' + this.credentials.access_token,
++        });
+         return { headers: this.addSharedMetadataHeaders(headers), res: r.res };
+     }
+     /**
+@@ -458,11 +460,10 @@
+                 //   choose to enable forceRefreshOnFailure to mitigate time-related
+                 //   errors.
+-                const mayRequireRefresh = this.credentials &&
+-                    this.credentials.access_token &&
+-                    this.credentials.refresh_token &&
+-                    (!this.credentials.expiry_date || this.forceRefreshOnFailure);
++                const mayRequireRefresh = this.credentials && 
++                    this.credentials.access_token && 
++                    this.credentials.refresh_token;
+                 const mayRequireRefreshWithNoRefreshToken = this.credentials &&
+                     this.credentials.access_token &&
+                     !this.credentials.refresh_token &&
+                     (!this.credentials.expiry_date || this.forceRefreshOnFailure) &&
+@@ -470,14 +471,15 @@
+                 const isReadableStream = res.config.data instanceof stream.Readable;
+                 const isAuthErr = statusCode === 401 || statusCode === 403;
+                 if (!reAuthRetried &&
+                     isAuthErr &&
+                     !isReadableStream &&
+-                    mayRequireRefresh) {
++                    (mayRequireRefresh || mayRequireRefreshWithNoRefreshToken)) {
++                    if (mayRequireRefresh) {
+                     await this.refreshAccessTokenAsync();
++                    } else {
++                        const refreshedAccessToken = await this.processAndValidateRefreshHandler();
++                        if (refreshedAccessToken?.access_token) {
++                            this.setCredentials(refreshedAccessToken);
++                        }
++                    }
+                     return this.requestAsync(opts, true);
+                 }
+-                else if (!reAuthRetried &&
+-                    isAuthErr &&
+-                    !isReadableStream &&
+-                    mayRequireRefreshWithNoRefreshToken) {
+-                    const refreshedAccessToken = await this.processAndValidateRefreshHandler();
+-                    if (refreshedAccessToken === null || refreshedAccessToken === void 0 ? void 0 : refreshedAccessToken.access_token) {
+-                        this.setCredentials(refreshedAccessToken);
+-                    }
+-                    return this.requestAsync(opts, true);
+-                }
+             }
+             throw e;
+         }

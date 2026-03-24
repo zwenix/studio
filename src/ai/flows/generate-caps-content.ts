@@ -1,16 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Generates CAPS-compliant educational content using Gemini 2.5 Pro.
- *
- * FIXES APPLIED:
- * 1. import { z } from 'genkit'  — NOT from 'zod'. Genkit's output schema handling
- *    requires its own z wrapper. Using raw zod breaks structured output parsing.
- * 2. import { googleAI } from '@genkit-ai/google-genai' + googleAI.model(...)
- *    instead of the bare string 'googleai/gemini-2.5-pro'. Matches the pattern
- *    used in all other working flows (autograder, ai-tutor).
- * 3. output: { schema: ... } — removed format:'json'. The schema drives JSON mode.
- * 4. visualAids is .optional().default([]) so missing it never throws.
+ * @fileOverview Generates CAPS-compliant educational content using Gemini 1.5 Pro.
  */
 
 import { z } from 'genkit';
@@ -107,7 +98,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash'),
+      model: googleAI.model('gemini-1.5-pro'),
       output: { schema: CapsResponseSchema },
       system: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
 

@@ -128,7 +128,7 @@ export function ContentCreatorClient() {
   
   const [learnerProfile, setLearnerProfile] = useState('');
   const [objective, setObjective] = useState('');
-  const [duration, setDuration] = useState(''); // This is now Length & Duration free text
+  const [duration, setDuration] = useState(''); 
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   // Scanning State

@@ -108,6 +108,7 @@ export default function AiTutorPage() {
 
   // Initialize Speech Recognition
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
@@ -136,8 +137,12 @@ export default function AiTutorPage() {
     if (isRecording) {
       recognitionRef.current?.stop();
     } else if (recognitionRef.current) {
-      recognitionRef.current.start();
-      setIsRecording(true);
+      try {
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch (e) {
+        console.error('Mic start failed:', e);
+      }
     } else {
       toast({ title: 'Voice Recognition not supported in this browser.', variant: 'destructive' });
     }
@@ -277,7 +282,7 @@ export default function AiTutorPage() {
                           <AvatarFallback className="bg-primary/10"><Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="AI Tutor" width={16} height={24} /></AvatarFallback>
                         </Avatar>
                       )}
-                      <div className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-white border rounded-bl-none'}`}>
+                      <div className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white border rounded-bl-none'}`}>
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       </div>
                        {message.role === 'model' && (

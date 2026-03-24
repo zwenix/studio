@@ -5,7 +5,6 @@
  */
 
 import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 const AiTutorInputSchema = z.object({
@@ -24,7 +23,6 @@ const AiTutorOutputSchema = z.object({
 export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
-  // Genkit 1.x requires history to be passed in the messages array
   const historyMessages = (input.history ?? []).map(h => ({
     role: h.role === 'model' ? 'model' as const : 'user' as const,
     content: [{ text: h.content }]

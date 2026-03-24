@@ -6,7 +6,6 @@
 
 import { z } from 'genkit';
 import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { createClient } from 'pexels';
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
@@ -105,22 +104,12 @@ export async function generateCAPSContent(
 CONTENT RULES:
 - Strictly align to the South African CAPS curriculum.
 - Use South African English spelling (colour, realise, learner, etc.).
-- Adapt language and cognitive demand to the specified grade:
-  - Grades R–1: Very simple words, concrete examples, matching/circling/colouring activities.
-  - Grades 2–3: Simple sentences, scaffolded instructions.
-  - Grades 4–7: Clear learner-friendly text, problem-solving, higher-order questions.
-  - Grades 8–12: Subject-appropriate academic rigour.
+- Adapt language and cognitive demand to the specified grade.
 - Use South African contexts, names, and Rands (ZAR).
 
-LENGTH & DURATION RULES:
-- If the user provided specific requirements for length or duration (in the duration field), strictly follow them.
-- If no requirements were provided (duration is blank), default to generating a 30-minute lesson/task and/or 10 questions/activities.
-
 IMAGE PLACEHOLDER RULES:
-- Where an image enhances learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
-- Use 2 to 4 images per piece of content — place them at logical points in the HTML.
-- In the "visualAids" array, list each image with its id and a detailed English search query.
-- DO NOT embed a VISUAL_AIDS text block inside the HTML — use the JSON array only.`,
+- Insert [IMAGE:VA1], [IMAGE:VA2] etc. in the "content" HTML.
+- List these in the "visualAids" array with descriptive English queries.`,
 
       prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
 Subject: ${input.subject}
@@ -143,7 +132,6 @@ Teacher Name: ${input.teacherName || 'Educator'}`,
     let html = output.content || '';
     const visualAids = output.visualAids || [];
 
-    // Fetch all images in parallel
     if (visualAids.length > 0) {
       const imageResults = await Promise.all(
         visualAids.map(async (va) => ({
@@ -167,7 +155,6 @@ Teacher Name: ${input.teacherName || 'Educator'}`,
       }
     }
 
-    // Clean up any remaining stray placeholders
     html = html.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
 
     return {

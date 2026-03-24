@@ -158,12 +158,9 @@ export function ContentCreatorClient() {
           setSubject(data.subject);
           setTopic(data.topic);
         }
-      }).catch(err => {
-        console.error('Failed to load content for editing:', err);
-        toast({ title: 'Failed to load content', description: 'Could not retrieve the selected content for editing.', variant: 'destructive' });
       });
     }
-  }, [searchParams, user, firestore, toast]);
+  }, [searchParams, user, firestore]);
 
   const handleGenerate = async () => {
     const finalGrade = grade === 'Other' ? customGrade : grade;
@@ -174,11 +171,7 @@ export function ContentCreatorClient() {
     const finalLanguage = language === 'Other' ? customLanguage : language;
 
     if (!finalGrade || !finalCategory || !finalSubType || !finalSubject || !finalTopic) {
-      toast({ 
-        title: 'Missing Information', 
-        description: `Please ensure Grade, Subject, Category, Type, and Topic are provided.`, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Missing Information', description: 'Please fill all required fields.', variant: 'destructive' });
       return;
     }
 
@@ -203,8 +196,7 @@ export function ContentCreatorClient() {
       });
       setGeneratedContent(result);
     } catch (error) {
-      console.error('Generation Failed:', error);
-      toast({ title: 'Generation Failed', description: 'Internal server error during content generation.', variant: 'destructive' });
+      toast({ title: 'Generation Failed', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -212,36 +204,25 @@ export function ContentCreatorClient() {
 
   const handleSaveToArchive = async () => {
     if (!user || !generatedContent) return;
-    
     setIsSaving(true);
     try {
-      const finalGrade = grade === 'Other' ? customGrade : grade;
-      const finalSubject = subject === 'Other' ? customSubject : subject;
-      const finalTopic = topic === 'Other' ? customTopic : topic;
-      const finalSubType = subType === 'Other' ? customSubType : subType;
-
       await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
         teacherId: user.uid,
-        grade: finalGrade,
-        subject: finalSubject,
-        topic: finalTopic,
-        contentType: finalSubType,
+        grade: grade === 'Other' ? customGrade : grade,
+        subject: subject === 'Other' ? customSubject : subject,
+        topic: topic === 'Other' ? customTopic : topic,
+        contentType: subType === 'Other' ? customSubType : subType,
         content: generatedContent.content,
         memo: generatedContent.memo,
         rubric: generatedContent.rubric,
         createdAt: serverTimestamp(),
       });
-      toast({ title: 'Saved!', description: 'Content added to your archive.' });
+      toast({ title: 'Saved to Archive!' });
     } catch (e) {
       toast({ title: 'Save Failed', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleDiscard = () => {
-    setGeneratedContent(null);
-    toast({ title: 'Discarded', description: 'Generated content cleared.' });
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -268,10 +249,6 @@ export function ContentCreatorClient() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
       <div className="flex items-center justify-between no-print">
@@ -279,19 +256,13 @@ export function ContentCreatorClient() {
           <Palette className="h-10 w-10 text-primary" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
-            <p className="text-muted-foreground">Unified workshop for magic generation and design.</p>
+            <p className="text-muted-foreground">Unified workshop for CAPS generation and design.</p>
           </div>
         </div>
-        
         {generatedContent && (
-          <div className="flex gap-2">
-            <Button variant="outline" className="rounded-full" onClick={handleDiscard}>
-              <Trash2 className="mr-2 h-4 w-4" /> Discard
-            </Button>
-            <Button className="rounded-full bg-green-600 hover:bg-green-700 text-white" onClick={handleSaveToArchive} disabled={isSaving}>
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save to Archive
-            </Button>
-          </div>
+          <Button className="rounded-full bg-green-600 hover:bg-green-700" onClick={handleSaveToArchive} disabled={isSaving}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save
+          </Button>
         )}
       </div>
 
@@ -300,15 +271,9 @@ export function ContentCreatorClient() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-2">
               <TabsList className="grid grid-cols-3 bg-white/10 rounded-full h-14 p-1">
-                <TabsTrigger value="ai" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
-                  <Sparkles className="mr-2 h-4 w-4" /> Magic AI
-                </TabsTrigger>
-                <TabsTrigger value="upload" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
-                  <Camera className="mr-2 h-4 w-4" /> Scan
-                </TabsTrigger>
-                <TabsTrigger value="archive" className="rounded-full font-bold h-12 data-[state=active]:bg-yellow-400 data-[state=active]:text-indigo-950">
-                  <Box className="mr-2 h-4 w-4" /> Archive
-                </TabsTrigger>
+                <TabsTrigger value="ai" className="rounded-full font-bold h-12">Magic AI</TabsTrigger>
+                <TabsTrigger value="upload" className="rounded-full font-bold h-12">Scan</TabsTrigger>
+                <TabsTrigger value="archive" className="rounded-full font-bold h-12">Archive</TabsTrigger>
               </TabsList>
             </CardHeader>
 
@@ -324,9 +289,7 @@ export function ContentCreatorClient() {
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {grade === 'Other' && (
-                      <Input placeholder="Specify Grade" value={customGrade} onChange={e => setCustomGrade(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
+                    {grade === 'Other' && <Input placeholder="Specify Grade" value={customGrade} onChange={e => setCustomGrade(e.target.value)} className="bg-white/10 mt-2" />}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Language</Label>
@@ -337,9 +300,6 @@ export function ContentCreatorClient() {
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {language === 'Other' && (
-                      <Input placeholder="Specify Language" value={customLanguage} onChange={e => setCustomLanguage(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
                   </div>
                 </div>
 
@@ -350,12 +310,8 @@ export function ContentCreatorClient() {
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Category" /></SelectTrigger>
                       <SelectContent>
                         {Object.keys(CONTENT_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {category === 'Other' && (
-                      <Input placeholder="Specify Category" value={customCategory} onChange={e => setCustomCategory(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Type*</Label>
@@ -366,76 +322,45 @@ export function ContentCreatorClient() {
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {subType === 'Other' && (
-                      <Input placeholder="Specify Type" value={customSubType} onChange={e => setCustomSubType(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Subject*</Label>
-                    <Select value={subject} onValueChange={setSubject} disabled={grade === ''}>
+                    <Select value={subject} onValueChange={setSubject} disabled={!grade}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Subject" /></SelectTrigger>
                       <SelectContent>
                         {subjects?.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {subject === 'Other' && (
-                      <Input placeholder="Specify Subject" value={customSubject} onChange={e => setCustomSubject(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Topic*</Label>
-                    <Select value={topic} onValueChange={setTopic} disabled={subject === ''}>
+                    <Select value={topic} onValueChange={setTopic} disabled={!subject}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Topic" /></SelectTrigger>
                       <SelectContent>
                         {topics?.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>
-                    {topic === 'Other' && (
-                      <Input placeholder="Specify Topic" value={customTopic} onChange={e => setCustomTopic(e.target.value)} className="bg-white/10 mt-2" />
-                    )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-indigo-200 flex items-center gap-2"><Clock className="h-3 w-3" /> Length & Duration (Optional)</Label>
-                  <Input 
-                    placeholder="e.g. 45 minutes, 15 questions..." 
-                    value={duration} 
-                    onChange={e => setDuration(e.target.value)} 
-                    className="bg-white/10" 
-                  />
+                  <Input placeholder="e.g. 45 minutes, 15 questions..." value={duration} onChange={e => setDuration(e.target.value)} className="bg-white/10" />
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-indigo-200 flex items-center gap-2"><Target className="h-3 w-3" /> Teaching Objective</Label>
-                  <Input placeholder="e.g. Master long division with remainders" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
+                  <Input placeholder="e.g. Master long division" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-indigo-200 flex items-center gap-2"><UsersIcon className="h-3 w-3" /> Learner Profile / Barriers</Label>
-                  <Textarea placeholder="e.g. 'Many learners need visual pizza aids for fractions'" value={learnerProfile} onChange={e => setLearnerProfile(e.target.value)} className="bg-white/10 min-h-[80px]" />
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white/10 border border-white/20">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-400/20 rounded-lg">
-                      <ImageIcon className="h-4 w-4 text-yellow-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">AI-Generated Images</p>
-                      <p className="text-xs text-indigo-300">Use Gemini to create custom illustrations</p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={useAiImages}
-                    onCheckedChange={setUseAiImages}
-                    className="data-[state=checked]:bg-yellow-400"
-                  />
+                  <Label className="text-indigo-200">Additional Instructions</Label>
+                  <Textarea placeholder="e.g. Include specific keywords..." value={additionalInstructions} onChange={e => setAdditionalInstructions(e.target.value)} className="bg-white/10 min-h-[80px]" />
                 </div>
 
                 <Button onClick={handleGenerate} disabled={isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950 font-bold">
@@ -447,7 +372,7 @@ export function ContentCreatorClient() {
                 <div {...getRootProps()} className="border-2 border-dashed rounded-[2.5rem] p-12 text-center cursor-pointer hover:bg-white/5 transition-all">
                   <input {...getInputProps()} />
                   <FileUp className="h-16 w-16 mx-auto mb-4 text-indigo-200" />
-                  <p className="font-bold font-patrick-hand">Drag & Drop Documents</p>
+                  <p className="font-bold">Drag & Drop Documents</p>
                 </div>
                 <Button onClick={handleExtract} disabled={!preview || isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950">
                   {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <ScanText className="mr-2" />} Process Scan
@@ -478,9 +403,6 @@ export function ContentCreatorClient() {
                         {FONT_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-full">
-                      <Printer className="mr-2 h-4 w-4" /> Export PDF
-                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
                       <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
                     </Button>

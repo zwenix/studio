@@ -3,23 +3,22 @@
 /**
  * @fileOverview Generates CAPS-compliant educational content using Gemini 2.5 Pro.
  *
- * ROOT CAUSE OF 500 ERROR — FIXED:
- * The previous version used z.enum() for `grade` and `category` input fields.
- * Zod throws a validation error (which surfaces as a 500) when the client sends
- * a value not in the enum — e.g. category 'Assessments' vs the enum value
- * 'Exercises, Tasks & Assessments'. All input fields now use z.string() so any
- * value from the UI is accepted. The AI prompt enforces CAPS compliance — the
- * Zod schema just needs to not reject valid UI inputs.
+ * FIXES APPLIED:
+ * 1. import { z } from 'genkit'  — NOT from 'zod'. Genkit's output schema handling
+ *    requires its own z wrapper. Using raw zod breaks structured output parsing.
+ * 2. import { googleAI } from '@genkit-ai/google-genai' + googleAI.model(...)
+ *    instead of the bare string 'googleai/gemini-2.5-pro'. Matches the pattern
+ *    used in all other working flows (autograder, ai-tutor).
+ * 3. output: { schema: ... } — removed format:'json'. The schema drives JSON mode.
+ * 4. visualAids is .optional().default([]) so missing it never throws.
  */
 
-import { z } from 'zod';
+import { z } from 'genkit';
 import { ai } from '@/genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { createClient } from 'pexels';
 
 // ─── Input Schema ─────────────────────────────────────────────────────────────
-// All fields use z.string() — no z.enum() on inputs. Enum validation at the UI
-// level is sufficient; strict server-side enum validation only causes 500s when
-// the UI evolves and the enum list falls out of sync.
 
 const GenerateCAPSContentInputSchema = z.object({
   grade: z.string().describe('The grade level (R, 1–12, or custom).'),
@@ -46,13 +45,11 @@ export type GenerateCAPSContentOutput = {
 };
 
 // ─── AI Output Schema ─────────────────────────────────────────────────────────
-// visualAids is optional with a default of [] so that if Gemini omits it the
-// flow still succeeds instead of throwing an output-parsing error.
 
 const CapsResponseSchema = z.object({
-  content: z.string().describe('HTML content with [IMAGE:VA1] placeholders'),
-  memo: z.string().describe('HTML memo'),
-  rubric: z.string().describe('HTML rubric'),
+  content: z.string().describe('HTML content with optional [IMAGE:VA1] placeholders'),
+  memo: z.string().describe('HTML memo with answers and explanations'),
+  rubric: z.string().describe('HTML rubric with criteria and mark allocations'),
   visualAids: z
     .array(
       z.object({
@@ -108,10 +105,11 @@ async function fetchImage(query: string): Promise<string> {
 export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
-
-  const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
-    system: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
+  try {
+    const response = await ai.generate({
+      model: googleAI.model('gemini-2.5-flash'),
+      output: { schema: CapsResponseSchema },
+      system: `You are an expert South African teacher and CAPS curriculum designer for Grades R–12.
 
 CONTENT RULES:
 - Strictly align to the South African CAPS curriculum.
@@ -131,10 +129,10 @@ IMAGE PLACEHOLDER RULES:
 - Where an image enhances learning, insert a placeholder tag exactly like this: [IMAGE:VA1], [IMAGE:VA2], etc.
 - Use 2 to 4 images per piece of content — place them at logical points in the HTML.
 - In the "visualAids" array, list each image with its id and a detailed English search query.
-- Example: { "id": "VA1", "query": "South African children learning mathematics classroom Grade 4" }
-- DO NOT embed a VISUAL_AIDS text block inside the HTML — use only the JSON array.`,
+- Example: { "id": "VA1", "query": "South African Grade 4 children learning mathematics" }
+- DO NOT embed a VISUAL_AIDS text block inside the HTML — use the JSON array only.`,
 
-    prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
+      prompt: `Generate a ${input.contentType} for Grade ${input.grade}.
 Subject: ${input.subject}
 Topic: ${input.topic}
 Category: ${input.category}
@@ -145,55 +143,52 @@ Learner Profile / Barriers: ${input.learnerProfile || 'General class'}
 Length & Duration: ${input.duration || 'Default (30 min / 10 items)'}
 Additional Instructions: ${input.additionalInstructions || 'None'}
 Teacher Name: ${input.teacherName || 'Educator'}`,
+    });
 
-    output: {
-      format: 'json',
-      schema: CapsResponseSchema,
-    },
-  });
+    if (!response.output) {
+      throw new Error('AI returned no structured output.');
+    }
 
-  const output = response.output!;
+    const output = response.output;
+    let html = output.content || '';
+    const visualAids = output.visualAids || [];
 
-  let html = output.content || '';
-  const visualAids = output.visualAids || [];
+    // Fetch all images in parallel
+    if (visualAids.length > 0) {
+      const imageResults = await Promise.all(
+        visualAids.map(async (va) => ({
+          id: va.id,
+          query: va.query,
+          url: await fetchImage(va.query),
+        }))
+      );
 
-  // Fetch all images in parallel for speed
-  if (visualAids.length > 0) {
-    const imageResults = await Promise.all(
-      visualAids.map(async (va) => ({
-        id: va.id,
-        query: va.query,
-        url: await fetchImage(va.query),
-      }))
-    );
-
-    for (const result of imageResults) {
-      // Handle both [IMAGE:VA1] and [IMAGE: VA1] (with or without space)
-      const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
-      if (result.url) {
-        const imgHtml = `<div class="my-6 text-center">
-  <img
-    src="${result.url}"
-    alt="${result.query}"
-    class="rounded-xl shadow-lg mx-auto max-h-[400px]"
-    style="width:auto;height:auto;max-width:100%;"
-  />
+      for (const result of imageResults) {
+        const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
+        if (result.url) {
+          const imgHtml = `<div class="my-6 text-center">
+  <img src="${result.url}" alt="${result.query}" class="rounded-xl shadow-lg mx-auto max-h-[400px]" style="width:auto;height:auto;max-width:100%;" />
   <p class="text-xs text-muted-foreground mt-2 italic">${result.query}</p>
 </div>`;
-        html = html.replace(tagRegex, imgHtml);
-      } else {
-        // No image found — remove placeholder silently
-        html = html.replace(tagRegex, '');
+          html = html.replace(tagRegex, imgHtml);
+        } else {
+          html = html.replace(tagRegex, '');
+        }
       }
     }
+
+    // Clean up any remaining stray placeholders
+    html = html.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
+
+    return {
+      content: html,
+      memo: output.memo || '',
+      rubric: output.rubric || '',
+    };
+  } catch (error) {
+    console.error('generateCAPSContent error:', error);
+    throw new Error(
+      `Content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
-
-  // Clean up any remaining stray placeholders
-  html = html.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
-
-  return {
-    content: html,
-    memo: output.memo || '',
-    rubric: output.rubric || '',
-  };
 }

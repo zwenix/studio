@@ -9,3 +9,16 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+# Environment variables and secrets for the backend.
+# REQUIRED: The Gemini API key must be stored in Google Secret Manager.
+# To add it, run in your terminal:
+#   echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create GEMINI_API_KEY --data-file=- --project=studio-4710648038-f5ed1
+# Then grant access:
+#   gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
+#     --member="serviceAccount:firebase-app-hosting-compute@studio-4710648038-f5ed1.iam.gserviceaccount.com" \
+#     --role="roles/secretmanager.secretAccessor" \
+#     --project=studio-4710648038-f5ed1
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY

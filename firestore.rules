@@ -11,7 +11,9 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
     
     function isAdmin() {
@@ -34,7 +36,7 @@ service cloud.firestore {
     }
 
     match /learners/{learnerId} {
-      allow read: if isOwner(learnerId) || isTeacher() || isAdmin();
+      allow read: if isSignedIn();
       allow write: if isOwner(learnerId) || isAdmin();
       
       match /academicRecords/{recordId} {

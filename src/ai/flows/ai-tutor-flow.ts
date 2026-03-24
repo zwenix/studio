@@ -2,10 +2,6 @@
 
 /**
  * @fileOverview An AI Tutor flow using Gemini 1.5 Pro.
- * 
- * - aiTutor - A function that handles the conversation with the AI Tutor.
- * - AiTutorInput - Input schema for the tutor.
- * - AiTutorOutput - Output schema for the tutor.
  */
 
 import { ai } from '@/genkit';
@@ -35,7 +31,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
 
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash'),
+      model: googleAI.model('gemini-1.5-pro'),
       system: `You are an expert AI Tutor for South African students and teachers. 
       Be helpful, encouraging, and answer questions clearly. 
       Always respond in: ${input.language}.`,

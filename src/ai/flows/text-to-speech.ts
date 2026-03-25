@@ -2,7 +2,7 @@
 
 import { z } from 'genkit';
 import { googleCloud } from '@/genkit';
-import { defineFlow } from '@genkit-ai/flow';
+import { defineFlow } from '@genkit-ai/core'; // Corrected import path
 import TextToSpeech from '@google-cloud/text-to-speech';
 
 const TextToSpeechInputSchema = z.object({
@@ -29,7 +29,8 @@ export const textToSpeechFlow = defineFlow(
     };
 
     const [response] = await client.synthesizeSpeech(request);
-    const audioContent = response.audioContent as string;
+    // Annoyingly, the buffer needs to be converted to a base64 string for JSON serialization.
+    const audioContent = (response.audioContent as Buffer).toString('base64');
 
     return {
       audioContent,

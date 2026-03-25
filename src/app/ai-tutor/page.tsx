@@ -265,7 +265,7 @@ export default function AiTutorPage() {
             </div>
         </div>
 
-        <Card className="flex-1 flex flex-col rounded-[2.5rem] overflow-hidden shadow-xl border-none bg-white/50 backdrop-blur-sm">
+        <Card className="flex-1 flex flex-col rounded-[2.5rem] overflow-hidden shadow-xl border-none bg-white/50 backdrop-blur-sm dark:bg-slate-800/50">
           <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
             {isHistoryLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
@@ -282,7 +282,7 @@ export default function AiTutorPage() {
                           <AvatarFallback className="bg-primary/10"><Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="AI Tutor" width={16} height={24} /></AvatarFallback>
                         </Avatar>
                       )}
-                      <div className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white border rounded-bl-none'}`}>
+                      <div className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white border rounded-bl-none dark:bg-slate-700 dark:text-white'}`}>
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       </div>
                        {message.role === 'model' && (
@@ -317,7 +317,7 @@ export default function AiTutorPage() {
                  </div>
              )}
           </CardContent>
-          <div className="p-4 border-t bg-white">
+          <div className="p-4 border-t bg-white dark:bg-slate-900">
             <div className="relative flex items-center gap-2 max-w-4xl mx-auto">
               <Label htmlFor="ai-tutor-input" className="sr-only">Type your question here</Label>
               <div className="relative flex-1">

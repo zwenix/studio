@@ -37,6 +37,8 @@ import {
   Trash2,
   Type,
   Image as ImageIcon,
+  Volume2,
+  Square,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
@@ -97,38 +99,34 @@ export function ContentCreatorClient() {
   const { user } = useUser();
   const firestore = useFirestore();
   const printableRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTtsLoading, setIsTtsLoading] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [fontFamily, setFontFamily] = useState('font-body');
-  const [useAiImages, setUseAiImages] = useState(true);
 
   // AI Inputs
   const [grade, setGrade] = useState('');
   const [customGrade, setCustomGrade] = useState('');
-  
   const [subject, setSubject] = useState('');
   const [customSubject, setCustomSubject] = useState('');
-  
   const [topic, setTopic] = useState('');
   const [customTopic, setCustomTopic] = useState('');
-  
   const [category, setCategory] = useState<string>('');
   const [customCategory, setCustomCategory] = useState('');
-  
   const [subType, setSubType] = useState<string>('');
   const [customSubType, setCustomSubType] = useState('');
-  
   const [term, setTerm] = useState('');
   const [language, setLanguage] = useState('English');
   const [customLanguage, setCustomLanguage] = useState('');
-  
   const [learnerProfile, setLearnerProfile] = useState('');
   const [objective, setObjective] = useState('');
-  const [duration, setDuration] = useState(''); 
+  const [duration, setDuration] = useState('');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   // Scanning State
@@ -248,6 +246,50 @@ export function ContentCreatorClient() {
       setIsLoading(false);
     }
   };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsAudioPlaying(false);
+    }
+  };
+
+  const handleReadAloud = async () => {
+    if (isAudioPlaying) {
+      handleStopAudio();
+      return;
+    }
+
+    if (!generatedContent || !printableRef.current) return;
+    
+    setIsTtsLoading(true);
+    try {
+      const text = printableRef.current.innerText;
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const { audioContent } = await response.json();
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      audioRef.current = audio;
+      audioRef.current.onplay = () => setIsAudioPlaying(true);
+      audioRef.current.onended = () => setIsAudioPlaying(false);
+      audioRef.current.play();
+
+    } catch (error) {
+      toast({ title: 'Read Aloud Failed', variant: 'destructive' });
+    } finally {
+      setIsTtsLoading(false);
+    }
+  };
+
 
   return (
     <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
@@ -406,12 +448,16 @@ export function ContentCreatorClient() {
                     <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
                       <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
                     </Button>
+                    <Button variant="ghost" size="sm" onClick={handleReadAloud} disabled={isTtsLoading} className="rounded-full">
+                      {isTtsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isAudioPlaying ? <Square className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />)}
+                      {isAudioPlaying ? 'Stop' : 'Read Aloud'}
+                    </Button>
                   </>
                 )}
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-6" ref={printableRef}>
+          <CardContent className="flex-1 overflow-auto p-6 dark:text-slate-200" ref={printableRef}>
             {generatedContent ? (
               isEditMode ? (
                 <Textarea className="h-full font-mono text-xs no-print" value={generatedContent.content} onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})} />
@@ -427,6 +473,7 @@ export function ContentCreatorClient() {
           </CardContent>
         </Card>
       </div>
+      <audio ref={audioRef} className="hidden" />
     </div>
   );
 }

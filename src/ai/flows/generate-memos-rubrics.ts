@@ -1,8 +1,6 @@
 import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import * as z from 'zod';
-import { Action } from 'genkit';
-import { Flow } from 'genkit/flow';
 
 export const MemoSchema = z.object({
   memos: z.array(
@@ -51,8 +49,8 @@ export const generateMemosAndRubricsFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const memoPrompt = `Generate 3 short, engaging memos about ${input.topic} for ${input.grade} students. For each memo, provide a title, body, and a list of 3-5 discussion questions.`;
-    const rubricPrompt = `Create a detailed rubric for assessing student understanding of ${input.topic} at the ${input.grade} level. The rubric should cover 3-5 key skills, each with distinct performance levels (e.g., Beginning, Developing, Proficient, Exemplary).`;
+    const memoPrompt = `Generate 3 short, engaging memos about ${input.topic} for ${input.grade} students. For each memo, provide a title, body, and a list of 3-5 discussion questions. Ensure South African CAPS alignment and spelling.`;
+    const rubricPrompt = `Create a detailed rubric for assessing student understanding of ${input.topic} at the ${input.grade} level. The rubric should cover 3-5 key skills, each with distinct performance levels (e.g., Beginning, Developing, Proficient, Exemplary). Use South African CAPS standards.`;
 
     const [memoResponse, rubricResponse] = await Promise.all([
       ai.generate({
@@ -67,12 +65,12 @@ export const generateMemosAndRubricsFlow = ai.defineFlow(
       }),
     ]);
 
-    const memos = memoResponse.output();
+    const memos = memoResponse.output;
     if (!memos) {
       throw new Error('Failed to generate memos');
     }
 
-    const rubrics = rubricResponse.output();
+    const rubrics = rubricResponse.output;
     if (!rubrics) {
       throw new Error('Failed to generate rubrics');
     }

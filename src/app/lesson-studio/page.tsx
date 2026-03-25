@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, BookOpen, Image as ImageIcon } from 'lucide-react';
-import { generateLessonStudioFlow } from '@/ai/flows/generate-lesson-studio';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -21,7 +20,6 @@ import {
   ALL_GRADES,
   Grade,
   getSubjects,
-  getTopics,
 } from '@/lib/educational-data';
 
 export default function LessonStudioPage() {
@@ -50,11 +48,17 @@ export default function LessonStudioPage() {
     setLessonPlan(null);
 
     try {
-      const result = await generateLessonStudioFlow({
-        topic,
-        grade,
-        subject,
+      const response = await fetch('/api/lesson-studio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic, grade, subject }),
       });
+      if (!response.ok) {
+        throw new Error('Failed to generate lesson plan');
+      }
+      const result = await response.json();
       setLessonPlan(result);
     } catch (error) {
       console.error('Generation Failed:', error);
@@ -157,7 +161,7 @@ export default function LessonStudioPage() {
             <CardContent className="p-8 prose dark:prose-invert max-w-none font-body">
               <p className="lead">{lessonPlan.description}</p>
               {lessonPlan.sections.map((section: any, index: number) => (
-                <div key={index}>
+                <div key={index} className="mt-6">
                   <ReactMarkdown>{`## ${section.title}`}</ReactMarkdown>
                   <ReactMarkdown>{section.content}</ReactMarkdown>
                 </div>

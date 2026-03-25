@@ -44,7 +44,6 @@ import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  educationalData,
   Grade,
   ALL_GRADES,
   getSubjects,
@@ -286,9 +285,9 @@ export function ContentCreatorClient() {
         throw new Error('Failed to generate audio');
       }
 
-      const { audioContent } = await response.json();
-      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-      audioRef.current = audio;
+      const { audio } = await response.json();
+      const player = new Audio(audio);
+      audioRef.current = player;
       audioRef.current.onplay = () => setIsAudioPlaying(true);
       audioRef.current.onended = () => setIsAudioPlaying(false);
       audioRef.current.play();

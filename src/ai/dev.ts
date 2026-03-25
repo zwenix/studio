@@ -9,4 +9,3 @@ import '@/ai/flows/autograder-flow';
 import '@/ai/flows/generate-mock-assessment';
 import '@/ai/tools/image-search-tool';
 import '@/ai/flows/generate-lesson-studio';
-import '@/ai/flows/generate-lesson-studio';

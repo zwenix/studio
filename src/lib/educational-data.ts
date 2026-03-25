@@ -105,3 +105,8 @@ export const educationalData = {
     },
   },
 };
+
+export type Grade = keyof typeof educationalData;
+export const ALL_GRADES = Object.keys(educationalData) as Grade[];
+export const getSubjects = (grade: Grade) => educationalData[grade]?.subjects || [];
+export const getTopics = (grade: Grade, subject: string) => educationalData[grade]?.topics[subject as keyof typeof educationalData[Grade]['topics']] || [];

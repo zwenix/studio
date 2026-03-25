@@ -13,7 +13,8 @@ import {
   Cog,
   GraduationCap,
   BarChart,
-  Box
+  Box,
+  BookOpen
 } from 'lucide-react';
 import {
   SidebarMenu,
@@ -26,6 +27,7 @@ import { doc } from 'firebase/firestore';
 
 const allNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['teacher', 'student', 'parent', 'admin'] },
+  { href: '/lesson-studio', label: 'Lesson Studio', icon: BookOpen, roles: ['teacher', 'admin'] },
   { href: '/content-creator', label: 'Content Creator', icon: Palette, roles: ['teacher', 'admin'] },
   { href: '/content-archive', label: 'Content & Archive', icon: Box, roles: ['teacher', 'admin'] },
   { href: '/my-classes', label: 'My Classes', icon: GraduationCap, roles: ['teacher', 'student', 'admin'] },

@@ -43,7 +43,13 @@ import {
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { educationalData } from '@/lib/educational-data';
+import {
+  educationalData,
+  Grade,
+  ALL_GRADES,
+  getSubjects,
+  getTopics,
+} from '@/lib/educational-data';
 import { generateCAPSContent } from '@/ai/flows/generate-caps-content';
 import type { GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
@@ -99,7 +105,7 @@ export function ContentCreatorClient() {
   const { user } = useUser();
   const firestore = useFirestore();
   const printableRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
@@ -111,7 +117,7 @@ export function ContentCreatorClient() {
   const [fontFamily, setFontFamily] = useState('font-body');
 
   // AI Inputs
-  const [grade, setGrade] = useState('');
+  const [grade, setGrade] = useState<Grade | 'Other' | ''>('');
   const [customGrade, setCustomGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [customSubject, setCustomSubject] = useState('');
@@ -133,13 +139,17 @@ export function ContentCreatorClient() {
   const [preview, setPreview] = useState<string | null>(null);
 
   const subjects = useMemo(() => {
-    if (!grade || grade === 'Other') return [];
-    return (educationalData as any)[grade]?.subjects || [];
+    if (grade && grade !== 'Other') {
+      return getSubjects(grade as Grade);
+    }
+    return [];
   }, [grade]);
 
   const topics = useMemo(() => {
-    if (!grade || !subject || grade === 'Other' || subject === 'Other') return [];
-    return (educationalData as any)[grade]?.topics?.[subject] || [];
+    if (grade && grade !== 'Other' && subject && subject !== 'Other') {
+      return getTopics(grade as Grade, subject);
+    }
+    return [];
   }, [grade, subject]);
 
   const teacherRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
@@ -152,7 +162,7 @@ export function ContentCreatorClient() {
         if (snap.exists()) {
           const data = snap.data() as GeneratedContent;
           setGeneratedContent({ content: data.content, memo: data.memo || '', rubric: data.rubric || '' });
-          setGrade(data.grade);
+          setGrade(data.grade as Grade);
           setSubject(data.subject);
           setTopic(data.topic);
         }
@@ -324,10 +334,10 @@ export function ContentCreatorClient() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-indigo-200">Grade Level*</Label>
-                    <Select value={grade} onValueChange={setGrade}>
+                    <Select value={grade} onValueChange={(value) => setGrade(value as Grade | 'Other' | '')}>
                       <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>
-                        {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        {ALL_GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
                         <SelectItem value="Other">Other...</SelectItem>
                       </SelectContent>
                     </Select>

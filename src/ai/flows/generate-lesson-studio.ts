@@ -1,86 +1,41 @@
-'use server';
-
-import { z } from 'genkit';
 import { ai } from '@/genkit';
-import { createClient } from 'pexels';
+import { googleAI } from '@genkit-ai/google-genai';
+import * as z from 'zod';
+import { Action } from 'genkit';
+import { Flow } from 'genkit/flow';
 
-const GenerateLessonStudioInputSchema = z.object({
-  topic: z.string(),
+export const LessonPlanSchema = z.object({
+  title: z.string().describe('The title of the lesson plan'),
+  description: z.string().describe('A brief overview of the lesson'),
+  sections: z.array(
+    z.object({
+      title: z.string().describe('e.g., "Introduction", "Activity"'),
+      content: z.string().describe('The detailed content for this section'),
+    })
+  ),
 });
 
-export type GenerateLessonStudioInput = z.infer<typeof GenerateLessonStudioInputSchema>;
-
-export type GenerateLessonStudioOutput = {
-  lessonPlan: string;
-  posterUrl: string;
-};
-
-const LessonStudioResponseSchema = z.object({
-  lessonPlan: z.string().describe('Markdown formatted lesson plan and IDP strategy'),
-  posterQuery: z.string().describe('A descriptive English search query for a classroom poster related to the topic'),
-});
-
-async function fetchImage(query: string): Promise<string> {
-  const pexelsKey = process.env.PEXELS_API_KEY;
-  if (pexelsKey) {
-    try {
-      const client = createClient(pexelsKey);
-      const response = await client.photos.search({
-        query,
-        per_page: 1,
-        orientation: 'landscape',
-      });
-      if ('photos' in response && response.photos.length > 0) {
-        return response.photos[0].src.large;
-      }
-    } catch (e) {
-      console.error('Pexels failed for query:', query, e);
-    }
-  }
-
-  const pixabayKey = process.env.PIXABAY_API_KEY;
-  if (pixabayKey) {
-    try {
-      const url = `https://pixabay.com/api/?key=${pixabayKey}&q=${encodeURIComponent(
-        query
-      )}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.hits?.length > 0) {
-        return data.hits[0].largeImageURL;
-      }
-    } catch (e) {
-      console.error('Pixabay failed for query:', query, e);
-    }
-  }
-
-  return '';
-}
-
-export async function generateLessonStudio(
-  input: GenerateLessonStudioInput
-): Promise<GenerateLessonStudioOutput> {
-  try {
+export const generateLessonStudioFlow = ai.defineFlow(
+  {
+    name: 'generateLessonStudio',
+    inputSchema: z.object({
+      topic: z.string(),
+      grade: z.string(),
+      subject: z.string(),
+    }),
+    outputSchema: LessonPlanSchema,
+  },
+  async (input) => {
+    const prompt = `Create a comprehensive lesson plan about ${input.topic} for a ${input.grade} grade ${input.subject} class. The lesson plan should include a title, description, and multiple sections with detailed content.`;
     const response = await ai.generate({
-      model: 'googleai/gemini-1.5-pro',
-      output: { schema: LessonStudioResponseSchema },
-      system: `You are an expert South African teacher and curriculum designer.`,
-      prompt: `Create a structured lesson plan and IDP strategy for primary school learners about: ${input.topic}. Also provide a search query for a related poster.`,
+      model: googleAI.model('gemini-1.5-pro'),
+      prompt: prompt,
+      output: { schema: LessonPlanSchema },
     });
-
-    if (!response.output) {
-      throw new Error('AI returned no structured output.');
+    const lessonPlan = response.output();
+    if (!lessonPlan) {
+      throw new Error('Failed to generate lesson plan');
     }
-
-    const { lessonPlan, posterQuery } = response.output;
-    const posterUrl = await fetchImage(posterQuery);
-
-    return {
-      lessonPlan,
-      posterUrl,
-    };
-  } catch (error) {
-    console.error('generateLessonStudio error:', error);
-    throw new Error('Failed to generate lesson studio content');
+    return lessonPlan;
   }
-}
+);

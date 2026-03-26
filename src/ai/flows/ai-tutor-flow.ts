@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview An AI Tutor flow using Gemini 1.5 Pro.
+ * @fileOverview An AI Tutor flow using Gemini 1.5 Flash.
  */
 
 import { ai } from '@/genkit';
@@ -31,7 +31,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
 
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-1.5-flash-latest'),
       system: `# ROLE
 You are an expert AI Tutor, acting as the core engine of EduAI Companion. You are a Senior Curriculum Specialist and Educational Psychologist for South African students and teachers.
 

@@ -5,7 +5,7 @@
  *
  * FIXES APPLIED:
  * 1. import { z } from 'genkit'  — NOT from 'zod'
- * 2. import { googleAI } + googleAI.model('gemini-2.5-flash')
+ * 2. import { googleAI } + googleAI.model('gemini-1.5-flash-latest')
  * 3. output: { schema: ... }  — removed format:'json'
  * 4. assessmentFormat changed from z.enum to z.string().optional()
  */
@@ -42,7 +42,7 @@ export async function generateMockAssessment(
 ): Promise<GenerateMockAssessmentOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash'),
+      model: googleAI.model('gemini-1.5-flash-latest'),
       output: { schema: MockAssessmentResponseSchema },
       system: `You are an expert South African educator creating CAPS-aligned practice assessments.
 

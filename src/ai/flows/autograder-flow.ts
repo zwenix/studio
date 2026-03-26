@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview AI Autograder flow using Gemini 1.5 Pro.
+ * @fileOverview AI Autograder flow using Gemini 1.5 Pro (latest).
  */
 
 import { ai } from '@/genkit';
@@ -29,7 +29,7 @@ export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-1.5-pro-latest'),
       output: { schema: AutogradeOutputSchema },
       system: `# ROLE
 You are a Senior Curriculum Specialist and Educational Psychologist with 20+ years of experience in South African K-12 pedagogy. You are acting as an expert AI grader for South African schools.

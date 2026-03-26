@@ -26,7 +26,7 @@ export const generateLessonStudioFlow = ai.defineFlow(
   async (input) => {
     const prompt = `Create a comprehensive lesson plan about ${input.topic} for a ${input.grade} grade ${input.subject} class. Strictly align to the South African CAPS curriculum using South African English. Include title, description, and multiple detailed sections (Introduction, Content, Activities, Conclusion).`;
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-1.5-pro-latest'),
       prompt: prompt,
       output: { schema: LessonPlanSchema },
     });

@@ -56,7 +56,7 @@ const CapsResponseSchema = z.object({
 async function generateClassroomPoster(query: string): Promise<string> {
   try {
     const imageResponse = await ai.generate({
-      model: googleAI.model('imagen-3.0-generate-001'), 
+      model: googleAI.model('imagen-3'), 
       prompt: `Create a high-resolution, vibrant, and educational classroom poster or illustration about: ${query}. Ensure it is safe for primary school children.`,
       output: { format: 'media' }
     });
@@ -75,7 +75,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      model: googleAI.model('gemini-1.5-pro-latest'),
       output: { schema: CapsResponseSchema },
       system: `# ROLE
 You are a Senior Curriculum Specialist and Educational Psychologist with 20+ years of experience in South African K-12 pedagogy and Individualized Learning Development Plans (ILDPs).

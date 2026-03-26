@@ -54,12 +54,12 @@ export const generateMemosAndRubricsFlow = ai.defineFlow(
 
     const [memoResponse, rubricResponse] = await Promise.all([
       ai.generate({
-        model: googleAI.model('gemini-1.5-pro'),
+        model: googleAI.model('gemini-1.5-pro-latest'),
         prompt: memoPrompt,
         output: { schema: MemoSchema },
       }),
       ai.generate({
-        model: googleAI.model('gemini-1.5-pro'),
+        model: googleAI.model('gemini-1.5-pro-latest'),
         prompt: rubricPrompt,
         output: { schema: RubricSchema },
       }),

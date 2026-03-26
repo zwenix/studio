@@ -2,7 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   experimental: {
-    swcTracingFlush: false,
+    serverComponentsExternalPackages: ['genkit', '@genkit-ai/google-genai'],
   },
   images: {
     remotePatterns: [

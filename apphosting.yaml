@@ -1,24 +1,11 @@
-# Settings to manage and configure a Firebase App Hosting backend.
-# https://firebase.google.com/docs/app-hosting/configure
-
-# Enables automatic injection of Firebase-related environment variables and
-# provisions backend resources like Auth providers. This is critical for deployment.
 firebase: {}
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
   maxInstances: 1
+  cpu: 1
+  memoryMiB: 512
 
-# Environment variables and secrets for the backend.
-# REQUIRED: The Gemini API key must be stored in Google Secret Manager.
-# To add it, run in your terminal:
-#   echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create GEMINI_API_KEY --data-file=- --project=studio-4710648038-f5ed1
-# Then grant access:
-#   gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
-#     --member="serviceAccount:firebase-app-hosting-compute@studio-4710648038-f5ed1.iam.gserviceaccount.com" \
-#     --role="roles/secretmanager.secretAccessor" \
-#     --project=studio-4710648038-f5ed1
-env:
-  - variable: GEMINI_API_KEY
-    secret: GEMINI_API_KEY
+buildConfig:
+  env:
+    - variable: NODE_OPTIONS
+      value: "--max-old-space-size=3072"

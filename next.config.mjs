@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  experimental: {
+    swcTracingFlush: false,
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.pexels.com' },

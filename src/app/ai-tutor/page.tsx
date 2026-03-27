@@ -23,9 +23,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, orderBy, where, addDoc, serverTimestamp, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
-type Message = {
+type SimpleMessage = {
   role: 'user' | 'model';
-  content: { text: string }[];
+  text: string;
 };
 
 const languages = [
@@ -82,10 +82,10 @@ export default function AiTutorPage() {
 
   const { data: savedMessages, isLoading: isHistoryLoading } = useCollection<any>(historyQuery);
 
-  const messages: Message[] = useMemo(() => {
+  const messages: SimpleMessage[] = useMemo(() => {
     return (savedMessages || []).map(m => ({ 
         role: m.role, 
-        content: [{ text: m.text }] 
+        text: m.text 
     }));
   }, [savedMessages]);
 
@@ -171,14 +171,20 @@ export default function AiTutorPage() {
       // 1. Save user message
       await saveMessage('user', userInput);
 
-      // 2. Call AI
+      // 2. Convert simple messages to Genkit compatible format before sending
+      const genkitHistory = messages.map(m => ({
+          role: m.role,
+          content: [{ text: m.text }]
+      }));
+
+      // 3. Call AI
       const result = await aiTutor({ 
         query: userInput, 
-        history: messages, 
+        history: genkitHistory, 
         language 
       });
 
-      // 3. Save model response
+      // 4. Save model response
       await saveMessage('model', result.response);
     } catch (error) {
       console.error('AI Tutor failed:', error);

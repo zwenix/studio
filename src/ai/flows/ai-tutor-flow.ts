@@ -1,7 +1,11 @@
 'use server';
 
 /**
- * @fileOverview An AI Tutor flow that uses the new AI Service.
+ * @fileOverview AI Tutor flow — real-time CAPS-aligned tutoring.
+ *
+ * Model (per chat.txt): gemini-3.1-flash
+ * Rationale: Flash provides the lowest latency for back-and-forth dialogue.
+ * "Thinking time feels like a lag" in live tutoring — Flash is the right choice here.
  */
 
 import { z } from 'zod';
@@ -32,22 +36,27 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   const historyMessages = input.history || [];
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
-      system: `You are an expert AI Tutor for South African students and teachers. 
-      
-      CRITICAL RULE: All your explanations, teaching methods, terminology, and examples MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) curriculum for the appropriate grade level.
-      
-      Be helpful, encouraging, and answer questions clearly. Use South African English spelling.
-      Always respond in: ${input.language}.`,
+      // gemini-3.1-flash: lowest latency for real-time tutoring dialogue (per chat.txt)
+      model: googleAI.model('gemini-3.1-flash'),
+      system: `You are an expert AI Tutor for South African students and teachers.
+
+CRITICAL RULE: All your explanations, teaching methods, terminology, and examples MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) curriculum for the appropriate grade level.
+
+TUTORING RULES:
+- Be helpful, encouraging, and answer questions clearly and concisely.
+- Use South African English spelling at all times (colour, maths, realise, etc.).
+- Use South African contexts and examples (local names, ZAR, SA geography, SA history).
+- Use BODMAS (not PEMDAS) for mathematics.
+- Adapt your explanation depth and vocabulary to the learner's grade level.
+Always respond in: ${input.language}.`,
       messages: [
         ...historyMessages,
         { role: 'user', content: [{ text: input.query }] },
       ],
     });
+
     const text = response.text();
-    if (!text) {
-      throw new Error('AI Tutor returned no response.');
-    }
+    if (!text) throw new Error('AI Tutor returned no response.');
     return { response: text };
   } catch (error) {
     console.error('AI Tutor error:', error);

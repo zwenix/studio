@@ -1,0 +1,15 @@
+{"timestamp":"2026-03-26T19:11:13.694Z","level":"INFO","module":"WorkspaceIdentityService","message":"Workspace identity: studio → 684ba5a2deed","traceId":"c224e5b460fb1883398bc3bb368450ef"}
+{"timestamp":"2026-03-26T19:11:28.780Z","level":"INFO","module":"SqliteDatabaseService","message":"Starting SQLite database initialization...","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:11:33.665Z","level":"INFO","module":"SqliteDatabaseService","message":"Initializing sql.js...","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:11:39.711Z","level":"INFO","module":"SqliteDatabaseService","message":"Looking for WASM file at: c:\\Users\\Zwelakhe Msuthu\\.antigravity\\extensions\\fiatinnovations.ola-code-buddy-4.2.1-universal\\dist\\grammars\\sql-wasm.wasm","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:12:54.644Z","level":"INFO","module":"SqliteDatabaseService","message":"Using workspace root: c:\\studio","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:01.923Z","level":"INFO","module":"SqliteDatabaseService","message":"Database path: c:\\studio\\.codebuddy\\codebase_analysis.db","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:20.878Z","level":"INFO","module":"SqliteDatabaseService","message":"Creating Database instance with sql.js...","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:25.060Z","level":"INFO","module":"SqliteDatabaseService","message":"Creating/Verifying database tables...","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:38.055Z","level":"DEBUG","module":"SqliteDatabaseService","message":"SQLite database tables and indexes created","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:40.311Z","level":"WARN","module":"SqliteDatabaseService","message":"Schema migration v1 note: duplicate column name: saved","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:13:48.490Z","level":"INFO","module":"SqliteDatabaseService","message":"SQLite database initialized successfully at: c:\\studio\\.codebuddy\\codebase_analysis.db","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:19:34.653Z","level":"INFO","module":"ExternalSecurityConfigService","message":"Auto-created default security config at c:\\studio\\.codebuddy\\security.json","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:19:36.938Z","level":"INFO","module":"ExternalSecurityConfigService","message":"Security config initialised (file exists: true)","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:19:41.752Z","level":"DEBUG","module":"PermissionScopeService","message":"No permissions.json found — using defaults","traceId":"03d1abd211a0e5e3e58174223f074c7e"}
+{"timestamp":"2026-03-26T19:19:42.104Z","level":"INFO","module":"PermissionScopeService","message":"Permission scope initialized: profile=standard","traceId":"03d1abd211a0e5e3e58174223f074c7e"}

@@ -1,10 +1,8 @@
 'use server';
 /**
- * @fileOverview An OCR and handwriting recognition AI agent.
+ * @fileOverview OCR and handwriting recognition flow.
  *
- * - extractTextFromImage - A function that handles the text extraction process from images.
- * - ExtractTextFromImageInput - The input type for the extractTextFromImage function.
- * - ExtractTextFromImageOutput - The return type for the extractTextFromImage function.
+ * Model: gemini-3.1-flash — fast multimodal model, sufficient for OCR tasks.
  */
 
 import {ai} from '@/genkit';
@@ -31,14 +29,13 @@ export async function extractTextFromImage(input: ExtractTextFromImageInput): Pr
 
 const prompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  // gemini-3.1-flash: fast multimodal model — appropriate for OCR, no heavy reasoning needed
+  model: googleAI.model('gemini-3.1-flash'),
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
   prompt: `You are an expert OCR and handwriting recognition AI.
 
-You will use this information to extract the text from the image.
-
-Use the following as the primary source of information about the image.
+Extract all text from the image accurately, preserving the original structure and layout where possible.
 
 Photo: {{media url=photoDataUri}}`,
 });

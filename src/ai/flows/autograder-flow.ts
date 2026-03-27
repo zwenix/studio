@@ -1,7 +1,9 @@
 'use server';
 
 /**
- * @fileOverview An Autograder flow that uses the new AI Service.
+ * @fileOverview Autograder flow — CAPS-aligned assessment grading.
+ *
+ * Model (per chat.txt): gemini-3.1-pro (Thinking Mode / high accuracy for rubric grading)
  */
 
 import { z } from 'zod';
@@ -26,38 +28,34 @@ const AutogradeOutputSchema = z.object({
 
 export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 
-export async function autograde(
-  input: AutogradeInput
-): Promise<AutogradeOutput> {
+export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-1.5-pro'),
+      // gemini-3.1-pro: flagship model with high accuracy for rubric-based grading (per chat.txt)
+      model: googleAI.model('gemini-3.1-pro'),
       output: { schema: AutogradeOutputSchema },
       system: `You are a Senior Curriculum Specialist and expert AI grader for South African schools.
-      
-      CRITICAL RULE: All grading, feedback, and rubrics MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) assessment guidelines and cognitive demand levels for the specified grade and subject.
-      
-      Grade the work accurately and provide encouraging, constructive feedback. Use South African English spelling.
-      ${
-        input.culturalContextIntegration
-          ? 'Use local South African contexts, names, and a culturally sensitive tone.'
-          : ''
-      }`,
+
+CRITICAL RULE: All grading, feedback, and rubrics MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) assessment guidelines and cognitive demand levels for the specified grade and subject.
+
+GRADING RULES:
+- Strictly analyse student work against a standard 4-point rubric: (1) Beginning, (2) Developing, (3) Proficient, (4) Distinguished.
+- Provide encouraging, constructive feedback that is specific about where the learner went wrong and exactly how to improve.
+- Use South African English spelling at all times.
+- Mark allocations must follow CAPS norms for the subject and grade.
+${input.culturalContextIntegration ? '- Use local South African contexts, names, and a culturally sensitive, encouraging tone.' : ''}`,
       prompt: `Subject: ${input.subject || 'General'}
-      Grade Level: ${input.grade || 'N/A'}
-      Instructions/Memo: ${input.gradingInstructions}
-      Student Submission: ${input.assignmentContent}`,
+Grade Level: ${input.grade || 'N/A'}
+Instructions / Memo: ${input.gradingInstructions}
+Student Submission: ${input.assignmentContent}`,
     });
 
-    if (!response.output)
-      throw new Error('AI autograder returned no structured output.');
+    if (!response.output) throw new Error('AI autograder returned no structured output.');
     return response.output;
   } catch (error) {
     console.error('AI Autograder error:', error);
     throw new Error(
-      `AI Autograder failed: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`
+      `AI Autograder failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

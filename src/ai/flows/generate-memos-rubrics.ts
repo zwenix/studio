@@ -5,7 +5,7 @@ import * as z from 'zod';
 /**
  * Memos and Rubrics generation flow.
  *
- * Model (per chat.txt): gemini-3.1-pro
+ * Model (per chat.txt): gemini-3.1-pro-preview
  * Rationale: High accuracy required for CAPS-aligned rubric design and assessment memos.
  */
 
@@ -71,14 +71,14 @@ Base mark allocations strictly on CAPS norms for Grade ${input.grade}.`;
 
     const [memoResponse, rubricResponse] = await Promise.all([
       ai.generate({
-        // gemini-3.1-pro: flagship model for accurate CAPS rubric and memo generation (per chat.txt)
-        model: googleAI.model('gemini-3.1-pro'),
+        // gemini-3.1-pro-preview: flagship model for accurate CAPS rubric and memo generation (per chat.txt)
+        model: googleAI.model('gemini-3.1-pro-preview'),
         system: capsSystemPrompt,
         prompt: memoPrompt,
         output: { schema: MemoSchema },
       }),
       ai.generate({
-        model: googleAI.model('gemini-3.1-pro'),
+        model: googleAI.model('gemini-3.1-pro-preview'),
         system: capsSystemPrompt,
         prompt: rubricPrompt,
         output: { schema: RubricSchema },

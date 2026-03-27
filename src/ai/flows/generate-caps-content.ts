@@ -4,11 +4,11 @@
  * @fileOverview Generates CAPS-compliant educational content.
  *
  * Models (per EduAI Companion architecture — chat.txt):
- *   Text generation:  gemini-3.1-pro          — flagship model for all educational content
+ *   Text generation:  gemini-3.1-pro-preview          — flagship model for all educational content
  *   Image generation: gemini-3-flash-image     — high-fidelity classroom poster/visual generation
  *
  * Architecture:
- *  1. gemini-3.1-pro generates the content body in Markdown with [IMAGE:VAn] placeholders.
+ *  1. gemini-3.1-pro-preview generates the content body in Markdown with [IMAGE:VAn] placeholders.
  *  2. A `visualAids` JSON array provides a detailed prompt per image.
  *  3. fetchImage() calls gemini-3-flash-image for each visual aid concurrently.
  *  4. Placeholders are resolved to media URLs / base64 data URIs for the renderer.
@@ -95,7 +95,7 @@ export async function generateCAPSContent(
 ): Promise<GenerateCAPSContentOutput> {
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-pro'),
+      model: googleAI.model('gemini-3.1-pro-preview'),
       output: { schema: CapsResponseSchema },
       system: `You are an expert South African Senior Curriculum Specialist and CAPS designer for Grades R-12, with 20+ years of classroom and curriculum development experience.
 

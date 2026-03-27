@@ -3,7 +3,7 @@
 /**
  * @fileOverview Autograder flow — CAPS-aligned assessment grading.
  *
- * Model (per chat.txt): gemini-3.1-pro (Thinking Mode / high accuracy for rubric grading)
+ * Model (per chat.txt): gemini-3.1-pro-preview (Thinking Mode / high accuracy for rubric grading)
  */
 
 import { z } from 'zod';
@@ -31,8 +31,8 @@ export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   try {
     const response = await ai.generate({
-      // gemini-3.1-pro: flagship model with high accuracy for rubric-based grading (per chat.txt)
-      model: googleAI.model('gemini-3.1-pro'),
+      // gemini-3.1-pro-preview: flagship model with high accuracy for rubric-based grading (per chat.txt)
+      model: googleAI.model('gemini-3.1-pro-preview'),
       output: { schema: AutogradeOutputSchema },
       system: `You are a Senior Curriculum Specialist and expert AI grader for South African schools.
 

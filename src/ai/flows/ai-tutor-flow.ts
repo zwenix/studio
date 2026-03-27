@@ -3,7 +3,7 @@
 /**
  * @fileOverview AI Tutor flow — real-time CAPS-aligned tutoring.
  *
- * Model (per chat.txt): gemini-3.1-flash
+ * Model (per chat.txt): gemini-3.1-flash-live-preview
  * Rationale: Flash provides the lowest latency for back-and-forth dialogue.
  * "Thinking time feels like a lag" in live tutoring — Flash is the right choice here.
  */
@@ -36,8 +36,8 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   const historyMessages = input.history || [];
   try {
     const response = await ai.generate({
-      // gemini-3.1-flash: lowest latency for real-time tutoring dialogue (per chat.txt)
-      model: googleAI.model('gemini-3.1-flash'),
+      // gemini-3.1-flash-live-preview: lowest latency for real-time tutoring dialogue (per chat.txt)
+      model: googleAI.model('gemini-3.1-flash-live-preview'),
       system: `You are an expert AI Tutor for South African students and teachers.
 
 CRITICAL RULE: All your explanations, teaching methods, terminology, and examples MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) curriculum for the appropriate grade level.

@@ -3,7 +3,7 @@
 /**
  * @fileOverview Generates CAPS-aligned mock assessments.
  *
- * Model (per chat.txt): gemini-3.1-pro
+ * Model (per chat.txt): gemini-3.1-pro-preview
  * Rationale: High accuracy required for assessment design and cognitive-level alignment.
  */
 
@@ -39,8 +39,8 @@ export async function generateMockAssessment(
 ): Promise<GenerateMockAssessmentOutput> {
   try {
     const response = await ai.generate({
-      // gemini-3.1-pro: flagship model for high-accuracy CAPS assessment design (per chat.txt)
-      model: googleAI.model('gemini-3.1-pro'),
+      // gemini-3.1-pro-preview: flagship model for high-accuracy CAPS assessment design (per chat.txt)
+      model: googleAI.model('gemini-3.1-pro-preview'),
       output: { schema: MockAssessmentResponseSchema },
       system: `You are an expert South African educator and CAPS assessment specialist creating practice assessments for Grades R-12.
 

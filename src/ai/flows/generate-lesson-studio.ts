@@ -29,7 +29,7 @@ export const generateLessonStudioFlow = ai.defineFlow(
     const { grade, subject, topic, lessonType } = input;
     
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-pro'),
+      model: googleAI.model('gemini-3.1-pro-preview'),
       system: `You are a Senior Curriculum Specialist and Educational Psychologist with 20+ years of experience in K-12 pedagogy and South African CAPS curriculum design.
       Your task is to generate a comprehensive, CAPS-aligned lesson plan based on the user's specifications.
       

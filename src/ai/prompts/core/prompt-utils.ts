@@ -8,13 +8,13 @@ export function cleanMultiline(input: string): string {
 
 export function optionalLine(label: string, value?: string | number | boolean): string {
   if (value === undefined || value === null || value === '') return '';
-  return \`- \${label}: \${String(value)}\`;
+  return `- ${label}: ${String(value)}`;
 }
 
 export function optionalSection(title: string, lines: Array<string | undefined | null>): string {
   const filtered = lines.filter(Boolean) as string[];
   if (!filtered.length) return '';
-  return \`\${title}\n\${filtered.join('\n')}\`;
+  return `${title}\n${filtered.join('\n')}`;
 }
 
 export function stringifyPrettyJsonExample(example: unknown): string {

@@ -15,6 +15,11 @@ export interface ImagePromptBuildInput {
 }
 
 export function buildEducationalImagePrompt(input: ImagePromptBuildInput): string {
+  const mustIncludeText = input.mustInclude.map(item => `- ${item}`).join('\n');
+  const saContextText = (input.saContext ?? ['Use South African school-appropriate and culturally relevant context where suitable.'])
+    .map(item => `- ${item}`)
+    .join('\n');
+
   return cleanMultiline(`
 Create a high-resolution educational illustration for a South African classroom.
 
@@ -50,12 +55,10 @@ Composition:
 - no tiny details that disappear when printed
 
 Must include:
-${input.mustInclude.map(item => \`- \${item}\`).join('\n')}
+${mustIncludeText}
 
 South African context:
-${(input.saContext ?? ['Use South African school-appropriate and culturally relevant context where suitable.'])
-  .map(item => \`- \${item}\`)
-  .join('\n')}
+${saContextText}
 
 ${VISUAL_NEGATIVE_CONSTRAINTS}
 

@@ -1,4 +1,4 @@
-export const LESSON_STUDIO_SCHEMA_HINT = \`
+export const LESSON_STUDIO_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "title": "string",
@@ -56,9 +56,9 @@ Expected JSON shape:
   "homework": "string",
   "teacher_notes": ["string"]
 }
-\`;
+`;
 
-export const POSTER_SCHEMA_HINT = \`
+export const POSTER_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "content_type": "poster",
@@ -116,9 +116,9 @@ Expected JSON shape:
     "follow_up_activity": "string"
   }
 }
-\`;
+`;
 
-export const WORKSHEET_SCHEMA_HINT = \`
+export const WORKSHEET_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "content_type": "worksheet",
@@ -163,9 +163,9 @@ Expected JSON shape:
   "image_prompt": "string",
   "formatting_notes": ["string"]
 }
-\`;
+`;
 
-export const STUDY_GUIDE_SCHEMA_HINT = \`
+export const STUDY_GUIDE_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "content_type": "study_guide",
@@ -204,9 +204,9 @@ Expected JSON shape:
   ],
   "design_notes": ["string"]
 }
-\`;
+`;
 
-export const ASSESSMENT_SCHEMA_HINT = \`
+export const ASSESSMENT_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "paper_title": "string",
@@ -243,9 +243,9 @@ Expected JSON shape:
   ],
   "quality_checks": ["string"]
 }
-\`;
+`;
 
-export const MEMO_SCHEMA_HINT = \`
+export const MEMO_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "memo_title": "string",
@@ -271,9 +271,9 @@ Expected JSON shape:
   "moderation_notes": ["string"],
   "common_learner_errors": ["string"]
 }
-\`;
+`;
 
-export const AUTOGRADER_SCHEMA_HINT = \`
+export const AUTOGRADER_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "overall_level": "string",
@@ -291,9 +291,9 @@ Expected JSON shape:
   "learner_friendly_feedback": "string",
   "teacher_feedback": "string"
 }
-\`;
+`;
 
-export const OCR_SCHEMA_HINT = \`
+export const OCR_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "extracted_text": "string",
@@ -301,9 +301,9 @@ Expected JSON shape:
   "confidence_notes": ["string"],
   "unclear_segments": ["string"]
 }
-\`;
+`;
 
-export const CAPS_REVIEW_SCHEMA_HINT = \`
+export const CAPS_REVIEW_SCHEMA_HINT = `
 Expected JSON shape:
 {
   "overall_verdict": "string",
@@ -312,4 +312,4 @@ Expected JSON shape:
   "required_fixes": ["string"],
   "revised_version_if_needed": {}
 }
-\`;
+`;

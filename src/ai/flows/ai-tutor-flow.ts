@@ -1,16 +1,9 @@
 'use server';
 
-/**
- * @fileOverview AI Tutor flow — real-time CAPS-aligned tutoring.
- *
- * Model (per chat.txt): gemini-3.1-flash-live-preview
- * Rationale: Flash provides the lowest latency for back-and-forth dialogue.
- * "Thinking time feels like a lag" in live tutoring — Flash is the right choice here.
- */
-
 import { z } from 'zod';
 import { ai } from '../../genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { buildTutorPrompt } from '@/ai/prompts';
 
 const AiTutorInputSchema = z.object({
   query: z.string().describe('The user question or message.'),
@@ -35,23 +28,17 @@ export type AiTutorOutput = z.infer<typeof AiTutorOutputSchema>;
 export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   const historyMessages = input.history || [];
   try {
+    const promptParams = buildTutorPrompt({
+      learnerMessage: input.query,
+      language: input.language,
+    });
+
     const response = await ai.generate({
-      // gemini-3.1-flash-live-preview: lowest latency for real-time tutoring dialogue (per chat.txt)
       model: googleAI.model('gemini-2.0-flash'), // Using a more stable model for tutoring
-      system: `You are an expert AI Tutor for South African students and teachers.
-
-CRITICAL RULE: All your explanations, teaching methods, terminology, and examples MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) curriculum for the appropriate grade level.
-
-TUTORING RULES:
-- Be helpful, encouraging, and answer questions clearly and concisely.
-- Use South African English spelling at all times (colour, maths, realise, etc.).
-- Use South African contexts and examples (local names, ZAR, SA geography, SA history).
-- Use BODMAS (not PEMDAS) for mathematics.
-- Adapt your explanation depth and vocabulary to the learner's grade level.
-Always respond in: ${input.language}.`,
+      system: promptParams.systemInstruction,
       messages: [
         ...historyMessages,
-        { role: 'user', content: [{ text: input.query }] },
+        { role: 'user', content: [{ text: promptParams.userPrompt }] },
       ],
     });
 

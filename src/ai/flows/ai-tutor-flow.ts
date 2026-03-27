@@ -55,7 +55,7 @@ Always respond in: ${input.language}.`,
       ],
     });
 
-    const text = response.text();
+    const text = response.text;
     if (!text) throw new Error('AI Tutor returned no response.');
     return { response: text };
   } catch (error) {

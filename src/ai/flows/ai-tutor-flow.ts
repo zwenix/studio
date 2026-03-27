@@ -37,7 +37,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
   try {
     const response = await ai.generate({
       // gemini-3.1-flash-live-preview: lowest latency for real-time tutoring dialogue (per chat.txt)
-      model: googleAI.model('gemini-3.1-flash-live-preview'),
+      model: googleAI.model('gemini-2.0-flash'), // Using a more stable model for tutoring
       system: `You are an expert AI Tutor for South African students and teachers.
 
 CRITICAL RULE: All your explanations, teaching methods, terminology, and examples MUST strictly align with the South African CAPS (Curriculum and Assessment Policy Statement) curriculum for the appropriate grade level.

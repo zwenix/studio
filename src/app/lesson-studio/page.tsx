@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import {
   SelectLabel,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, Save, Edit3, Printer, Square, Volume2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,6 +23,8 @@ import {
   educationalData,
   lessonTypes,
 } from '@/lib/educational-data';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const PHASE_GROUPS = {
   'Foundation Phase': ['1', '2', '3'],
@@ -32,6 +34,11 @@ const PHASE_GROUPS = {
 };
 
 export default function LessonStudioPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const printableRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const [grade, setGrade] = useState<string>('');
   const [customGrade, setCustomGrade] = useState<string>('');
   
@@ -46,6 +53,13 @@ export default function LessonStudioPage() {
 
   const [lessonPlan, setLessonPlan] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedContent, setEditedContent] = useState('');
+  
+  const [isTtsLoading, setIsTtsLoading] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
   const { toast } = useToast();
 
   const subjects = useMemo(() => {
@@ -79,6 +93,7 @@ export default function LessonStudioPage() {
 
     setIsGenerating(true);
     setLessonPlan(null);
+    setIsEditMode(false);
 
     try {
       const response = await fetch('/api/lesson-studio', {
@@ -97,6 +112,12 @@ export default function LessonStudioPage() {
       }
       const result = await response.json();
       setLessonPlan(result);
+      
+      // Combine sections into a single markdown string for easy editing
+      const combinedMarkdown = `## ${result.title}\n\n${result.description}\n\n` + 
+        result.sections.map((s: any) => `### ${s.title}\n\n${s.content}`).join('\n\n');
+      setEditedContent(combinedMarkdown);
+
     } catch (error) {
       console.error('Generation Failed:', error);
       toast({
@@ -106,6 +127,79 @@ export default function LessonStudioPage() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSaveToArchive = async () => {
+    if (!user || !lessonPlan) return;
+    setIsSaving(true);
+    
+    const finalGrade = grade === 'Other' ? customGrade : grade;
+    const finalSubject = subject === 'Other' ? customSubject : subject;
+    const finalTopic = topic === 'Other' ? customTopic : topic;
+
+    try {
+      await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
+        teacherId: user.uid,
+        grade: finalGrade,
+        subject: finalSubject,
+        topic: finalTopic,
+        contentType: 'Lesson Plan',
+        content: editedContent,
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: 'Saved to Archive!' });
+    } catch (e) {
+      console.error("Save error:", e);
+      toast({ title: 'Save Failed', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsAudioPlaying(false);
+    }
+  };
+
+  const handleReadAloud = async () => {
+    if (isAudioPlaying) {
+      handleStopAudio();
+      return;
+    }
+
+    if (!editedContent) return;
+    
+    setIsTtsLoading(true);
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editedContent }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const { audio } = await response.json();
+      const player = new Audio(audio);
+      audioRef.current = player;
+      audioRef.current.onplay = () => setIsAudioPlaying(true);
+      audioRef.current.onended = () => setIsAudioPlaying(false);
+      audioRef.current.play();
+
+    } catch (error) {
+      toast({ title: 'Read Aloud Failed', variant: 'destructive' });
+    } finally {
+      setIsTtsLoading(false);
     }
   };
 
@@ -122,9 +216,19 @@ export default function LessonStudioPage() {
               Generate a comprehensive, CAPS-aligned lesson plan.
             </p>
           </div>
+          {lessonPlan && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handlePrint} className="no-print rounded-full">
+                <Printer className="mr-2 h-4 w-4" /> Print
+              </Button>
+              <Button className="rounded-full bg-green-600 hover:bg-green-700 no-print" onClick={handleSaveToArchive} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save
+              </Button>
+            </div>
+          )}
         </div>
 
-        <Card className="rounded-[2.5rem] shadow-xl border-none">
+        <Card className="rounded-[2.5rem] shadow-xl border-none no-print">
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* GRADE SELECTION */}
@@ -242,31 +346,45 @@ export default function LessonStudioPage() {
         </Card>
 
         {isGenerating && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="flex flex-col items-center justify-center py-20 space-y-4 no-print">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium text-muted-foreground">Crafting your lesson...</p>
           </div>
         )}
 
         {lessonPlan && !isGenerating && (
-          <Card className="rounded-[2.5rem] shadow-lg border-none mt-8">
-            <CardHeader className="bg-primary/5 rounded-t-[2.5rem]">
-              <CardTitle className="text-2xl font-patrick-hand flex items-center">
-                <BookOpen className="mr-2 h-6 w-6" /> {lessonPlan.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 prose dark:prose-invert max-w-none font-body">
-              <p className="lead">{lessonPlan.description}</p>
-              {lessonPlan.sections?.map((section: any, index: number) => (
-                <div key={index} className="mt-6">
-                  <ReactMarkdown>{`## ${section.title}`}</ReactMarkdown>
-                  <ReactMarkdown>{section.content}</ReactMarkdown>
+          <Card className="rounded-[2.5rem] shadow-lg border-none mt-8 flex flex-col h-[600px] print:h-auto">
+            <CardHeader className="bg-primary/5 rounded-t-[2.5rem] no-print">
+              <div className="flex justify-between items-center">
+                <CardTitle className="font-patrick-hand text-2xl">Workspace</CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
+                    <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleReadAloud} disabled={isTtsLoading} className="rounded-full">
+                    {isTtsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isAudioPlaying ? <Square className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />)}
+                    {isAudioPlaying ? 'Stop' : 'Read Aloud'}
+                  </Button>
                 </div>
-              ))}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-auto p-8 print:p-0 print:overflow-visible" ref={printableRef}>
+              {isEditMode ? (
+                <textarea 
+                  className="w-full h-full min-h-[400px] p-4 font-mono text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary no-print"
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                />
+              ) : (
+                <div className="prose dark:prose-invert max-w-none print:text-black font-body">
+                  <ReactMarkdown>{editedContent}</ReactMarkdown>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
       </div>
+      <audio ref={audioRef} className="hidden" />
     </AppLayout>
   );
 }

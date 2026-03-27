@@ -34,7 +34,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
     });
 
     const response = await ai.generate({
-      model: googleAI.model('gemini-2.0-flash'), // Using a more stable model for tutoring
+      model: googleAI.model('gemini-3.1-flash-live-preview'), // Using a more stable model for tutoring
       system: promptParams.systemInstruction,
       messages: [
         ...historyMessages,

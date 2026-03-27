@@ -30,7 +30,7 @@ export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
   try {
-    const response = await ai.generate({
+    const response = await ai.generate<typeof AutogradeOutputSchema>({
       // gemini-3.1-pro: flagship model with high accuracy for rubric-based grading (per chat.txt)
       model: googleAI.model('gemini-3.1-pro'),
       output: { schema: AutogradeOutputSchema },

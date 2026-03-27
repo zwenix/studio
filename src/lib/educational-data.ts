@@ -1,6 +1,123 @@
 
 // src/lib/educational-data.ts
 
+export const ALL_GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] as const;
+export type Grade = typeof ALL_GRADES[number];
+
+export const educationalData: Record<Grade, Record<string, string[]>> = {
+  '1': {
+    'Home Language': ['Phonics', 'Reading', 'Handwriting', 'Listening and Speaking'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Life Skills': ['Beginning Knowledge', 'Personal and Social Well-being', 'Creative Arts', 'Physical Education'],
+  },
+  '2': {
+    'Home Language': ['Phonics', 'Reading', 'Handwriting', 'Listening and Speaking'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Life Skills': ['Beginning Knowledge', 'Personal and Social Well-being', 'Creative Arts', 'Physical Education'],
+  },
+  '3': {
+    'Home Language': ['Phonics', 'Reading', 'Handwriting', 'Listening and Speaking'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Life Skills': ['Beginning Knowledge', 'Personal and Social Well-being', 'Creative Arts', 'Physical Education'],
+  },
+  '4': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences and Technology': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Life Skills': ['Personal and Social Well-being', 'Physical Education', 'Creative Arts'],
+  },
+  '5': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences and Technology': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Life Skills': ['Personal and Social Well-being', 'Physical Education', 'Creative Arts'],
+  },
+  '6': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences and Technology': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Life Skills': ['Personal and Social Well-being', 'Physical Education', 'Creative Arts'],
+  },
+  '7': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Technology': ['Design Process', 'Structures', 'Processing', 'Systems and Control'],
+    'Economic and Management Sciences': ['The Economy', 'Financial Literacy', 'Entrepreneurship'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+    'Creative Arts': ['Dance', 'Drama', 'Music', 'Visual Arts'],
+  },
+  '8': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Technology': ['Design Process', 'Structures', 'Processing', 'Systems and Control'],
+    'Economic and Management Sciences': ['The Economy', 'Financial Literacy', 'Entrepreneurship'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+    'Creative Arts': ['Dance', 'Drama', 'Music', 'Visual Arts'],
+  },
+  '9': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Numbers', 'Patterns', 'Space and Shape', 'Measurement', 'Data Handling'],
+    'Natural Sciences': ['Life and Living', 'Matter and Materials', 'Energy and Change', 'Planet Earth and Beyond'],
+    'Social Sciences': ['History', 'Geography'],
+    'Technology': ['Design Process', 'Structures', 'Processing', 'Systems and Control'],
+    'Economic and Management Sciences': ['The Economy', 'Financial Literacy', 'Entrepreneurship'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+    'Creative Arts': ['Dance', 'Drama', 'Music', 'Visual Arts'],
+  },
+  '10': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Algebra', 'Functions', 'Geometry', 'Trigonometry', 'Statistics', 'Finance', 'Calculus', 'Probability'],
+    'Physical Sciences': ['Mechanics', 'Waves, Sound and Light', 'Electricity and Magnetism', 'Matter and Materials', 'Chemical Change', 'Chemical Systems'],
+    'Life Sciences': ['Molecules to Organs', 'Life Processes in Plants and Animals', 'Environmental Studies', 'Diversity, Change and Continuity'],
+    'Geography': ['Climatology', 'Geomorphology', 'Population', 'Water Resources'],
+    'History': ['The world around 1600', 'Expansion and conquest', 'French Revolution', 'Industrial Revolution', 'Transformations in southern Africa'],
+    'Accounting': ['Financial Accounting', 'Managerial Accounting', 'Managing Resources'],
+    'Business Studies': ['Business Environments', 'Business Ventures', 'Business Roles', 'Business Operations'],
+    'Economics': ['Macroeconomics', 'Microeconomics', 'Economic Pursuits', 'Contemporary Economic Issues'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+  },
+  '11': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Algebra', 'Functions', 'Geometry', 'Trigonometry', 'Statistics', 'Finance', 'Calculus', 'Probability'],
+    'Physical Sciences': ['Mechanics', 'Waves, Sound and Light', 'Electricity and Magnetism', 'Matter and Materials', 'Chemical Change', 'Chemical Systems'],
+    'Life Sciences': ['Molecules to Organs', 'Life Processes in Plants and Animals', 'Environmental Studies', 'Diversity, Change and Continuity'],
+    'Geography': ['Climatology', 'Geomorphology', 'Development Geography', 'Resources and Sustainability'],
+    'History': ['Communism in Russia', 'Capitalism in USA', 'Ideas of Race in the late 19th and 20th Centuries', 'Nationalisms in South Africa, Middle East and Africa', 'Apartheid South Africa'],
+    'Accounting': ['Financial Accounting', 'Managerial Accounting', 'Managing Resources'],
+    'Business Studies': ['Business Environments', 'Business Ventures', 'Business Roles', 'Business Operations'],
+    'Economics': ['Macroeconomics', 'Microeconomics', 'Economic Pursuits', 'Contemporary Economic Issues'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+  },
+  '12': {
+    'Home Language': ['Listening and Speaking', 'Reading and Viewing', 'Writing and Presenting', 'Language Structures'],
+    'Mathematics': ['Algebra', 'Functions', 'Geometry', 'Trigonometry', 'Statistics', 'Finance', 'Calculus', 'Probability'],
+    'Physical Sciences': ['Mechanics', 'Waves, Sound and Light', 'Electricity and Magnetism', 'Matter and Materials', 'Chemical Change', 'Chemical Systems'],
+    'Life Sciences': ['DNA, RNA and Protein Synthesis', 'Meiosis', 'Reproduction', 'Genetics', 'Responding to the Environment', 'Human Endocrine System', 'Evolution'],
+    'Geography': ['Climatology', 'Geomorphology', 'Rural Settlement', 'Urban Settlement', 'Economic Geography of South Africa'],
+    'History': ['The Cold War', 'Independent Africa', 'Civil Society Protests', 'Civil Resistance in South Africa', 'The Coming of Democracy to South Africa', 'The End of the Cold War and a New World Order'],
+    'Accounting': ['Financial Accounting', 'Managerial Accounting', 'Managing Resources'],
+    'Business Studies': ['Business Environments', 'Business Ventures', 'Business Roles', 'Business Operations'],
+    'Economics': ['Macroeconomics', 'Microeconomics', 'Economic Pursuits', 'Contemporary Economic Issues'],
+    'Life Orientation': ['Development of the self in society', 'Health, social and environmental responsibility', 'Constitutional rights and responsibilities', 'Physical Education', 'World of work'],
+  },
+};
+
+export function getSubjects(grade: Grade): string[] {
+  return Object.keys(educationalData[grade] || {});
+}
+
+export function getTopics(grade: Grade, subject: string): string[] {
+  return educationalData[grade]?.[subject] || [];
+}
+
+// New Lesson Studio Data
 export const capsTopics = {
   'Foundation Phase': {
     'Home Language': [

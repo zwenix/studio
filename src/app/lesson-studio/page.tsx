@@ -1,10 +1,10 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -12,33 +12,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, BookOpen, Image as ImageIcon } from 'lucide-react';
+import { Loader2, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
 import {
-  ALL_GRADES,
-  Grade,
-  getSubjects,
+  capsTopics,
+  lessonTypes,
+  subjectsByGrade,
+  grades,
 } from '@/lib/educational-data';
 
 export default function LessonStudioPage() {
-  const [topic, setTopic] = useState('');
-  const [grade, setGrade] = useState<Grade | ''>('');
-  const [subject, setSubject] = useState('');
+  const [grade, setGrade] = useState<string>('');
+  const [subject, setSubject] = useState<string>('');
+  const [topic, setTopic] = useState<string>('');
+  const [lessonType, setLessonType] = useState<string>('');
   const [lessonPlan, setLessonPlan] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   const subjects = useMemo(() => {
-    return grade ? getSubjects(grade as Grade) : [];
+    return grade ? subjectsByGrade[grade as keyof typeof subjectsByGrade] : [];
   }, [grade]);
 
+  const topics = useMemo(() => {
+    if (grade && subject) {
+      return capsTopics[grade as keyof typeof capsTopics]?.[subject as keyof typeof capsTopics[keyof typeof capsTopics]] || [];
+    }
+    return [];
+  }, [grade, subject]);
+
   const handleGenerate = async () => {
-    if (!topic.trim() || !grade || !subject) {
+    if (!grade || !subject || !topic || !lessonType) {
       toast({
         title: 'Missing Information',
-        description: 'Please select a grade, subject, and enter a topic.',
+        description: 'Please complete all fields to generate a lesson plan.',
         variant: 'destructive',
       });
       return;
@@ -50,13 +58,12 @@ export default function LessonStudioPage() {
     try {
       const response = await fetch('/api/lesson-studio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ topic, grade, subject }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade, subject, topic, lessonType }),
       });
       if (!response.ok) {
-        throw new Error('Failed to generate lesson plan');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate lesson plan');
       }
       const result = await response.json();
       setLessonPlan(result);
@@ -64,8 +71,7 @@ export default function LessonStudioPage() {
       console.error('Generation Failed:', error);
       toast({
         title: 'Generation Failed',
-        description:
-          'Failed to generate educational content. Please try again.',
+        description: (error as Error).message,
         variant: 'destructive',
       });
     } finally {
@@ -83,61 +89,61 @@ export default function LessonStudioPage() {
               AI Lesson Studio
             </h1>
             <p className="text-muted-foreground mt-2">
-              Generate a comprehensive lesson plan and strategy.
+              Generate a comprehensive, CAPS-aligned lesson plan.
             </p>
           </div>
         </div>
 
         <Card className="rounded-[2.5rem] shadow-xl border-none">
           <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Select value={grade} onValueChange={(v) => setGrade(v as Grade)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Select value={grade} onValueChange={setGrade}>
                 <SelectTrigger className="h-14 rounded-full text-lg">
                   <SelectValue placeholder="Select Grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_GRADES.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      Grade {g}
-                    </SelectItem>
+                  {grades.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={subject}
-                onValueChange={setSubject}
-                disabled={!grade}
-              >
+              <Select value={subject} onValueChange={setSubject} disabled={!grade}>
                 <SelectTrigger className="h-14 rounded-full text-lg">
                   <SelectValue placeholder="Select Subject" />
                 </SelectTrigger>
                 <SelectContent>
                   {subjects.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                placeholder="Enter a topic (e.g., The Water Cycle)..."
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-                disabled={isGenerating}
-                className="h-14 rounded-full text-lg md:col-span-2"
-              />
+              <Select value={topic} onValueChange={setTopic} disabled={!subject}>
+                <SelectTrigger className="h-14 rounded-full text-lg">
+                  <SelectValue placeholder="Select Topic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {topics.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={lessonType} onValueChange={setLessonType}>
+                <SelectTrigger className="h-14 rounded-full text-lg">
+                  <SelectValue placeholder="Lesson Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lessonTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !topic.trim() || !grade || !subject}
+              disabled={isGenerating || !grade || !subject || !topic || !lessonType}
               className="w-full h-14 px-8 rounded-full font-bold text-lg"
             >
-              {isGenerating ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                'Generate'
-              )}
+              {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Generate'}
             </Button>
           </CardContent>
         </Card>
@@ -145,13 +151,11 @@ export default function LessonStudioPage() {
         {isGenerating && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium text-muted-foreground">
-              Crafting your lesson...
-            </p>
+            <p className="text-lg font-medium text-muted-foreground">Crafting your lesson...</p>
           </div>
         )}
 
-        {!isGenerating && lessonPlan && (
+        {lessonPlan && (
           <Card className="rounded-[2.5rem] shadow-lg border-none mt-8">
             <CardHeader className="bg-primary/5 rounded-t-[2.5rem]">
               <CardTitle className="text-2xl font-patrick-hand flex items-center">

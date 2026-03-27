@@ -1,112 +1,97 @@
-export const educationalData = {
-  "R": {
-    subjects: ["Beginning Knowledge", "Mathematics", "Life Skills", "Language"],
-    topics: {
-      "Mathematics": ["Counting", "Number Recognition", "Shapes", "Patterns"],
-      "Life Skills": ["Health and Safety", "Social Habits", "Creative Arts"],
-      "Language": ["Listening and Speaking", "Pre-reading", "Pre-writing"],
-      "Beginning Knowledge": ["Myself", "My Family", "Animals", "Plants"],
-    },
+
+// src/lib/educational-data.ts
+
+export const capsTopics = {
+  'Foundation Phase': {
+    'Home Language': [
+      'Listening and Speaking: Sounds and Phonemes',
+      'Reading and Phonics: Letter-Sound Relationships',
+      'Handwriting: Forming Letters',
+      'Writing: Simple Sentences',
+    ],
+    'Mathematics': [
+      'Numbers, Operations and Relationships: Counting',
+      'Patterns, Functions and Algebra: Geometric Patterns',
+      'Space and Shape (Geometry): 2D Shapes',
+      'Measurement: Time (Days of the Week)',
+      'Data Handling: Collecting and Sorting Objects',
+    ],
+    'Life Skills': [
+      'Beginning Knowledge and Personal and Social Well-being: About Me',
+      'Creative Arts: Drawing and Painting',
+      'Physical Education: Gross Motor Skills',
+    ],
   },
-  "1": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills"],
-    topics: {
-      "Mathematics": ["Counting to 50", "Addition and Subtraction to 10", "2D Shapes", "Measurement"],
-      "Home Language": ["Phonics", "Reading simple sentences", "Handwriting"],
-      "Life Skills": ["Personal Hygiene", "Community Helpers", "Seasons"],
-    },
+  'Intermediate Phase': {
+    'Social Sciences': [
+        'History: Map Skills - Africa and the World',
+        'Geography: Physical Features of South Africa',
+        'History: Ancient Civilizations (e.g., Egypt)',
+    ],
+    'Natural Sciences and Technology': [
+        'Life and Living: Plants and Animals on Earth',
+        'Matter and Materials: Properties of Materials',
+        'Energy and Change: Energy for Life',
+        'Planet Earth and Beyond: The Solar System',
+    ],
+    'Mathematics': [
+        'Numbers, Operations and Relationships: Common Fractions',
+        'Patterns, Functions and Algebra: Investigating Number Patterns',
+        'Space and Shape (Geometry): 3D Objects',
+        'Measurement: Length and Perimeter',
+        'Data Handling: Interpreting Bar Graphs',
+    ],
   },
-  "2": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills"],
-    topics: {
-        "Mathematics": ["Counting to 100", "Addition and Subtraction to 20", "Fractions (halves)", "Time"],
-        "Home Language": ["Building vocabulary", "Reading comprehension", "Writing sentences"],
-        "Life Skills": ["Road Safety", "My Country", "Healthy Eating"],
-    },
+  'Senior Phase': {
+    'Economic and Management Sciences': [
+        'The Economy: Needs and Wants',
+        'Financial Literacy: Budgets and Saving',
+        'Entrepreneurship: Starting a Business',
+    ],
+    'Technology': [
+        'Structures: Forces and Materials',
+        'Mechanical Systems and Control: Levers and Gears',
+        'Electrical Systems and Control: Circuits',
+    ],
+    'Creative Arts': [
+        'Visual Arts: The Elements of Art (Line, Shape, Colour)',
+        'Drama: Improvisation and Characterisation',
+        'Music: Rhythm and Melody',
+        'Dance: Exploring Different Dance Styles',
+    ],
   },
-  "3": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills"],
-    topics: {
-        "Mathematics": ["Multiplication and Division", "3D Objects", "Data Handling"],
-        "Home Language": ["Writing paragraphs", "Grammar and Punctuation", "Reading for meaning"],
-        "Life Skills": ["Water Safety", "South African Symbols", "Cultural Diversity"],
-    },
-  },
-  "4": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    topics: {
-      "Mathematics": ["Whole numbers", "Fractions", "Decimal fractions", "Properties of 2-D shapes"],
-      "Natural Sciences and Technology": ["Living and non-living things", "Matter and materials", "Energy and change"],
-      "Social Sciences": ["History of South Africa", "Map skills", "Geography of South Africa"],
-    },
-  },
-  "5": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    topics: {
-        "Mathematics": ["Common fractions", "Length", "Properties of 3-D objects"],
-        "Natural Sciences and Technology": ["Planet Earth and Beyond", "Systems and control", "Life and living"],
-        "Social Sciences": ["Ancient civilizations", "Weather and climate", "Natural resources"],
-    },
-  },
-  "6": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    topics: {
-        "Mathematics": ["Percentages", "Geometric patterns", "Area and perimeter"],
-        "Natural Sciences and Technology": ["Mixtures and solutions", "Electricity", "Ecosystems"],
-        "Social Sciences": ["Democracy and citizenship", "Trade and transport", "Human rights"],
-    },
-  },
-  "7": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Creative Arts", "Economic Management Sciences", "Life Orientation", "Natural Sciences", "Social Sciences", "Technology"],
-    topics: {
-      "Mathematics": ["Algebraic expressions", "Functions and relationships", "Geometry of straight lines"],
-      "Natural Sciences": ["The biosphere", "Properties of matter", "Sources of energy"],
-      "Economic Management Sciences": ["The economy", "Financial literacy", "Entrepreneurship"],
-    },
-  },
-  "8": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Creative Arts", "Economic Management Sciences", "Life Orientation", "Natural Sciences", "Social Sciences", "Technology"],
-    topics: {
-        "Mathematics": ["Theorems of geometry", "Algebraic equations", "Probability"],
-        "Natural Sciences": ["Atoms and compounds", "Periodic table", "Interaction and interdependence"],
-        "Economic Management Sciences": ["Markets", "Business functions", "Economic systems"],
-    },
-  },
-  "9": {
-    subjects: ["Mathematics", "Home Language", "First Additional Language", "Creative Arts", "Economic Management Sciences", "Life Orientation", "Natural Sciences", "Social Sciences", "Technology"],
-    topics: {
-        "Mathematics": ["Trigonometry", "Statistics", "Euclidean geometry"],
-        "Natural Sciences": ["Chemical reactions", "Forces", "Cells and tissues"],
-        "Economic Management Sciences": ["Price theory", "Trade unions", "Forms of ownership"],
-    },
-  },
-  "10": {
-    subjects: ["Mathematics", "Physical Sciences", "Life Sciences", "History", "Geography", "Accounting", "Business Studies", "Economics", "Consumer Studies"],
-    topics: {
-      "Mathematics": ["Algebra", "Functions", "Euclidean Geometry", "Trigonometry"],
-      "Physical Sciences": ["Mechanics", "Waves, sound and light", "Matter and materials"],
-      "Life Sciences": ["The chemistry of life", "Cells", "Biodiversity"],
-    },
-  },
-  "11": {
-    subjects: ["Mathematics", "Physical Sciences", "Life Sciences", "History", "Geography", "Accounting", "Business Studies", "Economics", "Consumer Studies"],
-    topics: {
-        "Mathematics": ["Analytical Geometry", "Finance and growth", "Probability"],
-        "Physical Sciences": ["Electricity and magnetism", "Chemical change", "Ideal gases"],
-        "Life Sciences": ["Photosynthesis", "Animal nutrition", "Gaseous exchange"],
-    },
-  },
-  "12": {
-    subjects: ["Mathematics", "Physical Sciences", "Life Sciences", "History", "Geography", "Accounting", "Business Studies", "Economics", "Consumer Studies"],
-    topics: {
-        "Mathematics": ["Differential Calculus", "Sequences and series", "Statistics"],
-        "Physical Sciences": ["Organic chemistry", "Doppler effect", "Electrochemistry"],
-        "Life Sciences": ["Genetics and inheritance", "Evolution", "Human reproduction"],
-    },
+  'FET Phase': {
+    'Physical Sciences': [
+        'Mechanics: Vectors, Scalars and Motion',
+        'Waves, Sound and Light: Geometrical Optics',
+        'Chemical Change: Stoichiometry',
+        'Matter and Materials: The Periodic Table',
+    ],
+    'Life Sciences': [
+        'The Chemistry of Life: Organic Molecules',
+        'Cells: The Basic Units of Life',
+        'Genetics and Inheritance: DNA and RNA',
+        'Diversity, Change and Continuity: Biodiversity and Classification',
+    ],
+    'History': [
+      'The Cold War: Origins and Global Impact',
+      'Independent Africa: Comparative Case Studies',
+      'Civil Society Protests: The US Civil Rights Movement',
+      'The End of the Cold War and a New World Order',
+    ],
   },
 };
 
-export type Grade = keyof typeof educationalData;
-export const ALL_GRADES = Object.keys(educationalData) as Grade[];
-export const getSubjects = (grade: Grade) => educationalData[grade]?.subjects || [];
-export const getTopics = (grade: Grade, subject: string) => educationalData[grade]?.topics[subject as keyof typeof educationalData[Grade]['topics']] || [];
+export const lessonTypes = [
+    'Direct Instruction', 'Inquiry-Based Learning', 'Cooperative Learning',
+    'Project-Based Learning', 'Game-Based Learning (Gamification)', 'Flipped Classroom'
+];
+
+export const subjectsByGrade = {
+    'Foundation Phase': ['Home Language', 'Mathematics', 'Life Skills'],
+    'Intermediate Phase': ['Social Sciences', 'Natural Sciences and Technology', 'Mathematics'],
+    'Senior Phase': ['Economic and Management Sciences', 'Technology', 'Creative Arts'],
+    'FET Phase': ['Physical Sciences', 'Life Sciences', 'History'],
+};
+
+export const grades = ['Foundation Phase', 'Intermediate Phase', 'Senior Phase', 'FET Phase'];

@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 
 type Message = {
   role: 'user' | 'model';
-  content: string;
+  content: { text: string }[];
 };
 
 const languages = [
@@ -82,8 +82,11 @@ export default function AiTutorPage() {
 
   const { data: savedMessages, isLoading: isHistoryLoading } = useCollection<any>(historyQuery);
 
-  const messages = useMemo(() => {
-    return (savedMessages || []).map(m => ({ role: m.role, content: m.text }));
+  const messages: Message[] = useMemo(() => {
+    return (savedMessages || []).map(m => ({ 
+        role: m.role, 
+        content: [{ text: m.text }] 
+    }));
   }, [savedMessages]);
 
   // Cleanup old messages
@@ -97,7 +100,7 @@ export default function AiTutorPage() {
         );
         const snap = await getDocs(q);
         await Promise.all(snap.docs.map(d =>
-          deleteDoc(doc(firestore, 'users', user!.uid, 'aiChatMessages', d.id))
+          deleteDoc(doc(firestore, 'users', user.uid, 'aiChatMessages', d.id))
         ));
       } catch (e) {
         console.warn('Failed to clean up old chat messages:', e);
@@ -181,7 +184,7 @@ export default function AiTutorPage() {
       console.error('AI Tutor failed:', error);
       toast({
         title: 'An error occurred',
-        description: 'Failed to get a response from the AI tutor.',
+        description: 'Failed to get a response from the AI tutor. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -221,7 +224,7 @@ export default function AiTutorPage() {
   const handleStopAudio = () => {
     if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+        if (audioRef.current) audioRef.current.currentTime = 0;
     }
     setIsAudioPlaying(null);
   };
@@ -269,21 +272,21 @@ export default function AiTutorPage() {
           <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
             {isHistoryLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
-            ) : messages.length === 0 ? (
+            ) : savedMessages?.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="AI Tutor" width={48} height={72} className="opacity-50" />
+                <Image src="/favicon.ico" alt="AI Tutor" width={48} height={72} className="opacity-50" />
                 <p className="mt-4 text-center font-medium">Ask me anything about your school subjects!</p>
               </div>
             ) : (
-                messages.map((message, index) => (
+                savedMessages?.map((message, index) => (
                     <div key={index} className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : ''}`}>
                       {message.role === 'model' && (
-                        <Avatar className="h-8 w-8 border self-start shrink-0">
-                          <AvatarFallback className="bg-primary/10"><Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="AI Tutor" width={16} height={24} /></AvatarFallback>
+                        <Avatar className="h-8 w-8 border self-start shrink-0 bg-white">
+                          <AvatarFallback className="bg-primary/10 p-1"><Image src="/favicon.ico" alt="AI Tutor" width={16} height={24} className="object-contain" /></AvatarFallback>
                         </Avatar>
                       )}
                       <div className={`rounded-2xl px-4 py-2 max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-white border rounded-bl-none dark:bg-slate-700 dark:text-white'}`}>
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                       </div>
                        {message.role === 'model' && (
                           <div className="flex gap-1">
@@ -291,7 +294,7 @@ export default function AiTutorPage() {
                                 size="icon"
                                 variant="ghost"
                                 className={cn("shrink-0 h-8 w-8 rounded-full", isAudioPlaying === index ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                                onClick={() => handlePlayAudio(message.content, index)}
+                                onClick={() => handlePlayAudio(message.text, index)}
                                 disabled={isTtsLoading === index}
                             >
                                 {isTtsLoading === index ? <Loader2 className="h-4 w-4 animate-spin"/> : isAudioPlaying === index ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -309,7 +312,7 @@ export default function AiTutorPage() {
              {isLoading && (
                  <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8 border">
-                        <AvatarFallback><Image src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" alt="AI Tutor" width={16} height={24} /></AvatarFallback>
+                        <AvatarFallback><Image src="/favicon.ico" alt="AI Tutor" width={16} height={24} className="object-contain" /></AvatarFallback>
                     </Avatar>
                     <div className="rounded-2xl px-4 py-2 bg-muted animate-pulse">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

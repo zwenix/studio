@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   Volume2,
   Square,
+  FileDown
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
@@ -64,6 +65,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import type { Teacher, GeneratedContent } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import html2pdf from 'html2pdf.js';
 
 const CONTENT_CATEGORIES = {
   'Teaching Tools & Aids': ['Lesson Plans', 'Lesson Slides', 'Notes/Learning Aids for Learners', 'Study Guides', 'Booklets', 'Poster'],
@@ -109,6 +111,7 @@ export function ContentCreatorClient() {
   const [activeTab, setActiveTab] = useState('ai');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [isTtsLoading, setIsTtsLoading] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
@@ -184,6 +187,7 @@ export function ContentCreatorClient() {
 
     setIsLoading(true);
     setGeneratedContent(null);
+    setIsEditMode(false);
 
     try {
       const result = await generateCAPSContent({
@@ -212,23 +216,70 @@ export function ContentCreatorClient() {
   const handleSaveToArchive = async () => {
     if (!user || !generatedContent) return;
     setIsSaving(true);
+    
+    const finalGrade = grade === 'Other' ? customGrade : grade;
+    const finalSubject = subject === 'Other' ? customSubject : subject;
+    const finalTopic = topic === 'Other' ? customTopic : topic;
+    const finalSubType = subType === 'Other' ? customSubType : subType;
+
     try {
       await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
         teacherId: user.uid,
-        grade: grade === 'Other' ? customGrade : grade,
-        subject: subject === 'Other' ? customSubject : subject,
-        topic: topic === 'Other' ? customTopic : topic,
-        contentType: subType === 'Other' ? customSubType : subType,
+        grade: finalGrade || 'General',
+        subject: finalSubject || 'General',
+        topic: finalTopic || 'Untitled',
+        contentType: finalSubType || 'Content',
         content: generatedContent.content,
-        memo: generatedContent.memo,
-        rubric: generatedContent.rubric,
+        memo: generatedContent.memo || '',
+        rubric: generatedContent.rubric || '',
         createdAt: serverTimestamp(),
       });
       toast({ title: 'Saved to Archive!' });
     } catch (e) {
-      toast({ title: 'Save Failed', variant: 'destructive' });
+      console.error("Save Error:", e);
+      toast({ title: 'Save Failed', description: 'An error occurred while saving to your archive.', variant: 'destructive' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!printableRef.current || !generatedContent) return;
+    setIsDownloading(true);
+
+    const element = printableRef.current;
+    const finalTopic = topic === 'Other' ? customTopic : topic;
+    const filename = `${finalTopic || 'EduAI_Content'}.pdf`;
+
+    const opt = {
+      margin:       10,
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      // Create a temporary wrapper to apply the font style specifically for the PDF
+      const wrapper = document.createElement('div');
+      wrapper.className = cn("prose max-w-none p-8", fontFamily);
+      // We render the HTML directly into the wrapper to ensure formatting is caught
+      wrapper.innerHTML = generatedContent.content;
+      
+      // html2pdf requires the element to be in the DOM to render correctly sometimes
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      document.body.appendChild(wrapper);
+
+      await html2pdf().set(opt).from(wrapper).save();
+      
+      document.body.removeChild(wrapper);
+      toast({ title: 'PDF Downloaded Successfully!' });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      toast({ title: 'PDF Download Failed', description: 'There was an error creating the PDF.', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -311,9 +362,14 @@ export function ContentCreatorClient() {
           </div>
         </div>
         {generatedContent && (
-          <Button className="rounded-full bg-green-600 hover:bg-green-700" onClick={handleSaveToArchive} disabled={isSaving}>
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save
-          </Button>
+          <div className="flex gap-2">
+              <Button variant="outline" className="rounded-full" onClick={handleDownloadPDF} disabled={isDownloading || isEditMode}>
+                  {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />} PDF
+              </Button>
+              <Button className="rounded-full bg-green-600 hover:bg-green-700" onClick={handleSaveToArchive} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save
+              </Button>
+          </div>
         )}
       </div>
 

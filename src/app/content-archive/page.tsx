@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +35,6 @@ import type { GeneratedContent, Class, Template } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
-import html2pdf from 'html2pdf.js';
 
 type CombinedItem = 
   | (GeneratedContent & { isSystem: false }) 
@@ -150,15 +149,18 @@ export default function ContentArchivePage() {
 
     const filename = `${selectedItem.isSystem ? selectedItem.title : selectedItem.topic || 'Archived_Content'}.pdf`;
 
-    const opt = {
-      margin:       10,
-      filename:     filename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
     try {
+      // Dynamically import html2pdf only on the client side when the button is clicked
+      const html2pdfModule = (await import('html2pdf.js')).default;
+
+      const opt = {
+        margin:       10,
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
       const wrapper = document.createElement('div');
       wrapper.className = "prose max-w-none p-8 font-body text-black";
       wrapper.innerHTML = selectedItem.content;
@@ -167,7 +169,7 @@ export default function ContentArchivePage() {
       wrapper.style.left = '-9999px';
       document.body.appendChild(wrapper);
 
-      await html2pdf().set(opt).from(wrapper).save();
+      await html2pdfModule().set(opt).from(wrapper).save();
       
       document.body.removeChild(wrapper);
       toast({ title: 'PDF Downloaded Successfully!' });

@@ -16,25 +16,6 @@ import { z } from 'zod';
 import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-// Define CapsResponseSchema outside of the function to avoid deep instantiation
-const CapsResponseSchema = z.object({
-  content: z.string().describe(
-    'HTML educational content with [IMAGE:VA1] placeholders where images should appear.'
-  ),
-  memo: z.string().optional().describe('HTML memo / answer key.'),
-  rubric: z.string().optional().describe('HTML rubric with mark allocations.'),
-  visualAids: z.array(z.object({
-    id: z.string().describe('Matches [IMAGE:VAn] placeholder, e.g. "VA1".'),
-    imagePrompt: z.string().describe(
-      'Detailed, child-safe image generation prompt for a relevant educational illustration. ' +
-      'Describe exactly what to show: scene, subjects, colours, style. ' +
-      'Keep it concise (1–3 sentences). South African context where relevant.'
-    ),
-  })).describe('Images to generate and embed into the content.'),
-});
-
-// ─── Input / Output types ─────────────────────────────────────────────────────
-
 const GenerateCAPSContentInputSchema = z.object({
   grade: z.string().describe('The grade level (R, 1–12, or custom).'),
   subject: z.string(),
@@ -54,21 +35,28 @@ const GenerateCAPSContentInputSchema = z.object({
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
 export type GenerateCAPSContentOutput = {
-  content: string;   // Final HTML with real <img> tags (base64 data URIs) embedded
+  content: string;
   memo?: string;
   rubric?: string;
 };
 
+const CapsResponseSchema = z.object({
+  content: z.string().describe(
+    'HTML educational content with [IMAGE:VA1] placeholders where images should appear.'
+  ),
+  memo: z.string().optional().describe('HTML memo / answer key.'),
+  rubric: z.string().optional().describe('HTML rubric with mark allocations.'),
+  visualAids: z.array(z.object({
+    id: z.string().describe('Matches [IMAGE:VAn] placeholder, e.g. "VA1".'),
+    imagePrompt: z.string().describe(
+      'Detailed, child-safe image generation prompt for a relevant educational illustration. ' +
+      'Describe exactly what to show: scene, subjects, colours, style. ' +
+      'Keep it concise (1–3 sentences). South African context where relevant.'
+    ),
+  })).describe('Images to generate and embed into the content.'),
+});
 
-// ─── Google-native image generation ──────────────────────────────────────────
-
-/**
- * Generates an educational illustration using Google Imagen 4 Fast.
- * Falls back to Gemini 2.5 Flash Image if Imagen fails.
- * Returns a base64 data URI (data:image/png;base64,...) or empty string on total failure.
- */
 async function generateImage(prompt: string, subject: string, grade: string): Promise<string> {
-  // Build a rich, safe educational image prompt
   const enrichedPrompt = [
     `Educational illustration for South African Grade ${grade} ${subject}.`,
     prompt,
@@ -78,7 +66,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
     'Diverse South African children and environments where people are shown.',
   ].join(' ');
 
-  // ── Primary: Imagen 4 Fast ────────────────────────────────────────────────
+  // Primary: Imagen 4 Fast
   try {
     const response = await ai.generate({
       model: googleAI.model('imagen-4.0-fast-generate-001'),
@@ -89,25 +77,19 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
       },
       output: { format: 'media' },
     });
-
-    if (response.media?.url) {
-      return response.media.url; // already a data URI from Genkit
-    }
+    if (response.media?.url) return response.media.url;
   } catch (e) {
     console.warn('Imagen 4 Fast failed, trying Gemini 2.5 Flash Image:', e);
   }
 
-  // ── Fallback: Gemini 2.5 Flash Image ─────────────────────────────────────
+  // Fallback: Gemini 2.5 Flash Image
   try {
     const response = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-image'),
       prompt: enrichedPrompt,
-      config: {
-        responseModalities: ['IMAGE'],
-      },
+      config: { responseModalities: ['IMAGE'] },
+      output: { format: 'media' },
     });
-
-    // Gemini image model returns media parts — find the first image
     const parts = (response as any).candidates?.[0]?.message?.content ?? [];
     for (const part of parts) {
       if (part?.media?.url) return part.media.url;
@@ -117,16 +99,13 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
     console.error('Gemini 2.5 Flash Image also failed:', e);
   }
 
-  return ''; // both paths failed — placeholder will be silently removed
+  return '';
 }
-
-// ─── Main exported function ───────────────────────────────────────────────────
 
 export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
   try {
-    // ── Step 1: Generate HTML content + image prompts via Gemini ─────────────
     const response = await ai.generate({
       model: googleAI.model('gemini-3.1-pro-preview'),
       output: { schema: CapsResponseSchema },
@@ -178,7 +157,6 @@ Teacher: ${input.teacherName || 'Educator'}`,
     const { content: rawHtml, memo, rubric, visualAids } = response.output;
     let finalHtml = rawHtml || '';
 
-    // ── Step 2: Generate all images in parallel using Google Imagen ──────────
     if (visualAids && visualAids.length > 0) {
       const imageResults = await Promise.all(
         visualAids.map(async (aid) => ({
@@ -190,7 +168,6 @@ Teacher: ${input.teacherName || 'Educator'}`,
 
       for (const result of imageResults) {
         const tagRegex = new RegExp(`\\[IMAGE:\\s*${result.id}\\]`, 'gi');
-
         if (result.dataUri) {
           const imgHtml = `<div class="my-6 text-center">
   <img
@@ -202,20 +179,14 @@ Teacher: ${input.teacherName || 'Educator'}`,
 </div>`;
           finalHtml = finalHtml.replace(tagRegex, imgHtml);
         } else {
-          // Image generation failed — remove placeholder silently
           finalHtml = finalHtml.replace(tagRegex, '');
         }
       }
     }
 
-    // Clean up any remaining unresolved placeholders
     finalHtml = finalHtml.replace(/\[IMAGE:\s*VA\d+\]/gi, '');
 
-    return {
-      content: finalHtml,
-      memo: memo || '',
-      rubric: rubric || '',
-    };
+    return { content: finalHtml, memo: memo || '', rubric: rubric || '' };
 
   } catch (error) {
     console.error('generateCAPSContent error:', error);

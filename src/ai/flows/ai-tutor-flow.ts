@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { ai } from '../../genkit';
+import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { buildTutorPrompt } from '@/ai/prompts';
 
@@ -34,7 +34,7 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
     });
 
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-flash-live-preview'), // Using a more stable model for tutoring
+      model: googleAI.model('gemini-3.1-flash-live-preview'),
       system: promptParams.systemInstruction,
       messages: [
         ...historyMessages,

@@ -1,13 +1,8 @@
+'use server';
+
 import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as z from 'zod';
-
-/**
- * Memos and Rubrics generation flow.
- *
- * Model (per chat.txt): gemini-3.1-pro-preview
- * Rationale: High accuracy required for CAPS-aligned rubric design and assessment memos.
- */
+import { z } from 'genkit';
 
 export const MemoSchema = z.object({
   memos: z.array(
@@ -53,7 +48,7 @@ export const generateMemosAndRubricsFlow = ai.defineFlow(
     const capsSystemPrompt = `You are a Senior Curriculum Specialist and expert South African CAPS assessment designer.
 
 CRITICAL RULE - CAPS COMPLIANCE:
-All memos and rubrics MUST strictly adhere to South African CAPS (Curriculum and Assessment Policy Statement) assessment guidelines, cognitive demand levels, and mark allocation norms for the specified grade.
+All memos and rubrics MUST strictly adhere to South African CAPS assessment guidelines, cognitive demand levels, and mark allocation norms for the specified grade.
 
 RULES:
 - Use South African English spelling (colour, realise, learner, etc.).
@@ -71,7 +66,6 @@ Base mark allocations strictly on CAPS norms for Grade ${input.grade}.`;
 
     const [memoResponse, rubricResponse] = await Promise.all([
       ai.generate({
-        // gemini-3.1-pro-preview: flagship model for accurate CAPS rubric and memo generation (per chat.txt)
         model: googleAI.model('gemini-3.1-pro-preview'),
         system: capsSystemPrompt,
         prompt: memoPrompt,
@@ -87,10 +81,21 @@ Base mark allocations strictly on CAPS norms for Grade ${input.grade}.`;
 
     const memos = memoResponse.output;
     if (!memos) throw new Error('Failed to generate memos');
-
     const rubrics = rubricResponse.output;
     if (!rubrics) throw new Error('Failed to generate rubrics');
 
     return { memos, rubrics };
   }
 );
+
+export type GenerateMemosAndRubricsInput = { topic: string; grade: string };
+export type GenerateMemosAndRubricsOutput = {
+  memos: z.infer<typeof MemoSchema>;
+  rubrics: z.infer<typeof RubricSchema>;
+};
+
+export async function generateMemosAndRubrics(
+  input: GenerateMemosAndRubricsInput
+): Promise<GenerateMemosAndRubricsOutput> {
+  return generateMemosAndRubricsFlow(input);
+}

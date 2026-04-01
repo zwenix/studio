@@ -1,6 +1,8 @@
+'use server';
+
 import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as z from 'zod';
+import { z } from 'genkit';
 import { buildLessonStudioPrompt } from '@/ai/prompts';
 
 export const LessonPlanSchema = z.object({
@@ -27,12 +29,11 @@ export const generateLessonStudioFlow = ai.defineFlow(
   },
   async (input) => {
     const { grade, subject, topic, lessonType } = input;
-    
     const promptParams = buildLessonStudioPrompt({
-        grade,
-        subject,
-        topic,
-        notes: `Lesson Type: ${lessonType}`,
+      grade,
+      subject,
+      topic,
+      notes: `Lesson Type: ${lessonType}`,
     });
 
     const response = await ai.generate({
@@ -43,11 +44,7 @@ export const generateLessonStudioFlow = ai.defineFlow(
     });
 
     const lessonPlan = response.output;
-    if (!lessonPlan) {
-      throw new Error('Failed to generate lesson plan. The AI model did not return a valid lesson plan.');
-    }
-    
-    // Process sections to match expected schema if needed based on the new prompt output
+    if (!lessonPlan) throw new Error('Failed to generate lesson plan.');
     return lessonPlan;
   }
 );

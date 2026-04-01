@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { ai } from '../../genkit';
+import { ai } from '@/genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { buildAutograderPrompt } from '@/ai/prompts';
 
@@ -34,8 +34,8 @@ export async function autograde(input: AutogradeInput): Promise<AutogradeOutput>
       learnerSubmission: input.assignmentContent,
     });
 
-    const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-pro-preview'),
+    const response = await ai.generate<AutogradeOutput>({
+      model: googleAI.model('gemini-3.1-pro'),
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
       output: { schema: AutogradeOutputSchema },

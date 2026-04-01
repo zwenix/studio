@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/app-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2, Edit3 } from 'lucide-react';
+import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2, Edit3, FileDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
@@ -35,6 +35,7 @@ import type { GeneratedContent, Class, Template } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { StaticTemplates } from '@/lib/templates';
+import html2pdf from 'html2pdf.js';
 
 type CombinedItem = 
   | (GeneratedContent & { isSystem: false }) 
@@ -45,9 +46,11 @@ export default function ContentArchivePage() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const printableRef = useRef<HTMLDivElement>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
 
@@ -138,6 +141,41 @@ export default function ContentArchivePage() {
       toast({ title: 'Removed', description: 'Item removed from Archive.' });
     } catch (e) {
       toast({ title: 'Error', variant: "destructive" });
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!printableRef.current || !selectedItem) return;
+    setIsDownloading(true);
+
+    const filename = `${selectedItem.isSystem ? selectedItem.title : selectedItem.topic || 'Archived_Content'}.pdf`;
+
+    const opt = {
+      margin:       10,
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.className = "prose max-w-none p-8 font-body text-black";
+      wrapper.innerHTML = selectedItem.content;
+      
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      document.body.appendChild(wrapper);
+
+      await html2pdf().set(opt).from(wrapper).save();
+      
+      document.body.removeChild(wrapper);
+      toast({ title: 'PDF Downloaded Successfully!' });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      toast({ title: 'PDF Download Failed', description: 'There was an error creating the PDF.', variant: 'destructive' });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -254,7 +292,7 @@ export default function ContentArchivePage() {
               <Badge variant="outline" className="text-white border-white/40">Grade {selectedItem?.grade}</Badge>
             </div>
             
-            <div className="flex-1 overflow-auto bg-muted/20 p-8">
+            <div className="flex-1 overflow-auto bg-muted/20 p-8" ref={printableRef}>
               <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 shadow-inner prose dark:prose-invert max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: selectedItem?.content || '' }} />
               </div>
@@ -268,6 +306,9 @@ export default function ContentArchivePage() {
                   }
                 }}>
                 <Edit3 className="mr-2 h-5 w-5" /> Tweak in Creator
+              </Button>
+              <Button variant="outline" className="rounded-full h-14 px-8 border-green-600 text-green-600 hover:bg-green-50" onClick={handleDownloadPDF} disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileDown className="mr-2 h-5 w-5" />} Save as PDF
               </Button>
               <div className="flex-1 flex gap-3">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>

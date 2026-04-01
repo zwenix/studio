@@ -35,7 +35,7 @@ export async function autograde(input: AutogradeInput): Promise<AutogradeOutput>
     });
 
     const response = await ai.generate<AutogradeOutput>({
-      model: googleAI.model('gemini-3.1-pro-preview'),
+      model: 'googleai/gemini-pro-latest',
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
       output: { schema: AutogradeOutputSchema },

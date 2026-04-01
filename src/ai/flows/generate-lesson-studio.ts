@@ -35,7 +35,7 @@ export const generateLessonStudioFlow = ai.defineFlow(
     });
 
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-pro-preview'),
+      model: 'googleai/gemini-pro-latest',
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
       output: { schema: LessonPlanSchema },

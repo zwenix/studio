@@ -49,7 +49,7 @@ const ttsFlow = ai.defineFlow(
   },
   async ({ text, voice }) => {
     const { media } = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-preview-tts'),
+      model: 'googleai/gemini-flash-latest',
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {

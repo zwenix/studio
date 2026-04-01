@@ -30,7 +30,7 @@ export async function extractTextFromImage(input: ExtractTextFromImageInput): Pr
 const prompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
   // gemini-3.1-flash-live-preview: fast multimodal model — appropriate for OCR, no heavy reasoning needed
-  model: googleAI.model('gemini-3.1-flash-live-preview'),
+  model: 'googleai/gemini-flash-live-latest',
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
   prompt: `You are an expert OCR and handwriting recognition AI.

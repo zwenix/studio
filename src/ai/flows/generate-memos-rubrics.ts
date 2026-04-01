@@ -66,13 +66,13 @@ Base mark allocations strictly on CAPS norms for Grade ${input.grade}.`;
 
     const [memoResponse, rubricResponse] = await Promise.all([
       ai.generate({
-        model: googleAI.model('gemini-3.1-pro-preview'),
+        model: 'googleai/gemini-pro-latest',
         system: capsSystemPrompt,
         prompt: memoPrompt,
         output: { schema: MemoSchema },
       }),
       ai.generate({
-        model: googleAI.model('gemini-3.1-pro-preview'),
+        model: 'googleai/gemini-pro-latest',
         system: capsSystemPrompt,
         prompt: rubricPrompt,
         output: { schema: RubricSchema },

@@ -40,7 +40,7 @@ export async function generateMockAssessment(
   try {
     const response = await ai.generate({
       // gemini-3.1-pro-preview: flagship model for high-accuracy CAPS assessment design (per chat.txt)
-      model: googleAI.model('gemini-3.1-pro-preview'),
+      model: 'googleai/gemini-pro-latest',
       output: { schema: MockAssessmentResponseSchema },
       system: `You are an expert South African educator and CAPS assessment specialist creating practice assessments for Grades R-12.
 

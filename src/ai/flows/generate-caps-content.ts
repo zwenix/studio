@@ -59,7 +59,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-flash-live-preview'), // Changed to a multimodal-capable model for images
+      model: 'googleai/gemini-flash-live-latest', // Changed to a multimodal-capable model for images
       prompt: enrichedPrompt,
       config: { responseModalities: ['IMAGE'] },
       output: { format: 'media' },
@@ -104,7 +104,7 @@ export async function generateCAPSContent(
     });
 
     const response = await ai.generate({
-      model: googleAI.model('gemini-3.1-pro-preview'),
+      model: 'googleai/gemini-pro-latest',
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
       output: { format: 'json' },

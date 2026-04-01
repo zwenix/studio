@@ -59,9 +59,9 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      // W   prompt: enrichedPrompt,e must use the image-specific model alias as requested in geminichat.txt
+      // We must use the image-specific model alias as requested in geminichat.txt
       model: googleAI.model('gemini-2.5-flash-image'), 
-   
+      prompt: enrichedPrompt,
       config: { responseModalities: ['IMAGE'] },
       output: { format: 'media' },
     });
@@ -172,7 +172,7 @@ export async function generateCAPSContent(
         finalMarkdown += `\n`;
     }
     
-    // --- IMAGE GENERATION LOGIC ---
+    // --- RESTORED AND FIXED IMAGE GENERATION LOGIC ---
     if (parsedContent.image_prompt || parsedContent.visual_brief) {
         const promptToUse = parsedContent.image_prompt || parsedContent.visual_brief?.description || parsedContent.visual_brief?.main_scene;
         

@@ -47,6 +47,39 @@ function mapCategoryToPromptType(category: string, contentType: string): 'poster
   return 'worksheet'; // fallback
 }
 
+async function generateImage(prompt: string, subject: string, grade: string): Promise<string> {
+  const enrichedPrompt = [
+    `Educational illustration for South African Grade ${grade} ${subject}.`,
+    prompt,
+    'Style: bright, clear, child-friendly flat illustration.',
+    'No text overlays, no logos, no watermarks, no emojis.',
+    'Suitable for printing on A4 classroom worksheets.',
+    'Diverse South African children and environments where people are shown.',
+  ].join(' ');
+
+  try {
+    const response = await ai.generate({
+      model: googleAI.model('gemini-3.1-flash-live-preview'), // Changed to a multimodal-capable model for images
+      prompt: enrichedPrompt,
+      config: { responseModalities: ['IMAGE'] },
+      output: { format: 'media' },
+    });
+    
+    // The exact property path might vary slightly depending on the SDK version, checking standard locations
+    if (response.media?.url) return response.media.url;
+    
+    const parts = (response as any).candidates?.[0]?.message?.content ?? [];
+    for (const part of parts) {
+      if (part?.media?.url) return part.media.url;
+      if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    }
+  } catch (e) {
+    console.error('Image generation failed:', e);
+  }
+
+  return '';
+}
+
 export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
@@ -81,7 +114,6 @@ export async function generateCAPSContent(
       throw new Error('Content generation returned no output.');
     }
     
-    // Attempt to parse the JSON response from the model
     let parsedContent: any;
     try {
         parsedContent = JSON.parse(response.text);
@@ -90,7 +122,6 @@ export async function generateCAPSContent(
         return { content: response.text };
     }
 
-    // Convert the structured JSON back into markdown for the frontend editor
     let finalMarkdown = '';
     
     if (parsedContent.title || parsedContent.poster_text?.title) {
@@ -105,7 +136,6 @@ export async function generateCAPSContent(
         finalMarkdown += `**Instructions:**\n${Array.isArray(parsedContent.instructions) ? parsedContent.instructions.join('\n') : parsedContent.instructions}\n\n`;
     }
 
-    // Worksheets
     if (parsedContent.worksheet_sections) {
         parsedContent.worksheet_sections.forEach((section: any) => {
             finalMarkdown += `## ${section.section_title}\n`;
@@ -116,7 +146,6 @@ export async function generateCAPSContent(
         });
     }
 
-    // Study Guides
     if (parsedContent.summary_sections) {
         parsedContent.summary_sections.forEach((section: any) => {
             finalMarkdown += `## ${section.heading}\n\n`;
@@ -136,23 +165,37 @@ export async function generateCAPSContent(
          finalMarkdown += `\n`;
     }
 
-    // Posters
     if (parsedContent.poster_text?.key_points) {
         parsedContent.poster_text.key_points.forEach((point: string) => finalMarkdown += `- ${point}\n`);
         finalMarkdown += `\n`;
     }
     
-    // Image Prompts (we output this as a comment or note for the teacher since we removed auto-image generation to save latency/errors)
-    if (parsedContent.image_prompt) {
-         finalMarkdown += `\n---\n*Suggested Visual:* ${parsedContent.image_prompt}\n`;
+    // --- RESTORED AND FIXED IMAGE GENERATION LOGIC ---
+    if (parsedContent.image_prompt || parsedContent.visual_brief) {
+        const promptToUse = parsedContent.image_prompt || parsedContent.visual_brief?.description || parsedContent.visual_brief?.main_scene;
+        
+        if (promptToUse) {
+            const dataUri = await generateImage(promptToUse, input.subject, input.grade);
+            
+            if (dataUri) {
+                finalMarkdown += `\n<div class="my-6 text-center">
+  <img
+    src="${dataUri}"
+    alt="Educational illustration: ${promptToUse.substring(0, 80)}"
+    class="rounded-xl shadow-lg mx-auto max-h-[400px] w-auto"
+    style="max-width:100%;height:auto;"
+  />
+</div>\n`;
+            } else {
+                finalMarkdown += `\n---\n*[Image Generation Failed for Prompt: ${promptToUse}]*\n`;
+            }
+        }
     }
     
-    // Fallback if structure wasn't strictly followed
     if (finalMarkdown === '' && parsedContent) {
          finalMarkdown = JSON.stringify(parsedContent, null, 2);
     }
 
-    // Extract Memo if it exists
     let memoMarkdown = '';
     if (parsedContent.memo_if_requested?.included && parsedContent.memo_if_requested?.answers) {
          memoMarkdown += `## Memorandum\n\n`;

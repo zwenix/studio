@@ -59,22 +59,23 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      model: 'googleai/gemini-flash-live-latest', // Changed to a multimodal-capable model for images
-      prompt: enrichedPrompt,
+      // W   prompt: enrichedPrompt,e must use the image-specific model alias as requested in geminichat.txt
+      model: googleAI.model('gemini-2.5-flash-image'), 
+   
       config: { responseModalities: ['IMAGE'] },
       output: { format: 'media' },
     });
     
-    // The exact property path might vary slightly depending on the SDK version, checking standard locations
     if (response.media?.url) return response.media.url;
     
+    // Deeper check for inline data if the API returns it differently
     const parts = (response as any).candidates?.[0]?.message?.content ?? [];
     for (const part of parts) {
       if (part?.media?.url) return part.media.url;
       if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
     }
   } catch (e) {
-    console.error('Image generation failed:', e);
+    console.error('Image generation failed with gemini-2.5-flash-image:', e);
   }
 
   return '';
@@ -104,6 +105,7 @@ export async function generateCAPSContent(
     });
 
     const response = await ai.generate({
+      // Using the latest flagship alias
       model: 'googleai/gemini-pro-latest',
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
@@ -170,7 +172,7 @@ export async function generateCAPSContent(
         finalMarkdown += `\n`;
     }
     
-    // --- RESTORED AND FIXED IMAGE GENERATION LOGIC ---
+    // --- IMAGE GENERATION LOGIC ---
     if (parsedContent.image_prompt || parsedContent.visual_brief) {
         const promptToUse = parsedContent.image_prompt || parsedContent.visual_brief?.description || parsedContent.visual_brief?.main_scene;
         

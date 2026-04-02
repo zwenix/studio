@@ -89,7 +89,7 @@ const ADMIN_TYPES: Record<string, string[]> = {
     'Disciplinary Notice', 'Classroom Rules', 'Homework Policy Letter',
     'Detention Notice', 'Achievement Certificate',
   ],
-];
+};
 
 const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sesotho', 'Sepedi', 'Setswana'];
 const DIFFICULTIES = ['Easy (Lower Order Thinking)', 'Medium (Mixed)', 'Challenging (Higher Order)', 'Mixed (Bloom\'s Progression)'];
@@ -123,7 +123,7 @@ function ContentPreview({ html, label }: { html: string; label: string }) {
             all: 'initial',
             display: 'block',
             fontFamily: 'Arial, sans-serif',
-            fontSize: 14,
+            fontSize: '14px',
             color: '#1a1a1a',
             lineHeight: 1.6,
           } as React.CSSProperties}
@@ -269,7 +269,7 @@ export function ContentCreatorClient() {
         differentiation: t_differentiation,
         includeAnswerMemo: t_memo,
         includeRubric: t_rubric,
-        teacherName: teacherData ? '' : '',
+        teacherName: user?.displayName || '',
         schoolName: '',
         signatureUrl: teacherData?.signatureUrl,
         additionalInstructions: t_extraInstructions,

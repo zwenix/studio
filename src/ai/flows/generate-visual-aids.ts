@@ -165,7 +165,7 @@ No text overlays. Clean white background. Print-ready educational graphic. South
 The image should be: well-composed, high-quality, suitable for classroom display.`;
 
     const result = await ai.generate({
-      model: googleAI.model('imagen-4.0-fast-generate-001'),
+      model: googleAI.model('gemini-3.1-flash-image-preview'),
       prompt: imagePrompt,
       output: { format: 'media' },
     } as any);
@@ -180,7 +180,7 @@ The image should be: well-composed, high-quality, suitable for classroom display
     // Try Gemini 2.5 Flash Image as fallback
     try {
       const fallback = await ai.generate({
-        model: googleAI.model('gemini-2.5-flash-preview-04-17'),
+        model: 'googleai/gemini-3.1-flash-image-preview',
         prompt: `Generate an educational image for: ${visualType} about ${topic} for grade ${grade} ${subject}. ${style || 'Clean educational style'}. ${colorScheme || 'Bright colors'}.`,
         output: { format: 'media' },
       } as any);

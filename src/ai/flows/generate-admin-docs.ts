@@ -119,8 +119,8 @@ DOCUMENT STANDARDS
 
 export async function generateAdminDoc(input: AdminDocInput): Promise<AdminDocOutput> {
   const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
-    config: { temperature: 0.5 },
+    // gemini-pro-latest = Gemini 3.1 Pro (per geminichat.txt alias table) — correct for professional document generation
+    model: 'googleai/gemini-pro-latest',
     system: ADMIN_SYSTEM_PROMPT,
     prompt: `Create a ${input.documentType}:
 

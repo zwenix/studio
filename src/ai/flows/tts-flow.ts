@@ -49,7 +49,8 @@ const ttsFlow = ai.defineFlow(
   },
   async ({ text, voice }) => {
     const { media } = await ai.generate({
-      model: 'googleai/gemini-flash-latest',
+      // gemini-2.5-flash-preview-tts = dedicated TTS model (per geminichat.txt + verified in @genkit-ai/google-genai v1.31.0)
+      model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {

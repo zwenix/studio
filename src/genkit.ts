@@ -1,5 +1,6 @@
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import groq from 'genkitx-groq';
 
 /**
  * Shared Genkit instance with Google AI plugin.
@@ -17,8 +18,9 @@ import { googleAI } from '@genkit-ai/google-genai';
  * ❌ DO NOT USE — these strings do not exist in v1.31.0 and will crash at runtime:
  *    gemini-flash-live-latest  |  gemini-2.5-flash-image  |  gemini-2.5-flash-preview-04-17
  *    gemini-3-flash-image  |  gemini-3.1-flash  (bare, without -preview/-latest suffix)
+ * Shared Genkit instance with Google AI plugin and Groq fallback.
  */
 export const ai = genkit({
-  plugins: [googleAI()],
+  plugins: [googleAI(), groq()],
   model: 'googleai/gemini-pro-latest',
 });

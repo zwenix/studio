@@ -28,6 +28,7 @@ import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, addDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { educationalData } from '@/lib/educational-data';
 import { generateTeachingContent, type TeachingContentInput, type TeachingContentOutput } from '@/ai/flows/generate-teaching-content';
+import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";
 import { generateVisualAid, type VisualAidInput, type VisualAidOutput } from '@/ai/flows/generate-visual-aids';
 import { generateAdminDoc, type AdminDocInput, type AdminDocOutput } from '@/ai/flows/generate-admin-docs';
 import type { Teacher } from '@/lib/types';
@@ -618,7 +619,7 @@ export function ContentCreatorClient() {
           }}>
             {/* Tab Navigation */}
             <div className="sticky top-0 z-10 bg-slate-900 border-b border-white/10 p-4">
-              <TabsList className="grid grid-cols-3 bg-white/5 rounded-2xl h-auto p-1 gap-1">
+              <TabsList className="grid grid-cols-4 bg-white/5 rounded-2xl h-auto p-1 gap-1">
                 <TabsTrigger
                   value="teaching"
                   className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
@@ -642,6 +643,14 @@ export function ContentCreatorClient() {
                   <FileText className="h-5 w-5" />
                   <span className="hidden sm:block">Admin Docs</span>
                   <span className="sm:hidden">Admin</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="grade1"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-yellow-500 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span className="hidden sm:block">Grade 1 Packs</span>
+                  <span className="sm:hidden">Gr 1</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1016,6 +1025,9 @@ export function ContentCreatorClient() {
                   <><ClipboardList className="mr-2 h-5 w-5" /> Generate {a_type || 'Document'}</>
                 )}
               </Button>
+            </TabsContent>
+            <TabsContent value="grade1" className="p-5 space-y-5 m-0">
+              <Grade1EnglishGenerator />
             </TabsContent>
           </Tabs>
         </div>

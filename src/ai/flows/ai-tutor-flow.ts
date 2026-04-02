@@ -2,7 +2,6 @@
 
 import { z } from 'zod';
 import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { buildTutorPrompt } from '@/ai/prompts';
 
 const AiTutorInputSchema = z.object({
@@ -34,7 +33,10 @@ export async function aiTutor(input: AiTutorInput): Promise<AiTutorOutput> {
     });
 
     const response = await ai.generate({
-      model: 'googleai/gemini-flash-live-latest',
+      // gemini-flash-latest = Gemini 3 Flash (per geminichat.txt alias table)
+      // Fast, low-latency dialogue model — correct for real-time tutoring
+      // Previously used gemini-flash-live-latest which DOES NOT EXIST in @genkit-ai/google-genai v1.31.0
+      model: 'googleai/gemini-flash-latest',
       system: promptParams.systemInstruction,
       messages: [
         ...historyMessages,

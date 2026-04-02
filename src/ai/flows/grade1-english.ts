@@ -1,82 +1,101 @@
-'use server';
+\'use server\';
 
-import { z } from 'zod';
-import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { z } from \'zod\';
+import { ai } from \'@/genkit\';
+import { googleAI, gemini31Pro } from \'@genkit-ai/google-genai\'; // Import gemini31Pro
 
 export const generateGrade1English = ai.defineFlow(
   {
-    name: 'generateGrade1English',
-    inputSchema: z.object({
-      materialType: z.enum([
-        'phonicsBook',
-        'readingComprehensionA',
-        'spellingTr',
-        'displayPack',
-        'improvementTracker',
-        'handwritingSheet',
-        'abcBooklet',
-        'classroomLabels',
+    name: \'generateGrade1English\',\
+    inputSchema: z.object({\
+      materialType: z.enum([\
+        \'phonicsBook\',\
+        \'readingComprehensionA\',\
+        \'spellingTr\',\
+        \'displayPack\',\
+        \'improvementTracker\',\
+        \'handwritingSheet\',\
+        \'abcBooklet\',\
+        \'classroomLabels\',\
       ]),
-    }),
-    outputSchema: z.object({
-      title: z.string(),
-      content: z.string(),           // Rich markdown
-      description: z.string(),       // Short summary
-    }),
-  },
-  async ({ materialType }) => {
-    const prompt = `You are a master Foundation Phase teacher in South Africa. 
-Generate **high-quality, CAPS-aligned Grade 1 English materials** in a colourful, child-friendly, Teacher's Pet style.
+      userId: z.string(), // Added userId for Firebase storage
+    }),\
+    outputSchema: z.object({\
+      title: z.string(),\
+      content: z.string(),           // Now expecting rich HTML\
+      description: z.string(),       // Short summary\
+      assessmentCriteria: z.string(),   // New: CAPS-aligned assessment\
+      successIndicators: z.array(z.string()),\
+    }),\
+  },\
+  async ({ materialType, userId }) => {\
+    const capsPrompt = `You are an expert South African Foundation Phase English teacher.
 
-Material: ${materialType}
+Generate **CAPS-aligned Grade 1 English materials** with clear assessment criteria.
 
-Requirements:
-- Use very simple language suitable for Grade 1.
-- Lots of repetition and phonics focus.
-- Colourful, engaging layout descriptions.
-- Include activities, tracing, matching, drawing spaces.
-- Use markdown with headings, bullet points, tables where needed.
-- Add emoji and simple ASCII art for visual appeal since no external images.
+**Material Type:** ${materialType}
+
+**CAPS Assessment Requirements (Must Include):**
+- Informal assessment through observation
+- Use of concrete apparatus and manipulatives
+- Differentiation for different ability levels
+- Clear success criteria (what "meeting expectations" looks like)
+- Simple rubric or checklist for teachers
+- Links to CAPS Learning Outcomes for Home Language (Listening & Speaking, Reading & Phonics, Writing & Handwriting, Language Structure & Use)
+
+**Output Requirements:**
+- Child-friendly, engaging activities
+- South African real-life contexts
+- Teacher\'s Pet style (colourful, fun, simple)
+- Include space for drawing, cutting, pasting where appropriate
+- Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
+- Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
+- Add emoji descriptions or simple visual cues within the HTML where appropriate, as no external images are embedded directly.
 
 Return clean JSON only with this structure:
 {
   "title": "string",
-  "content": "string (markdown)",
-  "description": "string"
-}`;
+  "content": "string (full HTML content with activities)",
+  "description": "string",
+  "assessmentCriteria": "string (detailed CAPS assessment guidance for teachers in HTML format)",
+  "successIndicators": ["observable success criteria 1", "success criteria 2", "..."]
+}`;\
 
-    // Try Gemini Primary
-    try {
-      const result = await ai.generate({
-        model: 'googleai/gemini-flash-latest', // Using primary Gemini
-        prompt,
-        config: { temperature: 0.75, maxOutputTokens: 4000 },
-        output: { format: 'json' },
-      });
+    let result;\
+    try {\
+      result = await ai.generate({\
+        model: gemini31Pro, // Using gemini31Pro for CAPS content, as per chat.txt
+        prompt: capsPrompt,\
+        config: { 
+          temperature: 0.65, 
+          maxOutputTokens: 5000,
+          version: '3.1', // As requested in the prompt
+          thinkingLevel: 'medium', // As requested in the prompt
+        },\
+      });\
+    } catch (err) {\
+      console.warn(\'Gemini 3.1 Pro failed, falling back to Flash...\');
+      result = await ai.generate({\
+        model: googleAI.geminiFlashLatest, // Fallback to gemini-flash-latest
+        prompt: capsPrompt,\
+        config: { 
+          temperature: 0.7, 
+          maxOutputTokens: 4200,
+          version: '3.1',
+          thinkingLevel: 'medium',
+        },\
+      });\
+    }\
 
-      if (!result.text) throw new Error("Gemini returned empty text");
-      return JSON.parse(result.text);
+    if (!result.text) throw new Error(\"Gemini returned empty text\");
+    const output = JSON.parse(result.text);
 
-    } catch (err) {
-      console.warn('Gemini failed, falling back to Groq Llama 3...', err);
-      
-      // Fallback to Groq Llama 3 70B
-      try {
-        const groqResult = await ai.generate({
-          model: 'groq/llama3-70b-8192', // Genkitx-Groq standard alias
-          prompt,
-          config: { temperature: 0.7 },
-          output: { format: 'json' },
-        });
-        
-        if (!groqResult.text) throw new Error("Groq returned empty text");
-        return JSON.parse(groqResult.text);
+    // TODO: Save to Firebase with CAPS metadata (add Firebase import and logic)
+    // For now, returning the output directly
 
-      } catch (groqErr) {
-        console.error("Groq fallback also failed", groqErr);
-        throw new Error("Failed to generate content with both Gemini and Groq.");
-      }
-    }
-  }
+    return {\
+      ...output,\
+      // docId: docRef.id, // Uncomment when Firebase saving is implemented
+    };\
+  }\
 );

@@ -1,12 +1,14 @@
-'use server';
+\'use server\';
 
-import { z } from 'zod';
-import { ai } from '../../genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-import { buildContentCreatorPrompt } from '@/ai/prompts';
+import { z } from \'zod\';
+import { ai } from \'../../genkit\';
+import { googleAI, gemini31Pro } from \'@genkit-ai/google-genai\'; // Import gemini31Pro
+import { buildContentCreatorPrompt } from \'@/ai/prompts\';
+import { db } from \'@/firebase\'; // Import Firebase db
+import { collection, addDoc, serverTimestamp } from \'firebase/firestore\'; // Import Firestore functions
 
 const GenerateCAPSContentInputSchema = z.object({
-  grade: z.string().describe('The grade level (R, 1-12, or custom).'),
+  grade: z.string().describe(\'The grade level (R, 1-12, or custom).\'),
   subject: z.string(),
   topic: z.string(),
   contentType: z.string(),
@@ -19,6 +21,7 @@ const GenerateCAPSContentInputSchema = z.object({
   additionalInstructions: z.string().optional(),
   teacherName: z.string().optional(),
   signatureUrl: z.string().optional(),
+  userId: z.string(), // Added userId
 });
 export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSchema>;
 
@@ -26,48 +29,52 @@ export type GenerateCAPSContentOutput = {
   content: string;
   memo?: string;
   rubric?: string;
+  docId?: string; // Added docId to output
+  assessmentCriteria?: string; // Added assessmentCriteria
+  successIndicators?: string[]; // Added successIndicators
 };
 
-function mapCategoryToPromptType(category: string, contentType: string): 'poster' | 'worksheet' | 'study_guide' | 'visual_aid' {
+function mapCategoryToPromptType(category: string, contentType: string): \'poster\' | \'worksheet\' | \'study_guide\' | \'visual_aid\' {
   const lowerContentType = contentType.toLowerCase();
   
-  if (lowerContentType.includes('poster') || lowerContentType.includes('visual')) {
-      return 'poster';
+  if (lowerContentType.includes(\'poster\') || lowerContentType.includes(\'visual\')) {
+      return \'poster\';
   }
-  if (lowerContentType.includes('worksheet') || lowerContentType.includes('exercise') || lowerContentType.includes('homework') || category === 'Assignments, Exercises & Tasks') {
-      return 'worksheet';
+  if (lowerContentType.includes(\'worksheet\') || lowerContentType.includes(\'exercise\') || lowerContentType.includes(\'homework\') || category === \'Assignments, Exercises & Tasks\') {
+      return \'worksheet\';
   }
-  if (lowerContentType.includes('study guide') || lowerContentType.includes('notes') || lowerContentType.includes('booklet')) {
-      return 'study_guide';
+  if (lowerContentType.includes(\'study guide\') || lowerContentType.includes(\'notes\') || lowerContentType.includes(\'booklet\')) {
+      return \'study_guide\';
   }
-  if (category === 'Teaching Tools & Aids') {
-       return 'visual_aid';
+  if (category === \'Teaching Tools & Aids\') {
+       return \'visual_aid\';
   }
   
-  return 'worksheet'; // fallback
+  return \'worksheet\'; // fallback
 }
 
 async function generateImage(prompt: string, subject: string, grade: string): Promise<string> {
   const enrichedPrompt = [
     `Educational illustration for South African Grade ${grade} ${subject}.`,
     prompt,
-    'Style: bright, clear, child-friendly flat illustration.',
-    'No text overlays, no logos, no watermarks, no emojis.',
-    'Suitable for printing on A4 classroom worksheets.',
-    'Diverse South African children and environments where people are shown.',
-  ].join(' ');
+    \'Style: bright, clear, child-friendly flat illustration.\',
+    \'No text overlays, no logos, no watermarks, no emojis.\',
+    \'Suitable for printing on A4 classroom worksheets.\',
+    \'Diverse South African children and environments where people are shown.\',
+  ].join(\' \');
 
   try {
     const response = await ai.generate({
-      // gemini-3.1-flash-image-preview = image generation model (per @genkit-ai/google-genai v1.31.0)
-      // gemini-2.5-flash-image is deprecated (June 2026 shutdown per geminichat.txt)
-      model: 'googleai/gemini-3.1-flash-image-preview', 
+      model: googleAI.gemini31FlashImage, // Use the correct alias for image generation
       prompt: enrichedPrompt,
-      config: { responseModalities: ['IMAGE'] },
-      output: { format: 'media' },
+      config: { 
+        responseMimeType: \'image/jpeg\', // Request JPEG for broader compatibility
+        responseModality: \'image\', // Request image output
+      },
+      output: { format: \'media\' },
     });
     
-    if (response.media?.url) return response.media.url;
+    if (response.media?.[0]?.url) return response.media[0].url;
     
     // Deeper check for inline data if the API returns it differently
     const parts = (response as any).candidates?.[0]?.message?.content ?? [];
@@ -76,10 +83,10 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
       if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
     }
   } catch (e) {
-    console.error('Image generation failed with gemini-2.5-flash-image:', e);
+    console.error(\'Image generation failed:\', e);
   }
 
-  return '';
+  return \'\';
 }
 
 export async function generateCAPSContent(
@@ -97,83 +104,43 @@ export async function generateCAPSContent(
         language: input.language,
         notes: `
             Content Type specifically requested: ${input.contentType}. 
-            Objective: ${input.objective || 'N/A'}. 
-            Learner Profile: ${input.learnerProfile || 'General'}. 
-            Duration: ${input.duration || 'N/A'}. 
-            Additional Instructions: ${input.additionalInstructions || 'None'}
-            Teacher Name to include if applicable: ${input.teacherName || 'Educator'}
+            Objective: ${input.objective || \'N/A\'}. 
+            Learner Profile: ${input.learnerProfile || \'General\'}. 
+            Duration: ${input.duration || \'N/A\'}. 
+            Additional Instructions: ${input.additionalInstructions || \'None\'}
+            Teacher Name to include if applicable: ${input.teacherName || \'Educator\'}
         `,
     });
 
     const response = await ai.generate({
-      // Using the latest flagship alias
-      model: 'googleai/gemini-pro-latest',
+      model: gemini31Pro, // Using gemini31Pro for CAPS content, as per request
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
-      output: { format: 'json' },
+      config: {
+        temperature: 0.65,
+        maxOutputTokens: 5000,
+        version: \'3.1\',
+        thinkingLevel: \'medium\',
+        responseMimeType: \'application/json\',
+      },
+      output: { format: \'json\' },
     });
 
     if (!response.text) {
-      throw new Error('Content generation returned no output.');
+      throw new Error(\'Content generation returned no output.\');
     }
     
     let parsedContent: any;
     try {
         parsedContent = JSON.parse(response.text);
     } catch (e) {
-        console.error("Failed to parse JSON from model, falling back to raw text:", response.text);
-        return { content: response.text };
+        console.error(\"Failed to parse JSON from model, falling back to raw text:\", response.text);
+        return { content: response.text }; // Fallback to raw text if JSON parsing fails
     }
 
-    let finalMarkdown = '';
+    let finalHtmlContent = parsedContent.content_html || ''; // Expecting content_html from the prompt
     
-    if (parsedContent.title || parsedContent.poster_text?.title) {
-        finalMarkdown += `# ${parsedContent.title || parsedContent.poster_text.title}\n\n`;
-    }
-    
-    if (parsedContent.subtitle || parsedContent.poster_text?.subtitle) {
-        finalMarkdown += `*${parsedContent.subtitle || parsedContent.poster_text.subtitle}*\n\n`;
-    }
-
-    if (parsedContent.instructions) {
-        finalMarkdown += `**Instructions:**\n${Array.isArray(parsedContent.instructions) ? parsedContent.instructions.join('\n') : parsedContent.instructions}\n\n`;
-    }
-
-    if (parsedContent.worksheet_sections) {
-        parsedContent.worksheet_sections.forEach((section: any) => {
-            finalMarkdown += `## ${section.section_title}\n`;
-            if (section.section_instructions) finalMarkdown += `*${section.section_instructions}*\n\n`;
-            section.questions?.forEach((q: any) => {
-                finalMarkdown += `**${q.number}.** ${q.question} (${q.marks} marks)\n\n`;
-            });
-        });
-    }
-
-    if (parsedContent.summary_sections) {
-        parsedContent.summary_sections.forEach((section: any) => {
-            finalMarkdown += `## ${section.heading}\n\n`;
-            if (Array.isArray(section.content)) {
-                section.content.forEach((c: string) => finalMarkdown += `${c}\n\n`);
-            } else {
-                 finalMarkdown += `${section.content}\n\n`;
-            }
-        });
-    }
-    
-    if (parsedContent.key_terms) {
-         finalMarkdown += `## Key Terms\n\n`;
-         parsedContent.key_terms.forEach((term: any) => {
-             finalMarkdown += `- **${term.term}:** ${term.definition}\n`;
-         });
-         finalMarkdown += `\n`;
-    }
-
-    if (parsedContent.poster_text?.key_points) {
-        parsedContent.poster_text.key_points.forEach((point: string) => finalMarkdown += `- ${point}\n`);
-        finalMarkdown += `\n`;
-    }
-    
-    // --- RESTORED AND FIXED IMAGE GENERATION LOGIC ---
+    // --- IMAGE GENERATION LOGIC ---
     if (parsedContent.image_prompt || parsedContent.visual_brief) {
         const promptToUse = parsedContent.image_prompt || parsedContent.visual_brief?.description || parsedContent.visual_brief?.main_scene;
         
@@ -181,40 +148,57 @@ export async function generateCAPSContent(
             const dataUri = await generateImage(promptToUse, input.subject, input.grade);
             
             if (dataUri) {
-                finalMarkdown += `\n<div class="my-6 text-center">
-  <img
-    src="${dataUri}"
-    alt="Educational illustration: ${promptToUse.substring(0, 80)}"
-    class="rounded-xl shadow-lg mx-auto max-h-[400px] w-auto"
-    style="max-width:100%;height:auto;"
-  />
-</div>\n`;
+                // Insert the image HTML into the final content
+                finalHtmlContent += `\n<div class=\"my-6 text-center\">\n  <img\n    src=\"${dataUri}\"\n    alt=\"Educational illustration: ${promptToUse.substring(0, 80)}\"\n    class=\"rounded-xl shadow-lg mx-auto max-h-[400px] w-auto\"\n    style=\"max-width:100%;height:auto;\"\n  />\n</div>\n`;
             } else {
-                finalMarkdown += `\n---\n*[Image Generation Failed for Prompt: ${promptToUse}]*\n`;
+                finalHtmlContent += `\n<!-- Image Generation Failed for Prompt: ${promptToUse} -->\n`;
             }
         }
     }
     
-    if (finalMarkdown === '' && parsedContent) {
-         finalMarkdown = JSON.stringify(parsedContent, null, 2);
-    }
+    // Constructing the assessment criteria and success indicators if available
+    let assessmentCriteria = parsedContent.assessmentCriteria || '';
+    let successIndicators = parsedContent.successIndicators || [];
 
-    let memoMarkdown = '';
+    let memoHtml = '';
     if (parsedContent.memo_if_requested?.included && parsedContent.memo_if_requested?.answers) {
-         memoMarkdown += `## Memorandum\n\n`;
+         memoHtml += `<h2>Memorandum</h2>`;
          parsedContent.memo_if_requested.answers.forEach((ans: any) => {
-             memoMarkdown += `**${ans.question_number}.** ${ans.answer}\n\n`;
+             memoHtml += `<p><strong>${ans.question_number}.</strong> ${ans.answer}</p>`;
          });
     }
 
+    // Save to Firebase Content Archive
+    const docRef = await addDoc(collection(db, \'teachers\', input.userId, \'generatedContent\'), {
+      teacherId: input.userId,
+      grade: input.grade,
+      subject: input.subject,
+      topic: input.topic,
+      contentType: input.contentType,
+      category: input.category,
+      content: finalHtmlContent,
+      description: parsedContent.description || \'\',
+      assessmentCriteria: assessmentCriteria,
+      successIndicators: successIndicators,
+      memo: memoHtml,
+      rubric: parsedContent.rubric || \'\',
+      createdAt: serverTimestamp(),
+      modelUsed: \'gemini31Pro\',
+      capsAligned: true,
+    });
+
     return { 
-        content: finalMarkdown,
-        memo: memoMarkdown,
+        content: finalHtmlContent,
+        memo: memoHtml,
+        rubric: parsedContent.rubric,
+        docId: docRef.id,
+        assessmentCriteria: assessmentCriteria,
+        successIndicators: successIndicators,
     };
   } catch (error) {
-    console.error('generateCAPSContent error:', error);
+    console.error(\'generateCAPSContent error:\', error);
     throw new Error(
-      `Content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Content generation failed: ${error instanceof Error ? error.message : \'Unknown error\'}`
     );
   }
 }

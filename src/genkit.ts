@@ -12,7 +12,7 @@ import groq from 'genkitx-groq';
  *  ALIAS (recommended)                     PINNED VERSION                   USE CASE
  *  googleai/gemini-pro-latest           =  googleai/gemini-3.1-pro-preview  CAPS content, lesson plans, assessments, autograding, memos
  *  googleai/gemini-flash-latest         =  googleai/gemini-3-flash-preview   AI Tutor dialogue, OCR/handwriting (fast, multimodal)
- *  googleai/gemini-2.5-flash-preview-tts                                     Text-to-Speech only
+ *  googleai/gemini-2.5-flash-preview-tts                                     Text-to-speech only
  *  googleai/gemini-3.1-flash-image-preview                                   Image generation for visual aids
  *
  * ❌ DO NOT USE — these strings do not exist in v1.31.0 and will crash at runtime:
@@ -21,6 +21,6 @@ import groq from 'genkitx-groq';
  * Shared Genkit instance with Google AI plugin and Groq fallback.
  */
 export const ai = genkit({
-  plugins: [googleAI(), groq()],
-  model: 'googleai/gemini-pro-latest',
+  plugins: [googleAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY })],
+  model: 'googleai/gemini-flash-latest', // Using Gemini 3 Flash as the default
 });

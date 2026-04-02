@@ -67,6 +67,9 @@ Important:
 - The image prompt must explicitly forbid emojis, tiny icons, watermark text, illegible labels, cluttered infographic styling, and decorative clipart.
 - The design must look like a professionally prepared school poster, not a social media graphic.
 - Create illustration only. Do not rely on text embedded inside the image as the primary teaching method.
+
+Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
+Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
 `,
     JSON_ONLY_RULE
   );
@@ -127,6 +130,9 @@ If visuals are needed:
 - include an image_prompt
 - include visuals only if they directly support learning
 - do not suggest emojis or decorative icons
+
+Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
+Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
 `,
     JSON_ONLY_RULE
   );
@@ -171,6 +177,9 @@ The study guide must:
 - include quick self-check questions
 - use learner-friendly language
 - be visually clean and easy to revise from
+
+Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
+Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
 `,
     JSON_ONLY_RULE
   );
@@ -213,6 +222,9 @@ The visual aid must:
 - include a concise teacher-facing design plan
 - include a high-quality image prompt for educational illustration only
 - be suitable for print or display
+
+Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
+Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
 `,
     JSON_ONLY_RULE
   );
@@ -232,14 +244,14 @@ Inputs:
 - Notes: ${input.notes ?? 'None'}
 
 Return JSON with:
-- curriculum_alignment
-- learning_goal
-- learner_level
-- content_text
-- design_spec
-- visual_brief
-- image_prompt
-- teacher_notes
+- curriculum_alignment (string)
+- learning_goal (string)
+- learner_level (string)
+- content_html (string, full HTML content)
+- design_spec (string)
+- visual_brief (string)
+- image_prompt (string)
+- teacher_notes (string)
 
 Negative constraints:
 ${VISUAL_NEGATIVE_CONSTRAINTS}

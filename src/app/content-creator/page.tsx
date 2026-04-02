@@ -1,7 +1,6 @@
 // src/app/content-creator/page.tsx
-// This is a SERVER component — no 'use client' directive.
-// It sets force-dynamic so Next.js never tries to statically prerender this route,
-// then hands off rendering to the client component below.
+// Server component wrapper — force-dynamic prevents static prerender.
+// Rendering is delegated to ContentCreatorClient.
 
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -15,7 +14,7 @@ export default function ContentCreatorPage() {
     <AppLayout>
       <Suspense
         fallback={
-          <div className="flex h-screen items-center justify-center">
+          <div className="flex h-full items-center justify-center">
             <Loader2 className="animate-spin h-12 w-12 text-primary" />
           </div>
         }

@@ -1,544 +1,1040 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Loader2,
-  Sparkles,
-  FileUp,
-  Camera,
-  ScanText,
-  Zap,
-  Palette,
-  Edit3,
-  Box,
-  Clock,
-  Target,
-  Users as UsersIcon,
-  Printer,
-  Save,
-  Trash2,
-  Type,
-  Image as ImageIcon,
-  Volume2,
-  Square,
-  FileDown
-} from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import {
-  Grade,
-  ALL_GRADES,
-  getSubjects,
-  getTopics,
-} from '@/lib/educational-data';
-import { generateCAPSContent } from '@/ai/flows/generate-caps-content';
-import type { GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
-import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
-import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import {
-  collection,
-  addDoc,
-  doc,
-  serverTimestamp,
-  getDoc,
-} from 'firebase/firestore';
-import { useDropzone } from 'react-dropzone';
-import type { Teacher, GeneratedContent } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import html2pdf from 'html2pdf.js';
+/**
+ * Content Creator — Complete Overhaul
+ * Three distinct labs:
+ * 1. 🎓 Assessments & Teaching Tools Lab
+ * 2. 🎨 Visual Aids & Media Tools
+ * 3. 📋 General & Admin Documents
+ */
 
-const CONTENT_CATEGORIES = {
-  'Teaching Tools & Aids': ['Lesson Plans', 'Lesson Slides', 'Notes/Learning Aids for Learners', 'Study Guides', 'Booklets', 'Poster'],
-  'Assignments, Exercises & Tasks': ['Worksheet', 'Exercises & Tasks', 'Homework', 'Assignments'],
+import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Loader2, Sparkles, Printer, Save, Trash2, Download,
+  FlaskConical, Palette, FileText, Eye, BookOpen, GraduationCap,
+  ChevronDown, ChevronUp, Zap, ClipboardList, ImageIcon, Settings2, RefreshCw
+} from 'lucide-react';
+import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, addDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { educationalData } from '@/lib/educational-data';
+import { generateTeachingContent, type TeachingContentInput, type TeachingContentOutput } from '@/ai/flows/generate-teaching-content';
+import { generateVisualAid, type VisualAidInput, type VisualAidOutput } from '@/ai/flows/generate-visual-aids';
+import { generateAdminDoc, type AdminDocInput, type AdminDocOutput } from '@/ai/flows/generate-admin-docs';
+import type { Teacher } from '@/lib/types';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const TEACHING_CATEGORIES: Record<string, string[]> = {
+  'Lesson Plans & Notes': [
+    'Lesson Plan', 'Daily Lesson Notes', 'Weekly Lesson Plan', 'Unit Plan',
+    'Learning Activity', 'Study Guide / Learning Notes', 'Revision Pack',
+  ],
+  'Classroom Tasks & Exercises': [
+    'Worksheet', 'Homework Task', 'Classroom Exercise', 'Group Activity',
+    'Reading Comprehension', 'Writing Task', 'Research Task',
+  ],
   'Assessments': [
-    'Controlled Test',
-    'Examination',
-    'Formal Assessment Task (FAT)',
-    'Investigation',
-    'Project',
-    'Case Study',
-    'Oral/Speech',
-    'Demonstration',
-    'Practical Task/Experiment',
-    'Portfolio'
+    'Controlled Test', 'Examination', 'Formal Assessment Task (FAT)',
+    'Investigation', 'Project Brief', 'Case Study', 'Oral/Speech Task',
+    'Practical Task / Experiment', 'Portfolio Task', 'Diagnostic Assessment',
   ],
-  'Class Management & Admin': [
-    'Individualised Learning Plan (ILP)',
-    'Classroom Labels',
-    'Letters to Parents',
-    'Permission Slips',
+  'Memos & Rubrics': [
+    'Marking Memo', 'Assessment Rubric', 'Analytical Rubric',
+    'Holistic Rubric', 'Checklist / Self-Assessment',
   ],
-  'Other': []
 };
 
-const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sepedi', 'Sesotho', 'Setswana'];
+const VISUAL_TYPES: Record<string, string[]> = {
+  'Classroom Displays': [
+    'Educational Poster', 'Word Wall', 'Vocabulary Display',
+    'Alphabet Chart', 'Number Chart / Number Line', 'Times Tables Chart',
+    'Classroom Rules Poster', 'Topic Anchor Chart',
+  ],
+  'Learning Cards': [
+    'Flashcards (Term + Definition)', 'Vocabulary Cards', 'Formula Reference Cards',
+    'Timeline Cards', 'Matching Cards', 'Cut-out Activity Cards',
+  ],
+  'Diagrams & Maps': [
+    'Mind Map / Concept Map', 'Educational Diagram', 'Infographic',
+    'Process Flow Diagram', 'Comparison Chart',
+  ],
+  'Labels & Organizers': [
+    'Classroom Labels / Signs', 'Book Labels', 'Book Cover Design',
+    'Certificate Template', 'Award / Sticker Template',
+  ],
+};
 
-const FONT_OPTIONS = [
-  { value: 'font-body', label: 'Modern Sans' },
-  { value: 'font-patrick-hand', label: 'Teacher\'s Pet' },
-  { value: 'font-comic-neue', label: 'School Friendly' },
-  { value: 'font-schoolbell', label: 'Classic Handwriting' },
+const ADMIN_TYPES: Record<string, string[]> = {
+  'Parent Communication': [
+    'Letter to Parents', 'General Notice to Parents', 'Permission Slip',
+    'Meeting Invitation', 'Progress Update Letter', 'Report Comment Template',
+  ],
+  'School Administration': [
+    'General School Notice', 'Timetable Template', 'Attendance Register',
+    'Subject Improvement Plan', 'School Calendar Event Notice',
+  ],
+  'Learner-Facing': [
+    'Disciplinary Notice', 'Classroom Rules', 'Homework Policy Letter',
+    'Detention Notice', 'Achievement Certificate',
+  ],
 ];
 
+const LANGUAGES = ['English', 'Afrikaans', 'isiZulu', 'isiXhosa', 'Sesotho', 'Sepedi', 'Setswana'];
+const DIFFICULTIES = ['Easy (Lower Order Thinking)', 'Medium (Mixed)', 'Challenging (Higher Order)', 'Mixed (Bloom\'s Progression)'];
+const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4'];
+const COLOR_SCHEMES = ['Bright Primary Colors', 'Pastel Soft', 'School Navy & Gold', 'Green & Nature', 'Monochrome Professional', 'Rainbow Fun'];
+const VISUAL_STYLES = ['Modern & Clean', 'Playful Cartoon', 'Professional Academic', 'Bold & Graphic', 'Minimalist'];
+const TONES = ['Formal & Professional', 'Warm & Friendly', 'Informative & Clear', 'Urgent & Important'];
+
+// ─── Preview Component ────────────────────────────────────────────────────────
+
+function ContentPreview({ html, label }: { html: string; label: string }) {
+  if (!html) return null;
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+        {label}
+      </h3>
+      <div
+        style={{
+          background: '#fff',
+          border: '1px solid #E5E7EB',
+          borderRadius: 12,
+          padding: 0,
+          minHeight: 200,
+          overflow: 'hidden',
+        }}
+      >
+        {/* CSS Reset container — ensures rendered HTML is isolated from app styles */}
+        <div
+          style={{
+            all: 'initial',
+            display: 'block',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: 14,
+            color: '#1a1a1a',
+            lineHeight: 1.6,
+          } as React.CSSProperties}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Section Expander ─────────────────────────────────────────────────────────
+
+function AdvancedSection({ children, label }: { children: React.ReactNode; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t"
+      >
+        <span className="flex items-center gap-2">
+          <Settings2 className="h-3.5 w-3.5" />
+          {label}
+        </span>
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {open && <div className="space-y-4 pt-4 pb-2">{children}</div>}
+    </div>
+  );
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+
 export function ContentCreatorClient() {
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const printableRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [activeTab, setActiveTab] = useState('ai');
+  const [activeTab, setActiveTab] = useState('teaching');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isTtsLoading, setIsTtsLoading] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState<GenerateCAPSContentOutput | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [fontFamily, setFontFamily] = useState('font-body');
+  const [activePreviewTab, setActivePreviewTab] = useState<'content' | 'memo' | 'rubric'>('content');
 
-  // AI Inputs
-  const [grade, setGrade] = useState<Grade | 'Other' | ''>('');
-  const [customGrade, setCustomGrade] = useState('');
-  const [subject, setSubject] = useState('');
-  const [customSubject, setCustomSubject] = useState('');
-  const [topic, setTopic] = useState('');
-  const [customTopic, setCustomTopic] = useState('');
-  const [category, setCategory] = useState<string>('');
-  const [customCategory, setCustomCategory] = useState('');
-  const [subType, setSubType] = useState<string>('');
-  const [customSubType, setCustomSubType] = useState('');
-  const [term, setTerm] = useState('');
-  const [language, setLanguage] = useState('English');
-  const [customLanguage, setCustomLanguage] = useState('');
-  const [learnerProfile, setLearnerProfile] = useState('');
-  const [objective, setObjective] = useState('');
-  const [duration, setDuration] = useState('');
-  const [additionalInstructions, setAdditionalInstructions] = useState('');
+  // Results state
+  const [teachingResult, setTeachingResult] = useState<TeachingContentOutput | null>(null);
+  const [visualResult, setVisualResult] = useState<VisualAidOutput | null>(null);
+  const [adminResult, setAdminResult] = useState<AdminDocOutput | null>(null);
 
-  // Scanning State
-  const [preview, setPreview] = useState<string | null>(null);
-
-  const subjects = useMemo(() => {
-    if (grade && grade !== 'Other') {
-      return getSubjects(grade as Grade);
-    }
-    return [];
-  }, [grade]);
-
-  const topics = useMemo(() => {
-    if (grade && grade !== 'Other' && subject && subject !== 'Other') {
-      return getTopics(grade as Grade, subject);
-    }
-    return [];
-  }, [grade, subject]);
-
-  const teacherRef = useMemoFirebase(() => (user ? doc(firestore, 'teachers', user.uid) : null), [firestore, user]);
+  const teacherRef = useMemoFirebase(() => user ? doc(firestore, 'teachers', user.uid) : null, [firestore, user]);
   const { data: teacherData } = useDoc<Teacher>(teacherRef);
 
-  useEffect(() => {
-    const editId = searchParams.get('editId');
-    if (user && editId) {
-      getDoc(doc(firestore, 'teachers', user.uid, 'generatedContent', editId)).then(snap => {
-        if (snap.exists()) {
-          const data = snap.data() as GeneratedContent;
-          setGeneratedContent({ content: data.content, memo: data.memo || '', rubric: data.rubric || '' });
-          setGrade(data.grade as Grade);
-          setSubject(data.subject);
-          setTopic(data.topic);
-        }
-      });
-    }
-  }, [searchParams, user, firestore]);
+  // ─── Teaching Tools State ─────────────────────────────────────────────────
 
-  const handleGenerate = async () => {
-    const finalGrade = grade === 'Other' ? customGrade : grade;
-    const finalSubject = subject === 'Other' ? customSubject : subject;
-    const finalCategory = category === 'Other' ? customCategory : category;
-    const finalSubType = subType === 'Other' ? customSubType : subType;
-    const finalTopic = topic === 'Other' ? customTopic : topic;
-    const finalLanguage = language === 'Other' ? customLanguage : language;
+  const [t_category, setT_Category] = useState('');
+  const [t_type, setT_Type] = useState('');
+  const [t_grade, setT_Grade] = useState('');
+  const [t_subject, setT_Subject] = useState('');
+  const [t_customSubject, setT_CustomSubject] = useState('');
+  const [t_topic, setT_Topic] = useState('');
+  const [t_customTopic, setT_CustomTopic] = useState('');
+  const [t_term, setT_Term] = useState('');
+  const [t_language, setT_Language] = useState('English');
+  const [t_difficulty, setT_Difficulty] = useState('');
+  const [t_duration, setT_Duration] = useState('');
+  const [t_items, setT_Items] = useState('');
+  const [t_objective, setT_Objective] = useState('');
+  const [t_profile, setT_Profile] = useState('');
+  const [t_differentiation, setT_Differentiation] = useState('');
+  const [t_memo, setT_Memo] = useState(true);
+  const [t_rubric, setT_Rubric] = useState(true);
+  const [t_extraInstructions, setT_ExtraInstructions] = useState('');
 
-    if (!finalGrade || !finalCategory || !finalSubType || !finalSubject || !finalTopic) {
-      toast({ title: 'Missing Information', description: 'Please fill all required fields.', variant: 'destructive' });
+  const t_subjects = useMemo(() => {
+    if (!t_grade) return [];
+    return (educationalData as any)[t_grade]?.subjects || [];
+  }, [t_grade]);
+
+  const t_topics = useMemo(() => {
+    if (!t_grade || !t_subject) return [];
+    return (educationalData as any)[t_grade]?.topics?.[t_subject] || [];
+  }, [t_grade, t_subject]);
+
+  // ─── Visual Aids State ────────────────────────────────────────────────────
+
+  const [v_category, setV_Category] = useState('');
+  const [v_type, setV_Type] = useState('');
+  const [v_grade, setV_Grade] = useState('');
+  const [v_subject, setV_Subject] = useState('');
+  const [v_topic, setV_Topic] = useState('');
+  const [v_language, setV_Language] = useState('English');
+  const [v_colorScheme, setV_ColorScheme] = useState('');
+  const [v_style, setV_Style] = useState('');
+  const [v_specificContent, setV_SpecificContent] = useState('');
+  const [v_quantity, setV_Quantity] = useState('');
+  const [v_generateImage, setV_GenerateImage] = useState(false);
+  const [v_extraInstructions, setV_ExtraInstructions] = useState('');
+
+  // ─── Admin Docs State ─────────────────────────────────────────────────────
+
+  const [a_category, setA_Category] = useState('');
+  const [a_type, setA_Type] = useState('');
+  const [a_grade, setA_Grade] = useState('');
+  const [a_subject, setA_Subject] = useState('');
+  const [a_schoolName, setA_SchoolName] = useState('');
+  const [a_teacherName, setA_TeacherName] = useState('');
+  const [a_principalName, setA_PrincipalName] = useState('');
+  const [a_date, setA_Date] = useState('');
+  const [a_language, setA_Language] = useState('English');
+  const [a_purpose, setA_Purpose] = useState('');
+  const [a_keyPoints, setA_KeyPoints] = useState('');
+  const [a_tone, setA_Tone] = useState('');
+  const [a_replySlip, setA_ReplySlip] = useState(false);
+  const [a_extraInstructions, setA_ExtraInstructions] = useState('');
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
+  const handleGenerateTeaching = async () => {
+    const finalSubject = t_subject === 'Other' ? t_customSubject : t_subject;
+    const finalTopic = t_topic === 'Other' ? t_customTopic : t_topic;
+
+    if (!t_type || !t_grade || !finalSubject || !finalTopic) {
+      toast({ title: 'Missing fields', description: 'Please select Type, Grade, Subject, and Topic.', variant: 'destructive' });
       return;
     }
-
     setIsLoading(true);
-    setGeneratedContent(null);
-    setIsEditMode(false);
-
+    setTeachingResult(null);
+    setActivePreviewTab('content');
     try {
-      const result = await generateCAPSContent({
-        grade: finalGrade,
+      const input: TeachingContentInput = {
+        contentCategory: t_category,
+        contentType: t_type,
+        grade: t_grade,
         subject: finalSubject,
         topic: finalTopic,
-        contentType: finalSubType,
-        category: finalCategory,
-        term,
-        language: finalLanguage,
-        learnerProfile,
-        objective,
-        duration,
-        additionalInstructions,
-        teacherName: user?.displayName || 'Educator',
+        term: t_term,
+        language: t_language,
+        difficulty: t_difficulty,
+        duration: t_duration,
+        numberOfItems: t_items,
+        objective: t_objective,
+        learnerProfile: t_profile,
+        differentiation: t_differentiation,
+        includeAnswerMemo: t_memo,
+        includeRubric: t_rubric,
+        teacherName: teacherData ? '' : '',
+        schoolName: '',
         signatureUrl: teacherData?.signatureUrl,
-      });
-      setGeneratedContent(result);
-    } catch (error) {
-      toast({ title: 'Generation Failed', variant: 'destructive' });
+        additionalInstructions: t_extraInstructions,
+      };
+      const result = await generateTeachingContent(input);
+      setTeachingResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSaveToArchive = async () => {
-    if (!user || !generatedContent) return;
-    setIsSaving(true);
-    
-    const finalGrade = grade === 'Other' ? customGrade : grade;
-    const finalSubject = subject === 'Other' ? customSubject : subject;
-    const finalTopic = topic === 'Other' ? customTopic : topic;
-    const finalSubType = subType === 'Other' ? customSubType : subType;
-
+  const handleGenerateVisual = async () => {
+    if (!v_type || !v_grade || !v_subject || !v_topic) {
+      toast({ title: 'Missing fields', description: 'Please select Type, Grade, Subject, and Topic.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    setVisualResult(null);
     try {
-      await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), {
+      const input: VisualAidInput = {
+        visualType: v_type,
+        grade: v_grade,
+        subject: v_subject,
+        topic: v_topic,
+        language: v_language,
+        colorScheme: v_colorScheme,
+        style: v_style,
+        specificContent: v_specificContent,
+        quantity: v_quantity,
+        generateImage: v_generateImage,
+        additionalInstructions: v_extraInstructions,
+      };
+      const result = await generateVisualAid(input);
+      setVisualResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateAdmin = async () => {
+    if (!a_type || !a_purpose) {
+      toast({ title: 'Missing fields', description: 'Please select a Document Type and describe the Purpose.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    setAdminResult(null);
+    try {
+      const input: AdminDocInput = {
+        documentType: a_type,
+        schoolName: a_schoolName,
+        principalName: a_principalName,
+        teacherName: a_teacherName,
+        grade: a_grade,
+        subject: a_subject,
+        date: a_date,
+        language: a_language,
+        purpose: a_purpose,
+        keyPoints: a_keyPoints,
+        tone: a_tone,
+        includeSignatureLine: true,
+        includeReplySlip: a_replySlip,
+        additionalInstructions: a_extraInstructions,
+      };
+      const result = await generateAdminDoc(input);
+      setAdminResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    const result = activeTab === 'teaching' ? teachingResult : activeTab === 'visual' ? visualResult : adminResult;
+    if (!result) return;
+
+    setIsSaving(true);
+    try {
+      const data: Record<string, any> = {
         teacherId: user.uid,
-        grade: finalGrade || 'General',
-        subject: finalSubject || 'General',
-        topic: finalTopic || 'Untitled',
-        contentType: finalSubType || 'Content',
-        content: generatedContent.content,
-        memo: generatedContent.memo || '',
-        rubric: generatedContent.rubric || '',
         createdAt: serverTimestamp(),
-      });
-      toast({ title: 'Saved to Archive!' });
-    } catch (e) {
-      console.error("Save Error:", e);
-      toast({ title: 'Save Failed', description: 'An error occurred while saving to your archive.', variant: 'destructive' });
+        tab: activeTab,
+      };
+
+      if (activeTab === 'teaching' && teachingResult) {
+        Object.assign(data, {
+          contentType: teachingResult.contentType,
+          grade: t_grade,
+          subject: t_subject === 'Other' ? t_customSubject : t_subject,
+          topic: t_topic === 'Other' ? t_customTopic : t_topic,
+          content: teachingResult.content,
+          memo: teachingResult.memo,
+          rubric: teachingResult.rubric,
+        });
+      } else if (activeTab === 'visual' && visualResult) {
+        Object.assign(data, {
+          contentType: v_type,
+          grade: v_grade,
+          subject: v_subject,
+          topic: v_topic,
+          content: visualResult.content,
+          memo: '',
+          rubric: '',
+        });
+      } else if (activeTab === 'admin' && adminResult) {
+        Object.assign(data, {
+          contentType: adminResult.documentType,
+          grade: a_grade || '',
+          subject: a_subject || '',
+          topic: a_purpose,
+          content: adminResult.content,
+          memo: '',
+          rubric: '',
+        });
+      }
+
+      await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), data);
+      toast({ title: '✅ Saved to Archive' });
+    } catch (err: any) {
+      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!printableRef.current || !generatedContent) return;
-    setIsDownloading(true);
+  const handlePrint = () => window.print();
 
-    const element = printableRef.current;
-    const finalTopic = topic === 'Other' ? customTopic : topic;
-    const filename = `${finalTopic || 'EduAI_Content'}.pdf`;
+  const hasResult = (activeTab === 'teaching' && !!teachingResult)
+    || (activeTab === 'visual' && !!visualResult)
+    || (activeTab === 'admin' && !!adminResult);
 
-    const opt = {
-      margin:       10,
-      filename:     filename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+  // ─── Form Fields ──────────────────────────────────────────────────────────
 
-    try {
-      // Create a temporary wrapper to apply the font style specifically for the PDF
-      const wrapper = document.createElement('div');
-      wrapper.className = cn("prose max-w-none p-8", fontFamily);
-      // We render the HTML directly into the wrapper to ensure formatting is caught
-      wrapper.innerHTML = generatedContent.content;
-      
-      // html2pdf requires the element to be in the DOM to render correctly sometimes
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
-      document.body.appendChild(wrapper);
+  const FieldRow = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={cn('grid grid-cols-2 gap-4', className)}>{children}</div>
+  );
 
-      await html2pdf().set(opt).from(wrapper).save();
-      
-      document.body.removeChild(wrapper);
-      toast({ title: 'PDF Downloaded Successfully!' });
-    } catch (error) {
-      console.error('PDF Generation Error:', error);
-      toast({ title: 'PDF Download Failed', description: 'There was an error creating the PDF.', variant: 'destructive' });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
+  const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
+    <div className="space-y-2">
+      <Label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+        {label}{required && <span className="text-yellow-400 ml-1">*</span>}
+      </Label>
+      {children}
+    </div>
+  );
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(acceptedFiles[0]);
-    }
-  }, []);
+  const selectClass = "bg-white/10 border-white/20 text-white [&_*]:text-foreground";
+  const inputClass = "bg-white/10 border-white/20 text-white placeholder:text-white/40";
 
-  const { getRootProps, getInputProps } = useDropzone({ onDrop, accept: { 'image/*': ['.jpeg', '.png', '.jpg'] }, multiple: false });
+  // ─── Preview Panel ────────────────────────────────────────────────────────
 
-  const handleExtract = async () => {
-    if (!preview) return;
-    setIsLoading(true);
-    try {
-      const result = await extractTextFromImage({ photoDataUri: preview });
-      setGeneratedContent({ content: `<div class="p-4">${result.extractedText}</div>`, memo: '', rubric: '' });
-      setIsEditMode(true);
-    } catch (error) {
-      toast({ title: 'Extraction Failed', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const PreviewPanel = () => {
+    const t = teachingResult;
+    const v = visualResult;
+    const a = adminResult;
 
-  const handleStopAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsAudioPlaying(false);
-    }
-  };
+    const hasMemo = t?.memo && t.memo.trim().length > 50;
+    const hasRubric = t?.rubric && t.rubric.trim().length > 50;
 
-  const handleReadAloud = async () => {
-    if (isAudioPlaying) {
-      handleStopAudio();
-      return;
-    }
-
-    if (!generatedContent || !printableRef.current) return;
-    
-    setIsTtsLoading(true);
-    try {
-      const text = printableRef.current.innerText;
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate audio');
-      }
-
-      const { audio } = await response.json();
-      const player = new Audio(audio);
-      audioRef.current = player;
-      audioRef.current.onplay = () => setIsAudioPlaying(true);
-      audioRef.current.onended = () => setIsAudioPlaying(false);
-      audioRef.current.play();
-
-    } catch (error) {
-      toast({ title: 'Read Aloud Failed', variant: 'destructive' });
-    } finally {
-      setIsTtsLoading(false);
-    }
-  };
-
-
-  return (
-    <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-3">
-          <Palette className="h-10 w-10 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator</h1>
-            <p className="text-muted-foreground">Unified workshop for CAPS generation and design.</p>
-          </div>
-        </div>
-        {generatedContent && (
-          <div className="flex gap-2">
-              <Button variant="outline" className="rounded-full" onClick={handleDownloadPDF} disabled={isDownloading || isEditMode}>
-                  {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />} PDF
+    return (
+      <div className="flex flex-col h-full">
+        {/* Preview Toolbar */}
+        {hasResult && (
+          <div className="flex items-center justify-between gap-2 p-4 border-b bg-slate-50 dark:bg-slate-800/50">
+            <div className="flex items-center gap-2">
+              {activeTab === 'teaching' && (
+                <>
+                  <button
+                    onClick={() => setActivePreviewTab('content')}
+                    className={cn(
+                      'px-3 py-1.5 text-xs font-semibold rounded-full transition-all',
+                      activePreviewTab === 'content'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    )}
+                  >
+                    📄 Content
+                  </button>
+                  {hasMemo && (
+                    <button
+                      onClick={() => setActivePreviewTab('memo')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-semibold rounded-full transition-all',
+                        activePreviewTab === 'memo'
+                          ? 'bg-green-600 text-white'
+                          : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      ✅ Memo
+                    </button>
+                  )}
+                  {hasRubric && (
+                    <button
+                      onClick={() => setActivePreviewTab('rubric')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-semibold rounded-full transition-all',
+                        activePreviewTab === 'rubric'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      📊 Rubric
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {t?.estimatedMarks && (
+                <Badge variant="secondary" className="text-xs">{t.estimatedMarks}</Badge>
+              )}
+              {t?.estimatedDuration && (
+                <Badge variant="secondary" className="text-xs">{t.estimatedDuration}</Badge>
+              )}
+              <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                <span className="hidden sm:inline ml-1">Save</span>
               </Button>
-              <Button className="rounded-full bg-green-600 hover:bg-green-700" onClick={handleSaveToArchive} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-3 w-3" />
+                <span className="hidden sm:inline ml-1">Print</span>
               </Button>
+            </div>
           </div>
         )}
-      </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <Card className="bg-indigo-950 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden no-print">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <CardHeader className="pb-2">
-              <TabsList className="grid grid-cols-3 bg-white/10 rounded-full h-14 p-1">
-                <TabsTrigger value="ai" className="rounded-full font-bold h-12">Magic AI</TabsTrigger>
-                <TabsTrigger value="upload" className="rounded-full font-bold h-12">Scan</TabsTrigger>
-                <TabsTrigger value="archive" className="rounded-full font-bold h-12">Archive</TabsTrigger>
-              </TabsList>
-            </CardHeader>
-
-            <CardContent className="space-y-4 py-6 scroll-area max-h-[70vh] overflow-y-auto">
-              <TabsContent value="ai" className="space-y-4 m-0">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Grade Level*</Label>
-                    <Select value={grade} onValueChange={(value) => setGrade(value as Grade | 'Other' | '')}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Grade" /></SelectTrigger>
-                      <SelectContent>
-                        {ALL_GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {grade === 'Other' && <Input placeholder="Specify Grade" value={customGrade} onChange={e => setCustomGrade(e.target.value)} className="bg-white/10 mt-2" />}
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Language</Label>
-                    <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Language" /></SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Category*</Label>
-                    <Select value={category} onValueChange={v => { setCategory(v); setSubType(''); }}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Category" /></SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(CONTENT_CATEGORIES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Type*</Label>
-                    <Select value={subType} onValueChange={setSubType} disabled={!category}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Type" /></SelectTrigger>
-                      <SelectContent>
-                        {category && category !== 'Other' && (CONTENT_CATEGORIES as any)[category]?.map((type: string) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Subject*</Label>
-                    <Select value={subject} onValueChange={setSubject} disabled={!grade}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Subject" /></SelectTrigger>
-                      <SelectContent>
-                        {subjects?.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-indigo-200">Topic*</Label>
-                    <Select value={topic} onValueChange={setTopic} disabled={!subject}>
-                      <SelectTrigger className="bg-white/10 border-white/20"><SelectValue placeholder="Topic" /></SelectTrigger>
-                      <SelectContent>
-                        {topics?.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        <SelectItem value="Other">Other...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-indigo-200 flex items-center gap-2"><Clock className="h-3 w-3" /> Length & Duration (Optional)</Label>
-                  <Input placeholder="e.g. 45 minutes, 15 questions..." value={duration} onChange={e => setDuration(e.target.value)} className="bg-white/10" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-indigo-200 flex items-center gap-2"><Target className="h-3 w-3" /> Teaching Objective</Label>
-                  <Input placeholder="e.g. Master long division" value={objective} onChange={e => setObjective(e.target.value)} className="bg-white/10" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-indigo-200">Additional Instructions</Label>
-                  <Textarea placeholder="e.g. Include specific keywords..." value={additionalInstructions} onChange={e => setAdditionalInstructions(e.target.value)} className="bg-white/10 min-h-[80px]" />
-                </div>
-
-                <Button onClick={handleGenerate} disabled={isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950 font-bold">
-                  {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Zap className="mr-2" />} Generate Magic
-                </Button>
-              </TabsContent>
-
-              <TabsContent value="upload" className="space-y-4 m-0">
-                <div {...getRootProps()} className="border-2 border-dashed rounded-[2.5rem] p-12 text-center cursor-pointer hover:bg-white/5 transition-all">
-                  <input {...getInputProps()} />
-                  <FileUp className="h-16 w-16 mx-auto mb-4 text-indigo-200" />
-                  <p className="font-bold">Drag & Drop Documents</p>
-                </div>
-                <Button onClick={handleExtract} disabled={!preview || isLoading} className="w-full rounded-full h-14 bg-yellow-400 text-indigo-950">
-                  {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <ScanText className="mr-2" />} Process Scan
-                </Button>
-              </TabsContent>
-
-              <TabsContent value="archive" className="py-8 text-center">
-                <Box className="h-20 w-20 mx-auto mb-6 text-yellow-400" />
-                <Button asChild className="rounded-full h-14 bg-white/10 border-white/20 border w-full"><Link href="/content-archive">Open Archive</Link></Button>
-              </TabsContent>
-            </CardContent>
-          </Tabs>
-        </Card>
-
-        <Card className="flex flex-col rounded-[2.5rem] bg-white dark:bg-slate-900 shadow-xl overflow-hidden min-h-[600px]">
-          <CardHeader className="border-b bg-primary/5 no-print">
-            <div className="flex justify-between items-center">
-              <CardTitle className="font-patrick-hand text-2xl">Workspace</CardTitle>
-              <div className="flex gap-2">
-                {generatedContent && (
-                  <>
-                    <Select value={fontFamily} onValueChange={setFontFamily}>
-                      <SelectTrigger className="w-[160px] rounded-full h-9">
-                        <Type className="mr-2 h-4 w-4" />
-                        <SelectValue placeholder="Font" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FONT_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditMode(!isEditMode)} className="rounded-full">
-                      <Edit3 className="mr-2 h-4 w-4" /> {isEditMode ? 'View' : 'Edit'}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleReadAloud} disabled={isTtsLoading} className="rounded-full">
-                      {isTtsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isAudioPlaying ? <Square className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />)}
-                      {isAudioPlaying ? 'Stop' : 'Read Aloud'}
-                    </Button>
-                  </>
-                )}
+        {/* Preview Body */}
+        <div className="flex-1 overflow-auto p-6 bg-slate-100 dark:bg-slate-900">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="relative">
+                <div className="h-16 w-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+                <Sparkles className="absolute inset-0 m-auto h-6 w-6 text-blue-600" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                Generating world-class educational content...
+              </p>
+            </div>
+          ) : !hasResult ? (
+            <div className="flex flex-col items-center justify-center h-full gap-6 opacity-40">
+              <div className="h-24 w-24 rounded-3xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                {activeTab === 'teaching' && <FlaskConical className="h-12 w-12 text-slate-400" />}
+                {activeTab === 'visual' && <Palette className="h-12 w-12 text-slate-400" />}
+                {activeTab === 'admin' && <FileText className="h-12 w-12 text-slate-400" />}
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-slate-500">Your content will appear here</p>
+                <p className="text-sm text-slate-400 mt-1">Fill in the form and click Generate</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-6 dark:text-slate-200" ref={printableRef}>
-            {generatedContent ? (
-              isEditMode ? (
-                <Textarea className="h-full font-mono text-xs no-print" value={generatedContent.content} onChange={e => setGeneratedContent({...generatedContent, content: e.target.value})} />
-              ) : (
-                <div className={cn("prose dark:prose-invert max-w-none print:text-black", fontFamily)} dangerouslySetInnerHTML={{ __html: generatedContent.content }} />
-              )
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full opacity-50 no-print">
-                <Palette className="h-20 w-20 mb-4" />
-                <p className="font-patrick-hand text-2xl">Design Adventure Starts Here!</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="space-y-4 print:p-0">
+              {/* TEACHING */}
+              {activeTab === 'teaching' && t && (
+                <>
+                  {activePreviewTab === 'content' && (
+                    <ContentPreview html={t.content} label="Main Content" />
+                  )}
+                  {activePreviewTab === 'memo' && hasMemo && (
+                    <ContentPreview html={t.memo} label="Answer Memo" />
+                  )}
+                  {activePreviewTab === 'rubric' && hasRubric && (
+                    <ContentPreview html={t.rubric} label="Assessment Rubric" />
+                  )}
+                </>
+              )}
+
+              {/* VISUAL */}
+              {activeTab === 'visual' && v && (
+                <div className="space-y-4">
+                  {v.description && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">📎 {v.description}</p>
+                    </div>
+                  )}
+                  <ContentPreview html={v.content} label="Visual Aid" />
+                  {v.printInstructions && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">🖨️ Print Instructions</p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200">{v.printInstructions}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ADMIN */}
+              {activeTab === 'admin' && a && (
+                <div className="space-y-4">
+                  <ContentPreview html={a.content} label={a.documentType} />
+                  {a.notes && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">📝 Usage Notes</p>
+                      <p className="text-sm text-green-800 dark:text-green-200">{a.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <audio ref={audioRef} className="hidden" />
+    );
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Page Header */}
+      <div className="px-4 sm:px-8 pt-6 pb-4 no-print">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator Studio</h1>
+            <p className="text-muted-foreground mt-1">
+              Generate world-class, CAPS-aligned educational content in seconds.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/content-archive">
+                <BookOpen className="mr-2 h-4 w-4" /> Archive
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[480px_1fr] gap-0 border-t">
+
+        {/* ─── LEFT PANEL: Form ────────────────────────────────────────────── */}
+        <div className="border-r overflow-y-auto bg-slate-900 text-white no-print" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          <Tabs value={activeTab} onValueChange={(v) => {
+            setActiveTab(v);
+            setTeachingResult(null);
+            setVisualResult(null);
+            setAdminResult(null);
+          }}>
+            {/* Tab Navigation */}
+            <div className="sticky top-0 z-10 bg-slate-900 border-b border-white/10 p-4">
+              <TabsList className="grid grid-cols-3 bg-white/5 rounded-2xl h-auto p-1 gap-1">
+                <TabsTrigger
+                  value="teaching"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <FlaskConical className="h-5 w-5" />
+                  <span className="hidden sm:block">Teaching Lab</span>
+                  <span className="sm:hidden">Teach</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="visual"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <Palette className="h-5 w-5" />
+                  <span className="hidden sm:block">Visual Aids</span>
+                  <span className="sm:hidden">Visual</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="admin"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-slate-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <FileText className="h-5 w-5" />
+                  <span className="hidden sm:block">Admin Docs</span>
+                  <span className="sm:hidden">Admin</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* ── TEACHING TOOLS TAB ──────────────────────────────────────── */}
+            <TabsContent value="teaching" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-blue-300 font-semibold uppercase tracking-widest mb-1">🎓 Assessments & Teaching Tools Lab</p>
+                <p className="text-slate-400 text-xs">Lesson plans, worksheets, tests, memos, rubrics — perfectly CAPS-aligned.</p>
+              </div>
+
+              {/* Category + Type */}
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(TEACHING_CATEGORIES).map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Document Type" required>
+                  <Select value={t_type} onValueChange={setT_Type} disabled={!t_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {t_category && TEACHING_CATEGORIES[t_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Grade + Language */}
+              <FieldRow>
+                <Field label="Grade" required>
+                  <Select value={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Language">
+                  <Select value={t_language} onValueChange={setT_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Subject */}
+              <Field label="Subject" required>
+                <Select value={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {t_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {t_subject === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={t_customSubject} onChange={e => setT_CustomSubject(e.target.value)} />
+                )}
+              </Field>
+
+              {/* Topic */}
+              <Field label="Topic / Strand" required>
+                <Select value={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
+                  <SelectContent>
+                    {t_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {t_topic === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" value={t_customTopic} onChange={e => setT_CustomTopic(e.target.value)} />
+                )}
+              </Field>
+
+              {/* Term + Difficulty */}
+              <FieldRow>
+                <Field label="Term">
+                  <Select value={t_term} onValueChange={setT_Term}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Term" /></SelectTrigger>
+                    <SelectContent>
+                      {TERMS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Difficulty">
+                  <Select value={t_difficulty} onValueChange={setT_Difficulty}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Difficulty" /></SelectTrigger>
+                    <SelectContent>
+                      {DIFFICULTIES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Duration + Items */}
+              <FieldRow>
+                <Field label="Duration">
+                  <Input className={inputClass} placeholder="e.g. 45 min" value={t_duration} onChange={e => setT_Duration(e.target.value)} />
+                </Field>
+                <Field label="No. of Questions">
+                  <Input className={inputClass} placeholder="e.g. 15" value={t_items} onChange={e => setT_Items(e.target.value)} />
+                </Field>
+              </FieldRow>
+
+              {/* Memo + Rubric Toggles */}
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch checked={t_memo} onCheckedChange={setT_Memo} id="t-memo" />
+                  <Label htmlFor="t-memo" className="text-sm text-slate-300 cursor-pointer">Include Memo</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={t_rubric} onCheckedChange={setT_Rubric} id="t-rubric" />
+                  <Label htmlFor="t-rubric" className="text-sm text-slate-300 cursor-pointer">Include Rubric</Label>
+                </div>
+              </div>
+
+              <AdvancedSection label="Advanced Options">
+                <Field label="Learning Objective">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="What should learners know/do by the end?" value={t_objective} onChange={e => setT_Objective(e.target.value)} />
+                </Field>
+                <Field label="Learner Profile / Needs">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="e.g. 35 learners, mixed ability, some with reading barriers..." value={t_profile} onChange={e => setT_Profile(e.target.value)} />
+                </Field>
+                <Field label="Differentiation Required">
+                  <Input className={inputClass} placeholder="e.g. Extension for advanced, simplified for support group" value={t_differentiation} onChange={e => setT_Differentiation(e.target.value)} />
+                </Field>
+                <Field label="Additional Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other specific requirements..." value={t_extraInstructions} onChange={e => setT_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateTeaching}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</>
+                ) : (
+                  <><Zap className="mr-2 h-5 w-5" /> Generate {t_type || 'Content'}</>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* ── VISUAL AIDS TAB ──────────────────────────────────────────── */}
+            <TabsContent value="visual" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-purple-300 font-semibold uppercase tracking-widest mb-1">🎨 Visual Aids & Media Tools</p>
+                <p className="text-slate-400 text-xs">Posters, labels, flashcards, diagrams, word walls — eye-catching classroom resources.</p>
+              </div>
+
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Visual Type" required>
+                  <Select value={v_type} onValueChange={setV_Type} disabled={!v_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {v_category && VISUAL_TYPES[v_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <FieldRow>
+                <Field label="Grade" required>
+                  <Select value={v_grade} onValueChange={setV_Grade}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Language">
+                  <Select value={v_language} onValueChange={setV_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Subject" required>
+                <Input className={inputClass} placeholder="e.g. Mathematics, Life Sciences" value={v_subject} onChange={e => setV_Subject(e.target.value)} />
+              </Field>
+
+              <Field label="Topic / Theme" required>
+                <Input className={inputClass} placeholder="e.g. Fractions, The Water Cycle, Photosynthesis" value={v_topic} onChange={e => setV_Topic(e.target.value)} />
+              </Field>
+
+              <FieldRow>
+                <Field label="Colour Scheme">
+                  <Select value={v_colorScheme} onValueChange={setV_ColorScheme}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Colours" /></SelectTrigger>
+                    <SelectContent>
+                      {COLOR_SCHEMES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Design Style">
+                  <Select value={v_style} onValueChange={setV_Style}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Style" /></SelectTrigger>
+                    <SelectContent>
+                      {VISUAL_STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Quantity / Size">
+                <Input className={inputClass} placeholder="e.g. 12 labels, A4 portrait, 26 alphabet cards" value={v_quantity} onChange={e => setV_Quantity(e.target.value)} />
+              </Field>
+
+              <Field label="Specific Content to Include">
+                <Textarea className={cn(inputClass, 'min-h-[80px]')} placeholder="Specific words, concepts, numbers, or items you want included..." value={v_specificContent} onChange={e => setV_SpecificContent(e.target.value)} />
+              </Field>
+
+              <div className="flex items-start gap-3 bg-white/5 rounded-xl p-4">
+                <Switch checked={v_generateImage} onCheckedChange={setV_GenerateImage} id="v-image" />
+                <div>
+                  <Label htmlFor="v-image" className="text-sm font-semibold text-slate-200 cursor-pointer">
+                    🖼️ Generate AI Image (Imagen 4 Fast)
+                  </Label>
+                  <p className="text-xs text-slate-400 mt-0.5">Slower but adds an AI-generated illustration to your visual</p>
+                </div>
+              </div>
+
+              <AdvancedSection label="Additional Options">
+                <Field label="Extra Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other requirements..." value={v_extraInstructions} onChange={e => setV_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateVisual}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Visual...</>
+                ) : (
+                  <><ImageIcon className="mr-2 h-5 w-5" /> Create {v_type || 'Visual Aid'}</>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* ── ADMIN DOCS TAB ───────────────────────────────────────────── */}
+            <TabsContent value="admin" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-slate-300 font-semibold uppercase tracking-widest mb-1">📋 General & Admin Documents</p>
+                <p className="text-slate-400 text-xs">Professional school documents — letters, notices, permits, reports.</p>
+              </div>
+
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Document Type" required>
+                  <Select value={a_type} onValueChange={setA_Type} disabled={!a_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {a_category && ADMIN_TYPES[a_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Purpose / Key Message" required>
+                <Textarea
+                  className={cn(inputClass, 'min-h-[88px]')}
+                  placeholder="What is this document for? e.g. 'Inform parents about the Grade 7 camp from 10-12 June' or 'Thank parents for attending the meeting and share key decisions'"
+                  value={a_purpose}
+                  onChange={e => setA_Purpose(e.target.value)}
+                />
+              </Field>
+
+              <FieldRow>
+                <Field label="Language">
+                  <Select value={a_language} onValueChange={setA_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Tone">
+                  <Select value={a_tone} onValueChange={setA_Tone}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Tone" /></SelectTrigger>
+                    <SelectContent>
+                      {TONES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Key Points to Cover">
+                <Textarea
+                  className={cn(inputClass, 'min-h-[72px]')}
+                  placeholder="List specific points, e.g: Date, Time, Venue, Cost (R150), What to bring, Permission deadline"
+                  value={a_keyPoints}
+                  onChange={e => setA_KeyPoints(e.target.value)}
+                />
+              </Field>
+
+              <AdvancedSection label="School Details & Options">
+                <FieldRow>
+                  <Field label="School Name">
+                    <Input className={inputClass} placeholder="e.g. Themba Primary School" value={a_schoolName} onChange={e => setA_SchoolName(e.target.value)} />
+                  </Field>
+                  <Field label="Date">
+                    <Input className={inputClass} type="date" value={a_date} onChange={e => setA_Date(e.target.value)} />
+                  </Field>
+                </FieldRow>
+                <FieldRow>
+                  <Field label="Teacher Name">
+                    <Input className={inputClass} placeholder="Your name" value={a_teacherName} onChange={e => setA_TeacherName(e.target.value)} />
+                  </Field>
+                  <Field label="Principal Name">
+                    <Input className={inputClass} placeholder="Principal's name" value={a_principalName} onChange={e => setA_PrincipalName(e.target.value)} />
+                  </Field>
+                </FieldRow>
+                <FieldRow>
+                  <Field label="Grade / Class">
+                    <Input className={inputClass} placeholder="e.g. Grade 7" value={a_grade} onChange={e => setA_Grade(e.target.value)} />
+                  </Field>
+                  <Field label="Subject">
+                    <Input className={inputClass} placeholder="If applicable" value={a_subject} onChange={e => setA_Subject(e.target.value)} />
+                  </Field>
+                </FieldRow>
+                <div className="flex items-center gap-2">
+                  <Switch checked={a_replySlip} onCheckedChange={setA_ReplySlip} id="a-reply" />
+                  <Label htmlFor="a-reply" className="text-sm text-slate-300 cursor-pointer">Include Tear-Off Reply Slip</Label>
+                </div>
+                <Field label="Additional Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any specific requirements..." value={a_extraInstructions} onChange={e => setA_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateAdmin}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-slate-600 hover:bg-slate-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</>
+                ) : (
+                  <><ClipboardList className="mr-2 h-5 w-5" /> Generate {a_type || 'Document'}</>
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* ─── RIGHT PANEL: Preview ─────────────────────────────────────────── */}
+        <div className="flex flex-col" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          <PreviewPanel />
+        </div>
+      </div>
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          .no-print { display: none !important; }
+          header, nav, aside, footer { display: none !important; }
+          body { background: white !important; }
+          main { padding: 0 !important; }
+        }
+      `}</style>
     </div>
   );
 }

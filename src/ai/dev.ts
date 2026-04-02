@@ -7,5 +7,7 @@ import '@/ai/flows/ai-tutor-flow';
 import '@/ai/flows/tts-flow';
 import '@/ai/flows/autograder-flow';
 import '@/ai/flows/generate-mock-assessment';
-import '@/ai/tools/image-search-tool';
-import '@/ai/flows/generate-lesson-studio';
+// New content creator flows
+import '@/ai/flows/generate-teaching-content';
+import '@/ai/flows/generate-visual-aids';
+import '@/ai/flows/generate-admin-docs';

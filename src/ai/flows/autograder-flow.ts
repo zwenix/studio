@@ -2,7 +2,6 @@
 
 import { z } from 'zod';
 import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { buildAutograderPrompt } from '@/ai/prompts';
 
 export const AutogradeInputSchema = z.object({
@@ -34,7 +33,9 @@ export async function autograde(input: AutogradeInput): Promise<AutogradeOutput>
       learnerSubmission: input.assignmentContent,
     });
 
-    const response = await ai.generate<AutogradeOutput>({
+    // ai.generate<T> generic type is NOT valid Genkit syntax — output type is inferred via output.schema
+    // gemini-pro-latest = Gemini 3.1 Pro (per geminichat.txt) — correct for high-accuracy rubric grading
+    const response = await ai.generate({
       model: 'googleai/gemini-pro-latest',
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,

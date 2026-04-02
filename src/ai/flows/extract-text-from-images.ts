@@ -2,11 +2,12 @@
 /**
  * @fileOverview OCR and handwriting recognition flow.
  *
- * Model: gemini-3.1-flash-live-preview — fast multimodal model, sufficient for OCR tasks.
+ * Model: googleai/gemini-flash-latest (= Gemini 3 Flash, per geminichat.txt alias table)
+ * Rationale: Fast multimodal model sufficient for OCR — no heavy reasoning needed.
+ * Previously used gemini-flash-live-latest which DOES NOT EXIST in @genkit-ai/google-genai v1.31.0.
  */
 
 import {ai} from '@/genkit';
-import {googleAI} from '@genkit-ai/google-genai';
 import {z} from 'genkit';
 
 const ExtractTextFromImageInputSchema = z.object({
@@ -29,8 +30,8 @@ export async function extractTextFromImage(input: ExtractTextFromImageInput): Pr
 
 const prompt = ai.definePrompt({
   name: 'extractTextFromImagePrompt',
-  // gemini-3.1-flash-live-preview: fast multimodal model — appropriate for OCR, no heavy reasoning needed
-  model: 'googleai/gemini-flash-live-latest',
+  // gemini-flash-latest = Gemini 3 Flash (per geminichat.txt) — fast multimodal, ideal for OCR
+  model: 'googleai/gemini-flash-latest',
   input: {schema: ExtractTextFromImageInputSchema},
   output: {schema: ExtractTextFromImageOutputSchema},
   prompt: `You are an expert OCR and handwriting recognition AI.

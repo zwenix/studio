@@ -200,12 +200,14 @@ export function ContentCreatorClient() {
 
   const t_subjects = useMemo(() => {
     if (!t_grade) return [];
-    return (educationalData as any)[t_grade]?.subjects || [];
+    const gradeData = educationalData[t_grade as keyof typeof educationalData];
+    return gradeData ? Object.keys(gradeData) : [];
   }, [t_grade]);
-
+  
   const t_topics = useMemo(() => {
     if (!t_grade || !t_subject) return [];
-    return (educationalData as any)[t_grade]?.topics?.[t_subject] || [];
+    const gradeData = educationalData[t_grade as keyof typeof educationalData];
+    return gradeData && gradeData[t_subject] ? gradeData[t_subject] : [];
   }, [t_grade, t_subject]);
 
   // ─── Visual Aids State ────────────────────────────────────────────────────
@@ -213,8 +215,20 @@ export function ContentCreatorClient() {
   const [v_category, setV_Category] = useState('');
   const [v_type, setV_Type] = useState('');
   const [v_grade, setV_Grade] = useState('');
+  const v_subjects = useMemo(() => {
+    if (!v_grade) return [];
+    const gradeData = educationalData[v_grade as keyof typeof educationalData];
+    return gradeData ? Object.keys(gradeData) : [];
+  }, [v_grade]);
   const [v_subject, setV_Subject] = useState('');
+  const [v_customSubject, setV_CustomSubject] = useState('');
   const [v_topic, setV_Topic] = useState('');
+  const [v_customTopic, setV_CustomTopic] = useState('');
+  const v_topics = useMemo(() => {
+    if (!v_grade || !v_subject) return [];
+    const gradeData = educationalData[v_grade as keyof typeof educationalData];
+    return gradeData && gradeData[v_subject] ? gradeData[v_subject] : [];
+  }, [v_grade, v_subject]);
   const [v_language, setV_Language] = useState('English');
   const [v_colorScheme, setV_ColorScheme] = useState('');
   const [v_style, setV_Style] = useState('');
@@ -228,7 +242,18 @@ export function ContentCreatorClient() {
   const [a_category, setA_Category] = useState('');
   const [a_type, setA_Type] = useState('');
   const [a_grade, setA_Grade] = useState('');
+  const a_subjects = useMemo(() => {
+    if (!a_grade) return [];
+    const gradeData = educationalData[a_grade as keyof typeof educationalData];
+    return gradeData ? Object.keys(gradeData) : [];
+  }, [a_grade]);
   const [a_subject, setA_Subject] = useState('');
+  const [a_customSubject, setA_CustomSubject] = useState('');
+  const a_topics = useMemo(() => {
+    if (!a_grade || !a_subject) return [];
+    const gradeData = educationalData[a_grade as keyof typeof educationalData];
+    return gradeData && gradeData[a_subject] ? gradeData[a_subject] : [];
+  }, [a_grade, a_subject]);
   const [a_schoolName, setA_SchoolName] = useState('');
   const [a_teacherName, setA_TeacherName] = useState('');
   const [a_principalName, setA_PrincipalName] = useState('');
@@ -286,7 +311,9 @@ export function ContentCreatorClient() {
   };
 
   const handleGenerateVisual = async () => {
-    if (!v_type || !v_grade || !v_subject || !v_topic) {
+    const finalSubject = v_subject === 'Other' ? v_customSubject : v_subject;
+    const finalTopic = v_topic === 'Other' ? v_customTopic : v_topic;
+    if (!v_type || !v_grade || !finalSubject || !finalTopic) {
       toast({ title: 'Missing fields', description: 'Please select Type, Grade, Subject, and Topic.', variant: 'destructive' });
       return;
     }
@@ -296,8 +323,8 @@ export function ContentCreatorClient() {
       const input: VisualAidInput = {
         visualType: v_type,
         grade: v_grade,
-        subject: v_subject,
-        topic: v_topic,
+        subject: finalSubject,
+        topic: finalTopic,
         language: v_language,
         colorScheme: v_colorScheme,
         style: v_style,
@@ -317,6 +344,7 @@ export function ContentCreatorClient() {
   };
 
   const handleGenerateAdmin = async () => {
+    const finalSubject = a_subject === 'Other' ? a_customSubject : a_subject;
     if (!a_type || !a_purpose) {
       toast({ title: 'Missing fields', description: 'Please select a Document Type and describe the Purpose.', variant: 'destructive' });
       return;
@@ -330,7 +358,7 @@ export function ContentCreatorClient() {
         principalName: a_principalName,
         teacherName: a_teacherName,
         grade: a_grade,
-        subject: a_subject,
+        subject: finalSubject,
         date: a_date,
         language: a_language,
         purpose: a_purpose,
@@ -834,7 +862,7 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Grade" required>
-                  <Select value={v_grade} onValueChange={setV_Grade}>
+                  <Select value={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
                       {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
@@ -852,11 +880,29 @@ export function ContentCreatorClient() {
               </FieldRow>
 
               <Field label="Subject" required>
-                <Input className={inputClass} placeholder="e.g. Mathematics, Life Sciences" value={v_subject} onChange={e => setV_Subject(e.target.value)} />
+                <Select value={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {v_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {v_subject === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={v_customSubject} onChange={e => setV_CustomSubject(e.target.value)} />
+                )}
               </Field>
 
               <Field label="Topic / Theme" required>
-                <Input className={inputClass} placeholder="e.g. Fractions, The Water Cycle, Photosynthesis" value={v_topic} onChange={e => setV_Topic(e.target.value)} />
+                <Select value={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
+                  <SelectContent>
+                    {v_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {v_topic === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" value={v_customTopic} onChange={e => setV_CustomTopic(e.target.value)} />
+                )}
               </Field>
 
               <FieldRow>
@@ -999,10 +1045,24 @@ export function ContentCreatorClient() {
                 </FieldRow>
                 <FieldRow>
                   <Field label="Grade / Class">
-                    <Input className={inputClass} placeholder="e.g. Grade 7" value={a_grade} onChange={e => setA_Grade(e.target.value)} />
+                  <Select value={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
+                      <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Subject">
-                    <Input className={inputClass} placeholder="If applicable" value={a_subject} onChange={e => setA_Subject(e.target.value)} />
+                    <Select value={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
+                      <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                      <SelectContent>
+                        {a_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        <SelectItem value="Other">Other (specify below)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {a_subject === 'Other' && (
+                      <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={a_customSubject} onChange={e => setA_CustomSubject(e.target.value)} />
+                    )}
                   </Field>
                 </FieldRow>
                 <div className="flex items-center gap-2">

@@ -165,7 +165,7 @@ No text overlays. Clean white background. Print-ready educational graphic. South
 The image should be: well-composed, high-quality, suitable for classroom display.`;
 
     const result = await ai.generate({
-      model: googleAI.model('gemini-3.1-flash-image-preview'),
+      model: 'googleai/gemini-3.1-flash-image-preview',
       prompt: imagePrompt,
       output: { format: 'media' },
     } as any);
@@ -213,7 +213,7 @@ export async function generateVisualAid(
   }
 
   const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
+    model: 'googleai/gemini-pro-latest',
     config: { temperature: 0.8 },
     system: VISUAL_HTML_SYSTEM,
     prompt: `Create a stunning ${input.visualType} for:

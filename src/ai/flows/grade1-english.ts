@@ -49,7 +49,7 @@ Return clean JSON only with this structure:
     // Try Gemini Primary
     try {
       const result = await ai.generate({
-        model: googleAI.model('gemini-1.5-flash-latest'), // Using primary Gemini
+        model: 'googleai/gemini-flash-latest', // Using primary Gemini
         prompt,
         config: { temperature: 0.75, maxOutputTokens: 4000 },
         output: { format: 'json' },

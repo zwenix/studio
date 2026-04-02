@@ -61,7 +61,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
     const response = await ai.generate({
       // gemini-3.1-flash-image-preview = image generation model (per @genkit-ai/google-genai v1.31.0)
       // gemini-2.5-flash-image is deprecated (June 2026 shutdown per geminichat.txt)
-      model: googleAI.model('gemini-3.1-flash-image-preview'), 
+      model: 'googleai/gemini-3.1-flash-image-preview', 
       prompt: enrichedPrompt,
       config: { responseModalities: ['IMAGE'] },
       output: { format: 'media' },

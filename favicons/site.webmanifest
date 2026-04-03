@@ -1,6 +1,7 @@
 {
-    "name": "EduAI Companion - Your All-in-One Learning Companion",
-    "short_name": "EduAI Companion",
+    "name": "EduAI Companion",
+    "short_name": "Your Personalized Learning Specialist",
+    "start_url": "/",
     "icons": [
         {
             "src": "favicons/android-chrome-192x192.png",

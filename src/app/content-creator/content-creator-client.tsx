@@ -670,7 +670,7 @@ export function ContentCreatorClient() {
 
         {/* ─── LEFT PANEL: Form ────────────────────────────────────────────── */}
         <div className="border-r overflow-y-auto bg-slate-900 text-white no-print" style={{ maxHeight: 'calc(100vh - 140px)' }}>
-          <Tabs value={activeTab} onValueChange={(v) => {
+          <Tabs defaultValue={activeTab} onValueChange={(v) => {
             setActiveTab(v);
             setTeachingResult(null);
             setVisualResult(null);
@@ -723,21 +723,21 @@ export function ContentCreatorClient() {
               {/* Category + Type */}
               <FieldRow>
                 <Field label="Category" required>
-                  <Select value={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
+                  <Select defaultValue={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
                       {Object.keys(TEACHING_CATEGORIES).map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Document Type" required>
-                  <Select value={t_type} onValueChange={setT_Type} disabled={!t_category}>
+                  <Select defaultValue={t_type} onValueChange={setT_Type} disabled={!t_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {t_category && TEACHING_CATEGORIES[t_category]?.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -747,18 +747,18 @@ export function ContentCreatorClient() {
               {/* Grade + Language */}
               <FieldRow>
                 <Field label="Grade" required>
-                  <Select value={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
+                  <Select defaultValue={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Language">
-                  <Select value={t_language} onValueChange={setT_Language}>
+                  <Select defaultValue={t_language} onValueChange={setT_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -766,47 +766,47 @@ export function ContentCreatorClient() {
 
               {/* Subject */}
               <Field label="Subject" required>
-                <Select value={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
+                <Select defaultValue={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {t_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    {t_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
                 {t_subject === 'Other' && (
-                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={t_customSubject} onChange={e => setT_CustomSubject(e.target.value)} />
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={t_customSubject} onBlur={e => setT_CustomSubject(e.target.value)} />
                 )}
               </Field>
 
               {/* Topic */}
               <Field label="Topic / Strand" required>
-                <Select value={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
+                <Select defaultValue={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
                   <SelectContent>
-                    {t_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {t_topics.map((t: string) => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
                 {t_topic === 'Other' && (
-                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" value={t_customTopic} onChange={e => setT_CustomTopic(e.target.value)} />
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" defaultValue={t_customTopic} onBlur={e => setT_CustomTopic(e.target.value)} />
                 )}
               </Field>
 
               {/* Term + Difficulty */}
               <FieldRow>
                 <Field label="Term">
-                  <Select value={t_term} onValueChange={setT_Term}>
+                  <Select defaultValue={t_term} onValueChange={setT_Term}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Term" /></SelectTrigger>
                     <SelectContent>
-                      {TERMS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      {TERMS.map(t => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Difficulty">
-                  <Select value={t_difficulty} onValueChange={setT_Difficulty}>
+                  <Select defaultValue={t_difficulty} onValueChange={setT_Difficulty}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Difficulty" /></SelectTrigger>
                     <SelectContent>
-                      {DIFFICULTIES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      {DIFFICULTIES.map(d => <SelectItem key={d} defaultValue={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -815,10 +815,10 @@ export function ContentCreatorClient() {
               {/* Duration + Items */}
               <FieldRow>
                 <Field label="Duration">
-                  <Input className={inputClass} placeholder="e.g. 45 min" value={t_duration} onChange={e => setT_Duration(e.target.value)} />
+                  <Input className={inputClass} placeholder="e.g. 45 min" defaultValue={t_duration} onBlur={e => setT_Duration(e.target.value)} />
                 </Field>
                 <Field label="No. of Questions">
-                  <Input className={inputClass} placeholder="e.g. 15" value={t_items} onChange={e => setT_Items(e.target.value)} />
+                  <Input className={inputClass} placeholder="e.g. 15" defaultValue={t_items} onBlur={e => setT_Items(e.target.value)} />
                 </Field>
               </FieldRow>
 
@@ -836,16 +836,16 @@ export function ContentCreatorClient() {
 
               <AdvancedSection label="Advanced Options">
                 <Field label="Learning Objective">
-                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="What should learners know/do by the end?" value={t_objective} onChange={e => setT_Objective(e.target.value)} />
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="What should learners know/do by the end?" defaultValue={t_objective} onBlur={e => setT_Objective(e.target.value)} />
                 </Field>
                 <Field label="Learner Profile / Needs">
-                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="e.g. 35 learners, mixed ability, some with reading barriers..." value={t_profile} onChange={e => setT_Profile(e.target.value)} />
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="e.g. 35 learners, mixed ability, some with reading barriers..." defaultValue={t_profile} onBlur={e => setT_Profile(e.target.value)} />
                 </Field>
                 <Field label="Differentiation Required">
-                  <Input className={inputClass} placeholder="e.g. Extension for advanced, simplified for support group" value={t_differentiation} onChange={e => setT_Differentiation(e.target.value)} />
+                  <Input className={inputClass} placeholder="e.g. Extension for advanced, simplified for support group" defaultValue={t_differentiation} onBlur={e => setT_Differentiation(e.target.value)} />
                 </Field>
                 <Field label="Additional Instructions">
-                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other specific requirements..." value={t_extraInstructions} onChange={e => setT_ExtraInstructions(e.target.value)} />
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other specific requirements..." defaultValue={t_extraInstructions} onBlur={e => setT_ExtraInstructions(e.target.value)} />
                 </Field>
               </AdvancedSection>
 
@@ -871,19 +871,19 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Category" required>
-                  <Select value={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
+                  <Select defaultValue={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Visual Type" required>
-                  <Select value={v_type} onValueChange={setV_Type} disabled={!v_category}>
+                  <Select defaultValue={v_type} onValueChange={setV_Type} disabled={!v_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {v_category && VISUAL_TYPES[v_category]?.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -892,74 +892,74 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Grade" required>
-                  <Select value={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
+                  <Select defaultValue={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Language">
-                  <Select value={v_language} onValueChange={setV_Language}>
+                  <Select defaultValue={v_language} onValueChange={setV_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
               </FieldRow>
 
               <Field label="Subject" required>
-                <Select value={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
+                <Select defaultValue={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {v_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    {v_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
                 {v_subject === 'Other' && (
-                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={v_customSubject} onChange={e => setV_CustomSubject(e.target.value)} />
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={v_customSubject} onBlur={e => setV_CustomSubject(e.target.value)} />
                 )}
               </Field>
 
               <Field label="Topic / Theme" required>
-                <Select value={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
+                <Select defaultValue={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
                   <SelectContent>
-                    {v_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {v_topics.map((t: string) => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
                 {v_topic === 'Other' && (
-                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" value={v_customTopic} onChange={e => setV_CustomTopic(e.target.value)} />
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" defaultValue={v_customTopic} onBlur={e => setV_CustomTopic(e.target.value)} />
                 )}
               </Field>
 
               <FieldRow>
                 <Field label="Colour Scheme">
-                  <Select value={v_colorScheme} onValueChange={setV_ColorScheme}>
+                  <Select defaultValue={v_colorScheme} onValueChange={setV_ColorScheme}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Colours" /></SelectTrigger>
                     <SelectContent>
-                      {COLOR_SCHEMES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {COLOR_SCHEMES.map(c => <SelectItem key={c} defaultValue={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Design Style">
-                  <Select value={v_style} onValueChange={setV_Style}>
+                  <Select defaultValue={v_style} onValueChange={setV_Style}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Style" /></SelectTrigger>
                     <SelectContent>
-                      {VISUAL_STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      {VISUAL_STYLES.map(s => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
               </FieldRow>
 
               <Field label="Quantity / Size">
-                <Input className={inputClass} placeholder="e.g. 12 labels, A4 portrait, 26 alphabet cards" value={v_quantity} onChange={e => setV_Quantity(e.target.value)} />
+                <Input className={inputClass} placeholder="e.g. 12 labels, A4 portrait, 26 alphabet cards" defaultValue={v_quantity} onBlur={e => setV_Quantity(e.target.value)} />
               </Field>
 
               <Field label="Specific Content to Include">
-                <Textarea className={cn(inputClass, 'min-h-[80px]')} placeholder="Specific words, concepts, numbers, or items you want included..." value={v_specificContent} onChange={e => setV_SpecificContent(e.target.value)} />
+                <Textarea className={cn(inputClass, 'min-h-[80px]')} placeholder="Specific words, concepts, numbers, or items you want included..." defaultValue={v_specificContent} onBlur={e => setV_SpecificContent(e.target.value)} />
               </Field>
 
               <div className="flex items-start gap-3 bg-white/5 rounded-xl p-4">
@@ -974,7 +974,7 @@ export function ContentCreatorClient() {
 
               <AdvancedSection label="Additional Options">
                 <Field label="Extra Instructions">
-                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other requirements..." value={v_extraInstructions} onChange={e => setV_ExtraInstructions(e.target.value)} />
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other requirements..." defaultValue={v_extraInstructions} onBlur={e => setV_ExtraInstructions(e.target.value)} />
                 </Field>
               </AdvancedSection>
 
@@ -1000,19 +1000,19 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Category" required>
-                  <Select value={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
+                  <Select defaultValue={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Document Type" required>
-                  <Select value={a_type} onValueChange={setA_Type} disabled={!a_category}>
+                  <Select defaultValue={a_type} onValueChange={setA_Type} disabled={!a_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {a_category && ADMIN_TYPES[a_category]?.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1023,25 +1023,25 @@ export function ContentCreatorClient() {
                 <Textarea
                   className={cn(inputClass, 'min-h-[88px]')}
                   placeholder="What is this document for? e.g. 'Inform parents about the Grade 7 camp from 10-12 June' or 'Thank parents for attending the meeting and share key decisions'"
-                  value={a_purpose}
-                  onChange={e => setA_Purpose(e.target.value)}
+                  defaultValue={a_purpose}
+                  onBlur={e => setA_Purpose(e.target.value)}
                 />
               </Field>
 
               <FieldRow>
                 <Field label="Language">
-                  <Select value={a_language} onValueChange={setA_Language}>
+                  <Select defaultValue={a_language} onValueChange={setA_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Tone">
-                  <Select value={a_tone} onValueChange={setA_Tone}>
+                  <Select defaultValue={a_tone} onValueChange={setA_Tone}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Tone" /></SelectTrigger>
                     <SelectContent>
-                      {TONES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      {TONES.map(t => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -1051,47 +1051,47 @@ export function ContentCreatorClient() {
                 <Textarea
                   className={cn(inputClass, 'min-h-[72px]')}
                   placeholder="List specific points, e.g: Date, Time, Venue, Cost (R150), What to bring, Permission deadline"
-                  value={a_keyPoints}
-                  onChange={e => setA_KeyPoints(e.target.value)}
+                  defaultValue={a_keyPoints}
+                  onBlur={e => setA_KeyPoints(e.target.value)}
                 />
               </Field>
 
-              <AdvancedSection label="School Details & Options">
+              <AdvancedSection label="Admin & General Tab">
                 <FieldRow>
                   <Field label="School Name">
-                    <Input className={inputClass} placeholder="e.g. Themba Primary School" value={a_schoolName} onChange={e => setA_SchoolName(e.target.value)} />
+                    <Input className={inputClass} placeholder="e.g. Themba Primary School" defaultValue={a_schoolName} onBlur={e => setA_SchoolName(e.target.value)} />
                   </Field>
                   <Field label="Date">
-                    <Input className={inputClass} type="date" value={a_date} onChange={e => setA_Date(e.target.value)} />
+                    <Input className={inputClass} type="date" defaultValue={a_date} onBlur={e => setA_Date(e.target.value)} />
                   </Field>
                 </FieldRow>
                 <FieldRow>
                   <Field label="Teacher Name">
-                    <Input className={inputClass} placeholder="Your name" value={a_teacherName} onChange={e => setA_TeacherName(e.target.value)} />
+                    <Input className={inputClass} placeholder="Your name" defaultValue={a_teacherName} onBlur={e => setA_TeacherName(e.target.value)} />
                   </Field>
                   <Field label="Principal Name">
-                    <Input className={inputClass} placeholder="Principal's name" value={a_principalName} onChange={e => setA_PrincipalName(e.target.value)} />
+                    <Input className={inputClass} placeholder="Principal's name" defaultValue={a_principalName} onBlur={e => setA_PrincipalName(e.target.value)} />
                   </Field>
                 </FieldRow>
                 <FieldRow>
                   <Field label="Grade / Class">
-                  <Select value={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
+                  <Select defaultValue={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
                       <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>
-                        {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
                   <Field label="Subject">
-                    <Select value={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
+                    <Select defaultValue={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
                       <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                       <SelectContent>
-                        {a_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {a_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
                         <SelectItem value="Other">Other (specify below)</SelectItem>
                       </SelectContent>
                     </Select>
                     {a_subject === 'Other' && (
-                      <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" value={a_customSubject} onChange={e => setA_CustomSubject(e.target.value)} />
+                      <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={a_customSubject} onBlur={e => setA_CustomSubject(e.target.value)} />
                     )}
                   </Field>
                 </FieldRow>
@@ -1100,7 +1100,7 @@ export function ContentCreatorClient() {
                   <Label htmlFor="a-reply" className="text-sm text-slate-300 cursor-pointer">Include Tear-Off Reply Slip</Label>
                 </div>
                 <Field label="Additional Instructions">
-                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any specific requirements..." value={a_extraInstructions} onChange={e => setA_ExtraInstructions(e.target.value)} />
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any specific requirements..." defaultValue={a_extraInstructions} onBlur={e => setA_ExtraInstructions(e.target.value)} />
                 </Field>
               </AdvancedSection>
 

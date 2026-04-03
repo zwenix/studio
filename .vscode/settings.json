@@ -4,5 +4,6 @@
   "geminicodeassist.codeGenerationPaneViewEnabled": true,
   "geminicodeassist.agentYoloMode": true,
   "geminicodeassist.agentDebugMode": true,
-  "IDX.corgiMode": true
+  "IDX.corgiMode": true,
+  "geminicodeassist.updateChannel": "Insiders"
 }

@@ -1,34 +1,34 @@
-\'use server\';
+'use server';
 
-import { z } from \'zod\';
-import { ai } from \'@/genkit\';
-import { googleAI, gemini31Pro } from \'@genkit-ai/google-genai\'; // Import gemini31Pro
+import { z } from 'zod';
+import { ai } from '@/genkit';
+import { googleAI, gemini31Pro } from '@genkit-ai/google-genai'; // Import gemini31Pro
 
 export const generateGrade1English = ai.defineFlow(
   {
-    name: \'generateGrade1English\',\
-    inputSchema: z.object({\
-      materialType: z.enum([\
-        \'phonicsBook\',\
-        \'readingComprehensionA\',\
-        \'spellingTr\',\
-        \'displayPack\',\
-        \'improvementTracker\',\
-        \'handwritingSheet\',\
-        \'abcBooklet\',\
-        \'classroomLabels\',\
+    name: 'generateGrade1English',
+    inputSchema: z.object({
+      materialType: z.enum([
+        'phonicsBook',
+        'readingComprehensionA',
+        'spellingTr',
+        'displayPack',
+        'improvementTracker',
+        'handwritingSheet',
+        'abcBooklet',
+        'classroomLabels',
       ]),
       userId: z.string(), // Added userId for Firebase storage
-    }),\
-    outputSchema: z.object({\
-      title: z.string(),\
-      content: z.string(),           // Now expecting rich HTML\
-      description: z.string(),       // Short summary\
-      assessmentCriteria: z.string(),   // New: CAPS-aligned assessment\
-      successIndicators: z.array(z.string()),\
-    }),\
-  },\
-  async ({ materialType, userId }) => {\
+    }),
+    outputSchema: z.object({
+      title: z.string(),
+      content: z.string(),           // Now expecting rich HTML
+      description: z.string(),       // Short summary
+      assessmentCriteria: z.string(),   // New: CAPS-aligned assessment
+      successIndicators: z.array(z.string()),
+    }),
+  },
+  async ({ materialType, userId }) => {
     const capsPrompt = `You are an expert South African Foundation Phase English teacher.
 
 Generate **CAPS-aligned Grade 1 English materials** with clear assessment criteria.
@@ -46,7 +46,7 @@ Generate **CAPS-aligned Grade 1 English materials** with clear assessment criter
 **Output Requirements:**
 - Child-friendly, engaging activities
 - South African real-life contexts
-- Teacher\'s Pet style (colourful, fun, simple)
+- Teacher's Pet style (colourful, fun, simple)
 - Include space for drawing, cutting, pasting where appropriate
 - Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
 - Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>, <img> if images are described) for formatting.
@@ -59,43 +59,44 @@ Return clean JSON only with this structure:
   "description": "string",
   "assessmentCriteria": "string (detailed CAPS assessment guidance for teachers in HTML format)",
   "successIndicators": ["observable success criteria 1", "success criteria 2", "..."]
-}`;\
+}`;
 
-    let result;\
-    try {\
-      result = await ai.generate({\
+    let result;
+    try {
+      result = await ai.generate({
         model: gemini31Pro, // Using gemini31Pro for CAPS content, as per chat.txt
-        prompt: capsPrompt,\
+        prompt: capsPrompt,
         config: { 
           temperature: 0.65, 
           maxOutputTokens: 5000,
           version: '3.1', // As requested in the prompt
           thinkingLevel: 'medium', // As requested in the prompt
-        },\
-      });\
-    } catch (err) {\
-      console.warn(\'Gemini 3.1 Pro failed, falling back to Flash...\');
-      result = await ai.generate({\
-        model: googleAI.geminiFlashLatest, // Fallback to gemini-flash-latest
-        prompt: capsPrompt,\
+        },
+      });
+    } catch (err) {
+      console.warn('Gemini 3.1 Pro failed, falling back to Flash...');
+      result = await ai.generate({
+        // model: googleAI.geminiFlashLatest, // Fallback to gemini-flash-latest - REMOVED DUE TO TYPE ERROR
+        model: 'googleai/gemini-3-flash-preview',
+        prompt: capsPrompt,
         config: { 
           temperature: 0.7, 
           maxOutputTokens: 4200,
           version: '3.1',
           thinkingLevel: 'medium',
-        },\
-      });\
-    }\
+        },
+      });
+    }
 
-    if (!result.text) throw new Error(\"Gemini returned empty text\");
+    if (!result.text) throw new Error("Gemini returned empty text");
     const output = JSON.parse(result.text);
 
     // TODO: Save to Firebase with CAPS metadata (add Firebase import and logic)
     // For now, returning the output directly
 
-    return {\
-      ...output,\
+    return {
+      ...output,
       // docId: docRef.id, // Uncomment when Firebase saving is implemented
-    };\
-  }\
+    };
+  }
 );

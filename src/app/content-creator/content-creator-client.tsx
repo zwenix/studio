@@ -723,21 +723,21 @@ export function ContentCreatorClient() {
               {/* Category + Type */}
               <FieldRow>
                 <Field label="Category" required>
-                  <Select defaultValue={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
+                  <Select value={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
                       {Object.keys(TEACHING_CATEGORIES).map(cat => (
-                        <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>
+                        <SelectItem key={[^}]*} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Document Type" required>
-                  <Select defaultValue={t_type} onValueChange={setT_Type} disabled={!t_category}>
+                  <Select value={t_type} onValueChange={setT_Type} disabled={!t_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {t_category && TEACHING_CATEGORIES[t_category]?.map(type => (
-                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
+                        <SelectItem key={[^}]*} value={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -747,18 +747,18 @@ export function ContentCreatorClient() {
               {/* Grade + Language */}
               <FieldRow>
                 <Field label="Grade" required>
-                  <Select defaultValue={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
+                  <Select value={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
+                      {Object.keys(educationalData).map(g => <SelectItem key={[^}]*} value={g}>Grade {g}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Language">
-                  <Select defaultValue={t_language} onValueChange={setT_Language}>
+                  <Select value={t_language} onValueChange={setT_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={[^}]*} value={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -766,10 +766,10 @@ export function ContentCreatorClient() {
 
               {/* Subject */}
               <Field label="Subject" required>
-                <Select defaultValue={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
+                <Select value={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {t_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
+                    {t_subjects.map((s: string) => <SelectItem key={[^}]*} value={s}>{s}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -780,10 +780,10 @@ export function ContentCreatorClient() {
 
               {/* Topic */}
               <Field label="Topic / Strand" required>
-                <Select defaultValue={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
+                <Select value={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
                   <SelectContent>
-                    {t_topics.map((t: string) => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
+                    {t_topics.map((t: string) => <SelectItem key={[^}]*} value={t}>{t}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -795,18 +795,18 @@ export function ContentCreatorClient() {
               {/* Term + Difficulty */}
               <FieldRow>
                 <Field label="Term">
-                  <Select defaultValue={t_term} onValueChange={setT_Term}>
+                  <Select value={t_term} onValueChange={setT_Term}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Term" /></SelectTrigger>
                     <SelectContent>
-                      {TERMS.map(t => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
+                      {TERMS.map(t => <SelectItem key={[^}]*} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Difficulty">
-                  <Select defaultValue={t_difficulty} onValueChange={setT_Difficulty}>
+                  <Select value={t_difficulty} onValueChange={setT_Difficulty}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Difficulty" /></SelectTrigger>
                     <SelectContent>
-                      {DIFFICULTIES.map(d => <SelectItem key={d} defaultValue={d}>{d}</SelectItem>)}
+                      {DIFFICULTIES.map(d => <SelectItem key={[^}]*} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -871,19 +871,19 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Category" required>
-                  <Select defaultValue={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
+                  <Select value={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>)}
+                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={[^}]*} value={cat}>{cat}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Visual Type" required>
-                  <Select defaultValue={v_type} onValueChange={setV_Type} disabled={!v_category}>
+                  <Select value={v_type} onValueChange={setV_Type} disabled={!v_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {v_category && VISUAL_TYPES[v_category]?.map(type => (
-                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
+                        <SelectItem key={[^}]*} value={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -892,28 +892,28 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Grade" required>
-                  <Select defaultValue={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
+                  <Select value={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
+                      {Object.keys(educationalData).map(g => <SelectItem key={[^}]*} value={g}>Grade {g}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Language">
-                  <Select defaultValue={v_language} onValueChange={setV_Language}>
+                  <Select value={v_language} onValueChange={setV_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={[^}]*} value={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
               </FieldRow>
 
               <Field label="Subject" required>
-                <Select defaultValue={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
+                <Select value={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {v_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
+                    {v_subjects.map((s: string) => <SelectItem key={[^}]*} value={s}>{s}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -923,10 +923,10 @@ export function ContentCreatorClient() {
               </Field>
 
               <Field label="Topic / Theme" required>
-                <Select defaultValue={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
+                <Select value={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
                   <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
                   <SelectContent>
-                    {v_topics.map((t: string) => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
+                    {v_topics.map((t: string) => <SelectItem key={[^}]*} value={t}>{t}</SelectItem>)}
                     <SelectItem value="Other">Other (specify below)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -937,18 +937,18 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Colour Scheme">
-                  <Select defaultValue={v_colorScheme} onValueChange={setV_ColorScheme}>
+                  <Select value={v_colorScheme} onValueChange={setV_ColorScheme}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Colours" /></SelectTrigger>
                     <SelectContent>
-                      {COLOR_SCHEMES.map(c => <SelectItem key={c} defaultValue={c}>{c}</SelectItem>)}
+                      {COLOR_SCHEMES.map(c => <SelectItem key={[^}]*} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Design Style">
-                  <Select defaultValue={v_style} onValueChange={setV_Style}>
+                  <Select value={v_style} onValueChange={setV_Style}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Style" /></SelectTrigger>
                     <SelectContent>
-                      {VISUAL_STYLES.map(s => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
+                      {VISUAL_STYLES.map(s => <SelectItem key={[^}]*} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -1000,19 +1000,19 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Category" required>
-                  <Select defaultValue={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
+                  <Select value={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
                     <SelectContent>
-                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={cat} defaultValue={cat}>{cat}</SelectItem>)}
+                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={[^}]*} value={cat}>{cat}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Document Type" required>
-                  <Select defaultValue={a_type} onValueChange={setA_Type} disabled={!a_category}>
+                  <Select value={a_type} onValueChange={setA_Type} disabled={!a_category}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {a_category && ADMIN_TYPES[a_category]?.map(type => (
-                        <SelectItem key={type} defaultValue={type}>{type}</SelectItem>
+                        <SelectItem key={[^}]*} value={type}>{type}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1030,18 +1030,18 @@ export function ContentCreatorClient() {
 
               <FieldRow>
                 <Field label="Language">
-                  <Select defaultValue={a_language} onValueChange={setA_Language}>
+                  <Select value={a_language} onValueChange={setA_Language}>
                     <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map(l => <SelectItem key={l} defaultValue={l}>{l}</SelectItem>)}
+                      {LANGUAGES.map(l => <SelectItem key={[^}]*} value={l}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <Field label="Tone">
-                  <Select defaultValue={a_tone} onValueChange={setA_Tone}>
+                  <Select value={a_tone} onValueChange={setA_Tone}>
                     <SelectTrigger className={selectClass}><SelectValue placeholder="Tone" /></SelectTrigger>
                     <SelectContent>
-                      {TONES.map(t => <SelectItem key={t} defaultValue={t}>{t}</SelectItem>)}
+                      {TONES.map(t => <SelectItem key={[^}]*} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -1075,18 +1075,18 @@ export function ContentCreatorClient() {
                 </FieldRow>
                 <FieldRow>
                   <Field label="Grade / Class">
-                  <Select defaultValue={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
+                  <Select value={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
                       <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
                       <SelectContent>
-                        {Object.keys(educationalData).map(g => <SelectItem key={g} defaultValue={g}>Grade {g}</SelectItem>)}
+                        {Object.keys(educationalData).map(g => <SelectItem key={[^}]*} value={g}>Grade {g}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </Field>
                   <Field label="Subject">
-                    <Select defaultValue={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
+                    <Select value={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
                       <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
                       <SelectContent>
-                        {a_subjects.map((s: string) => <SelectItem key={s} defaultValue={s}>{s}</SelectItem>)}
+                        {a_subjects.map((s: string) => <SelectItem key={[^}]*} value={s}>{s}</SelectItem>)}
                         <SelectItem value="Other">Other (specify below)</SelectItem>
                       </SelectContent>
                     </Select>

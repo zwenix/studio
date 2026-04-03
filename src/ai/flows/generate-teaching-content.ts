@@ -278,7 +278,7 @@ export async function generateTeachingContent(
 
   const response = await ai.generate({
     // gemini-pro-latest = Gemini 3.1 Pro (per geminichat.txt alias table) — correct for complex CAPS content generation
-    model: 'googleai/gemini-pro-latest',
+    model: 'googleai/gemini-3.1-pro-preview',
     system: SYSTEM_PROMPT,
     prompt: `Create a ${input.contentType} for the following:
 

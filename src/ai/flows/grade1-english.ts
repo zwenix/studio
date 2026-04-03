@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { ai } from '@/genkit';
-import { googleAI, gemini31Pro } from '@genkit-ai/google-genai'; // Import gemini31Pro
+// Removed explicit model import
 
 export const generateGrade1English = ai.defineFlow(
   {
@@ -64,7 +64,7 @@ Return clean JSON only with this structure:
     let result;
     try {
       result = await ai.generate({
-        model: gemini31Pro, // Using gemini31Pro for CAPS content, as per chat.txt
+        model: 'googleai/gemini-3.1-pro-preview', // Using gemini31Pro for CAPS content, as per chat.txt
         prompt: capsPrompt,
         config: { 
           temperature: 0.65, 
@@ -76,8 +76,7 @@ Return clean JSON only with this structure:
     } catch (err) {
       console.warn('Gemini 3.1 Pro failed, falling back to Flash...');
       result = await ai.generate({
-        // model: googleAI.geminiFlashLatest, // Fallback to gemini-flash-latest - REMOVED DUE TO TYPE ERROR
-        model: 'googleai/gemini-3-flash-preview',
+        model: 'googleai/gemini-3-flash-preview', // Fallback to gemini-flash-latest
         prompt: capsPrompt,
         config: { 
           temperature: 0.7, 

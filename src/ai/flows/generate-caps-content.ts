@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { ai } from '../../genkit';
-import { googleAI, gemini31Pro } from '@genkit-ai/google-genai'; // Import gemini31Pro
+// Removed explicit model imports
 import { buildContentCreatorPrompt } from '@/ai/prompts';
 import { db } from '@/firebase'; // Import Firebase db
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Import Firestore functions
@@ -65,7 +65,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      model: 'googleai/gemini-3.1-flash-image-preview', // Use the correct alias for image generation
+      model: 'googleai/gemini-3.1-flash-image-preview', // Use the correct string alias for image generation
       prompt: enrichedPrompt,
       config: { 
         responseMimeType: 'image/jpeg', // Request JPEG for broader compatibility
@@ -112,7 +112,7 @@ export async function generateCAPSContent(
     });
 
     const response = await ai.generate({
-      model: gemini31Pro, // Using gemini31Pro for CAPS content, as per request
+      model: 'googleai/gemini-3.1-pro-preview', // Using string alias for CAPS content
       system: promptParams.systemInstruction,
       prompt: promptParams.userPrompt,
       config: {
@@ -181,7 +181,7 @@ export async function generateCAPSContent(
       memo: memoHtml,
       rubric: parsedContent.rubric || '',
       createdAt: serverTimestamp(),
-      modelUsed: 'gemini31Pro',
+      modelUsed: 'gemini31Pro', // Used alias, storing as string
       capsAligned: true,
     });
 

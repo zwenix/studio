@@ -4,8 +4,13 @@ import { z } from 'zod';
 import { ai } from '../../genkit';
 // Removed explicit model imports
 import { buildContentCreatorPrompt } from '@/ai/prompts';
-import { db } from '@/firebase'; // Import Firebase db
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'; // Import Firestore functions
+import { initializeApp, getApp } from 'firebase/app';
+import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { firebaseConfig } from '@/firebase/config';
+
+// Initialize Firebase for server-side usage
+const app = getApp() ?? initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const GenerateCAPSContentInputSchema = z.object({
   grade: z.string().describe('The grade level (R, 1-12, or custom).'),
@@ -73,7 +78,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
       output: { format: 'media' },
     });
     
-    if (response.media?.[0]?.url) return response.media[0].url;
+    if (response.media?.url) return response.media.url;
     
     // Deeper check for inline data if the API returns it differently
     const parts = (response as any).candidates?.[0]?.message?.content ?? [];

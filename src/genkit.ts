@@ -1,5 +1,5 @@
 import { genkit } from 'genkit';
-import { googleAI, gemini31Pro, gemini3Flash } from '@genkit-ai/google-genai';
+import { googleAI } from '@genkit-ai/google-genai'; // Removed explicit model imports
 import groq from 'genkitx-groq';
 
 /**
@@ -22,5 +22,5 @@ import groq from 'genkitx-groq';
  */
 export const ai = genkit({
   plugins: [googleAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY })],
-  model: gemini3Flash, // Exported alias for 'gemini-3-flash-preview'
+  model: 'googleai/gemini-3.1-pro-preview', // Exported alias for 'gemini-3-flash-preview'
 });

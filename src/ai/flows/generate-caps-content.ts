@@ -24,7 +24,6 @@ export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSc
 
 export type GenerateCAPSContentOutput = {
   content: string;
-  description?: string;
   memo?: string;
   rubric?: string;
   docId?: string;
@@ -57,7 +56,7 @@ When generating any material, you MUST output:
 You are never satisfied with mediocre visuals — aim for materials that South African teachers would proudly display in their classrooms or submit to the DBE as exemplars.
 `;
 
-const IMAGE_GOLDEN_RULE = `Ultra-detailed digital illustration, professional educational graphic design, vibrant colors, perfect composition, sharp focus, 300 DPI print quality, award-winning children's non-fiction book style, no text overlays (text will be added separately), no borders, no frames, no watermarks, no emojis, no cartoonish exaggeration, suitable for South African classroom display, museum-quality detail.`;
+const IMAGE_GOLDEN_RULE = "Ultra-detailed digital illustration, professional educational graphic design, vibrant colors, perfect composition, sharp focus, 300 DPI print quality, award-winning children's non-fiction book style, no text overlays (text will be added separately), no borders, no frames, no watermarks, no emojis, no cartoonish exaggeration, suitable for South African classroom display, museum-quality detail.";
 
 function getSpecificPromptTemplate(contentType: string, grade: string, subject: string, topic: string) {
   const lowerType = contentType.toLowerCase();
@@ -188,7 +187,7 @@ export async function generateCAPSContent(
       ${specificInstructions}
 
       OUTPUT FORMAT INSTRUCTIONS:
-      You MUST return your response as a valid JSON object. Do not wrap it in markdown formatting (like \`\`\`json). Return ONLY the raw JSON object structured exactly like this:
+      You MUST return your response as a valid JSON object. Do not wrap it in markdown formatting (no code blocks). Return ONLY the raw JSON object structured exactly like this:
       {
         "content_html": "<The complete HTML for the document, using ONLY inline CSS styles. No classes.>",
         "description": "<A brief 1-sentence summary of the content>",
@@ -219,35 +218,82 @@ export async function generateCAPSContent(
       throw new Error('Content generation returned no output.');
     }
     
-    const cleanText = response.text.replace(/^```json|```$/g, '').trim();
-    const parsed = JSON.parse(cleanText);
+    // Safely parse JSON by removing Markdown wrappers robustly
+    let cleanText = response.text.trim();
+    if (cleanText.startsWith('```json')) cleanText = cleanText.substring(7);
+    else if (cleanText.startsWith('```')) cleanText = cleanText.substring(3);
+    if (cleanText.endsWith('```')) cleanText = cleanText.substring(0, cleanText.length - 3);
+    cleanText = cleanText.trim();
+    
+    let parsedContent: any;
+    try {
+        parsedContent = JSON.parse(cleanText);
+    } catch (e) {
+        console.error("Failed to parse JSON from model, falling back to raw text:", cleanText);
+        return { content: cleanText }; 
+    }
 
-    // 2. Generate the visual aid image
-    const imageUrl = await generateImage(parsed.image_prompt, input.subject, input.grade);
+    let finalHtmlContent = parsedContent.content_html || ''; 
+    
+    // Handle Image Generation if an image prompt was provided
+    if (parsedContent.image_prompt) {
+        const dataUri = await generateImage(parsedContent.image_prompt, input.subject, input.grade);
+        
+        if (dataUri) {
+            finalHtmlContent = `
+              <div style="margin-bottom: 24px; text-align: center;">
+                <img src="${dataUri}" alt="Educational Illustration" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);" />
+              </div>
+              ${finalHtmlContent}
+            `;
+        } else {
+            finalHtmlContent = `\n${finalHtmlContent}`;
+        }
+    }
+    
+    let assessmentCriteria = parsedContent.assessmentCriteria || '';
+    let successIndicators = parsedContent.successIndicators || [];
 
-    // 3. Prepare final output
-    const finalOutput: GenerateCAPSContentOutput = {
-      content: parsed.content_html.replace('__IMAGE_URL__', imageUrl),
-      description: parsed.description,
-      assessmentCriteria: parsed.assessmentCriteria,
-      successIndicators: parsed.successIndicators,
-      memo: JSON.stringify(parsed.memo_if_requested),
-      rubric: parsed.rubric,
-    };
+    // Construct the Memo HTML
+    let memoHtml = '';
+    if (parsedContent.memo_if_requested?.included && parsedContent.memo_if_requested?.answers) {
+         memoHtml += `<h2 style="color: #1a56db; font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">Memorandum</h2>`;
+         parsedContent.memo_if_requested.answers.forEach((ans: any) => {
+             memoHtml += `<p style="margin-bottom: 0.5rem;"><strong style="color: #374151;">${ans.question_number}.</strong> <span style="color: #4b5563;">${ans.answer}</span></p>`;
+         });
+    }
 
-    // 4. Save to Firestore
-    const docRef = await addDoc(collection(db, 'generatedContent'), {
-      ...input,
-      ...finalOutput,
-      imageUrl,
+    // Save strictly to the Firestore Content Archive
+    const docRef = await addDoc(collection(db, 'teachers', input.userId, 'generatedContent'), {
+      teacherId: input.userId,
+      grade: input.grade,
+      subject: input.subject,
+      topic: input.topic,
+      contentType: input.contentType,
+      category: input.category,
+      content: finalHtmlContent,
+      description: parsedContent.description || '',
+      assessmentCriteria: assessmentCriteria,
+      successIndicators: successIndicators,
+      memo: memoHtml,
+      rubric: parsedContent.rubric || '',
       createdAt: serverTimestamp(),
+      modelUsed: 'gemini-3.1-pro-preview',
+      capsAligned: true,
     });
 
-    return { ...finalOutput, docId: docRef.id };
+    return { 
+        content: finalHtmlContent,
+        memo: memoHtml,
+        rubric: parsedContent.rubric,
+        docId: docRef.id,
+        assessmentCriteria: assessmentCriteria,
+        successIndicators: successIndicators,
+    };
   } catch (error) {
     console.error('generateCAPSContent error:', error);
     throw new Error(
-      `CAPS content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

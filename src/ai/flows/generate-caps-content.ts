@@ -2,13 +2,6 @@
 
 import { z } from 'zod';
 import { ai } from '../../genkit';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { firebaseConfig } from '@/firebase/config';
-
-// Safely initialize Firebase for server-side usage (Prevents 'getApp()' crashes on hot reloads)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
 
 // --- INPUT/OUTPUT SCHEMAS ---
 const GenerateCAPSContentInputSchema = z.object({
@@ -31,6 +24,7 @@ export type GenerateCAPSContentInput = z.infer<typeof GenerateCAPSContentInputSc
 
 export type GenerateCAPSContentOutput = {
   content: string;
+  description?: string;
   memo?: string;
   rubric?: string;
   docId?: string;
@@ -140,7 +134,6 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      // Use the correct Imagen 3 model alias
       model: 'googleai/imagen-3.0-generate-001', 
       prompt: enrichedPrompt,
       output: { format: 'media' },
@@ -148,7 +141,6 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
     
     if (response.media?.url) return response.media.url;
     
-    // Deeper check for inline data if the API returns it differently
     const parts = (response as any).candidates?.[0]?.message?.content ?? [];
     for (const part of parts) {
       if (part?.media?.url) return part.media.url;
@@ -166,6 +158,14 @@ export async function generateCAPSContent(
   input: GenerateCAPSContentInput
 ): Promise<GenerateCAPSContentOutput> {
   try {
+    // 1. DYNAMICALLY IMPORT FIREBASE (Fixes the SSR 500 crash on page load)
+    const { initializeApp, getApps } = await import('firebase/app');
+    const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+    const { firebaseConfig } = await import('@/firebase/config');
+    
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const db = getFirestore(app);
+
     const specificInstructions = getSpecificPromptTemplate(input.contentType, input.grade, input.subject, input.topic);
     
     const userPrompt = `
@@ -211,7 +211,6 @@ export async function generateCAPSContent(
       prompt: userPrompt,
       config: {
         temperature: 0.65,
-        maxOutputTokens: 8000,
       },
       output: { format: 'json' },
     });
@@ -220,102 +219,35 @@ export async function generateCAPSContent(
       throw new Error('Content generation returned no output.');
     }
     
-    // Safely parse the JSON by stripping any markdown code fences Gemini might accidentally include
     const cleanText = response.text.replace(/^```json|```$/g, '').trim();
     const parsed = JSON.parse(cleanText);
 
-    // --- IMAGE GENERATION ---
-    let imageUrl = '';
-    if (parsed.image_prompt) {
-      imageUrl = await generateImage(parsed.image_prompt, input.subject, input.grade);
-    }
+    // 2. Generate the visual aid image
+    const imageUrl = await generateImage(parsed.image_prompt, input.subject, input.grade);
 
-    // --- HTML POST-PROCESSING ---
-    // Inject the generated image into the HTML if a placeholder exists or at the top
-    let finalHtml = parsed.content_html;
-    if (imageUrl) {
-      const imageHtml = `
-        <div style="width: 100%; margin-bottom: 30px; text-align: center;">
-          <img src="${imageUrl}" alt="${input.topic}" style="width: 100%; max-width: 800px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #e0e0e0;" />
-        </div>
-      `;
-      
-      if (finalHtml.includes('<!-- IMAGE_PLACEHOLDER -->')) {
-        finalHtml = finalHtml.replace('<!-- IMAGE_PLACEHOLDER -->', imageHtml);
-      } else {
-        // Insert after the first <div> or <body> tag if found, otherwise at the top
-        const insertIndex = finalHtml.indexOf('>') + 1;
-        finalHtml = finalHtml.slice(0, insertIndex) + imageHtml + finalHtml.slice(insertIndex);
-      }
-    }
-
-    // --- MEMO FORMATTING ---
-    let memoHtml = '';
-    if (parsed.memo_if_requested?.included) {
-      memoHtml = `
-        <div style="font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6;">
-          <h1 style="color: #1a56db; border-bottom: 2px solid #1a56db; padding-bottom: 10px;">Memorandum: ${input.topic}</h1>
-          <p><strong>Grade:</strong> ${input.grade} | <strong>Subject:</strong> ${input.subject}</p>
-          <div style="margin-top: 20px;">
-            ${parsed.memo_if_requested.answers.map((a: any) => `
-              <div style="margin-bottom: 15px; padding: 15px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #1a56db;">
-                <p><strong>Question ${a.question_number}:</strong></p>
-                <p>${a.answer}</p>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    // --- FIREBASE PERSISTENCE ---
-    let docId = '';
-    try {
-      const docRef = await addDoc(collection(db, 'generatedContent'), {
-        userId: input.userId,
-        grade: input.grade,
-        subject: input.subject,
-        topic: input.topic,
-        contentType: input.contentType,
-        category: input.category,
-        content: finalHtml,
-        memo: memoHtml || null,
-        rubric: parsed.rubric || null,
-        assessmentCriteria: parsed.assessmentCriteria || null,
-        successIndicators: parsed.successIndicators || [],
-        imageUrl: imageUrl || null,
-        createdAt: serverTimestamp(),
-        metadata: {
-          term: input.term,
-          language: input.language,
-          objective: input.objective,
-        }
-      });
-      docId = docRef.id;
-    } catch (dbError) {
-      console.error('Error saving to Firestore:', dbError);
-      // Continue even if DB save fails, so user gets their content
-    }
-
-    return {
-      content: finalHtml,
-      memo: memoHtml,
-      rubric: parsed.rubric,
-      docId: docId,
+    // 3. Prepare final output
+    const finalOutput: GenerateCAPSContentOutput = {
+      content: parsed.content_html.replace('__IMAGE_URL__', imageUrl),
+      description: parsed.description,
       assessmentCriteria: parsed.assessmentCriteria,
       successIndicators: parsed.successIndicators,
+      memo: JSON.stringify(parsed.memo_if_requested),
+      rubric: parsed.rubric,
     };
 
+    // 4. Save to Firestore
+    const docRef = await addDoc(collection(db, 'generatedContent'), {
+      ...input,
+      ...finalOutput,
+      imageUrl,
+      createdAt: serverTimestamp(),
+    });
+
+    return { ...finalOutput, docId: docRef.id };
   } catch (error) {
-    console.error('CAPS Content Generation Error:', error);
-    return {
-      content: `
-        <div style="padding: 20px; border: 1px solid #f87171; background: #fef2f2; color: #991b1b; border-radius: 8px;">
-          <h2 style="margin-top: 0;">Generation Error</h2>
-          <p>We encountered an issue generating your CAPS content. Please try again or refine your topic.</p>
-          <p style="font-size: 12px; opacity: 0.7;">Details: ${error instanceof Error ? error.message : 'Unknown error'}</p>
-        </div>
-      `,
-    };
+    console.error('generateCAPSContent error:', error);
+    throw new Error(
+      `CAPS content generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }

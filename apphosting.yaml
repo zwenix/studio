@@ -1,17 +1,18 @@
 firebase: {}
 
 runConfig:
-  # Increased from 512MiB - required for AI/Genkit server-side processing
-  memoryMiB: 1024                                                                                                                                    
+  memoryMiB: 1024
   cpu: 1
   maxInstances: 4
   minInstances: 0
+  # CRITICAL: API key must be available at RUNTIME (not just build time).
+  # Without this, all server-side ai.generate() calls fail with auth errors.
+  env:
+    - variable: GOOGLE_GENAI_API_KEY
+      secret: GOOGLE_GENAI_API_KEY
 
 buildConfig:
   env:
-    # CRITICAL FIX: Prevents "JavaScript heap out of memory" during Next.js build.
-    # Build worker was crashing because Node.js defaults to ~1.5GB heap.
-    # 4096MB gives the Next.js compiler sufficient headroom for this large app.
     - variable: NODE_OPTIONS
       value: "--max-old-space-size=4096"
     - variable: GOOGLE_GENAI_API_KEY

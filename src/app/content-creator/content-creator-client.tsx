@@ -8,7 +8,7 @@
  * 3. 📋 General & Admin Documents
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -27,7 +27,7 @@ import {
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, addDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { educationalData } from '@/lib/educational-data';
-import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content'; // Updated import to generateCAPSContent
+import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";
 import { generateVisualAid, type VisualAidInput, type VisualAidOutput } from '@/ai/flows/generate-visual-aids';
 import { generateAdminDoc, type AdminDocInput, type AdminDocOutput } from '@/ai/flows/generate-admin-docs';
@@ -118,7 +118,6 @@ function ContentPreview({ html, label }: { html: string; label: string }) {
           overflow: 'hidden',
         }}
       >
-        {/* CSS Reset container — ensures rendered HTML is isolated from app styles */}
         <div
           style={{
             all: 'initial',
@@ -387,10 +386,10 @@ export function ContentCreatorClient() {
   const [activeTab, setActiveTab] = useState('teaching');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activePreviewTab, setActivePreviewTab] = useState<'content' | 'memo' | 'rubric' | 'assessment'>('content'); // Added 'assessment'
+  const [activePreviewTab, setActivePreviewTab] = useState<'content' | 'memo' | 'rubric' | 'assessment'>('content');
 
   // Results state
-  const [teachingResult, setTeachingResult] = useState<GenerateCAPSContentOutput | null>(null); // Updated type
+  const [teachingResult, setTeachingResult] = useState<GenerateCAPSContentOutput | null>(null);
   const [visualResult, setVisualResult] = useState<VisualAidOutput | null>(null);
   const [adminResult, setAdminResult] = useState<AdminDocOutput | null>(null);
 
@@ -457,4 +456,725 @@ export function ContentCreatorClient() {
   const [v_generateImage, setV_GenerateImage] = useState(false);
   const [v_extraInstructions, setV_ExtraInstructions] = useState('');
 
-  // ─── Admin Docs State ────────────────────────────────────────────────
+  // ─── Admin Docs State ─────────────────────────────────────────────────────
+
+  const [a_category, setA_Category] = useState('');
+  const [a_type, setA_Type] = useState('');
+  const [a_grade, setA_Grade] = useState('');
+  const a_subjects = useMemo(() => {
+    if (!a_grade) return [];
+    const gradeData = educationalData[a_grade as keyof typeof educationalData];
+    return gradeData ? Object.keys(gradeData) : [];
+  }, [a_grade]);
+  const [a_subject, setA_Subject] = useState('');
+  const [a_customSubject, setA_CustomSubject] = useState('');
+  const a_topics = useMemo(() => {
+    if (!a_grade || !a_subject) return [];
+    const gradeData = educationalData[a_grade as keyof typeof educationalData];
+    return gradeData && gradeData[a_subject] ? gradeData[a_subject] : [];
+  }, [a_grade, a_subject]);
+  const [a_schoolName, setA_SchoolName] = useState('');
+  const [a_teacherName, setA_TeacherName] = useState('');
+  const [a_principalName, setA_PrincipalName] = useState('');
+  const [a_date, setA_Date] = useState('');
+  const [a_language, setA_Language] = useState('English');
+  const [a_purpose, setA_Purpose] = useState('');
+  const [a_keyPoints, setA_KeyPoints] = useState('');
+  const [a_tone, setA_Tone] = useState('');
+  const [a_replySlip, setA_ReplySlip] = useState(false);
+  const [a_extraInstructions, setA_ExtraInstructions] = useState('');
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+
+  const handleGenerateTeaching = async () => {
+    const finalSubject = t_subject === 'Other' ? t_customSubject : t_subject;
+    const finalTopic = t_topic === 'Other' ? t_customTopic : t_topic;
+
+    if (!t_type || !t_grade || !finalSubject || !finalTopic || !user?.uid) {
+      toast({ title: 'Missing fields', description: 'Please select Type, Grade, Subject, Topic, and ensure you are logged in.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    setTeachingResult(null);
+    setActivePreviewTab('content');
+    try {
+      const input: GenerateCAPSContentInput = {
+        category: t_category,
+        contentType: t_type,
+        grade: t_grade,
+        subject: finalSubject,
+        topic: finalTopic,
+        term: t_term,
+        language: t_language,
+        objective: t_objective,
+        learnerProfile: t_profile,
+        additionalInstructions: t_extraInstructions,
+        teacherName: user?.displayName || '',
+        userId: user.uid,
+      };
+      const result = await generateCAPSContent(input);
+      setTeachingResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateVisual = async () => {
+    const finalSubject = v_subject === 'Other' ? v_customSubject : v_subject;
+    const finalTopic = v_topic === 'Other' ? v_customTopic : v_topic;
+    if (!v_type || !v_grade || !finalSubject || !finalTopic) {
+      toast({ title: 'Missing fields', description: 'Please select Type, Grade, Subject, and Topic.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    setVisualResult(null);
+    try {
+      const input: VisualAidInput = {
+        visualType: v_type,
+        grade: v_grade,
+        subject: finalSubject,
+        topic: finalTopic,
+        language: v_language,
+        colorScheme: v_colorScheme,
+        style: v_style,
+        specificContent: v_specificContent,
+        quantity: v_quantity,
+        generateImage: v_generateImage,
+        additionalInstructions: v_extraInstructions,
+      };
+      const result = await generateVisualAid(input);
+      setVisualResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateAdmin = async () => {
+    const finalSubject = a_subject === 'Other' ? a_customSubject : a_subject;
+    if (!a_type || !a_purpose) {
+      toast({ title: 'Missing fields', description: 'Please select a Document Type and describe the Purpose.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    setAdminResult(null);
+    try {
+      const input: AdminDocInput = {
+        documentType: a_type,
+        schoolName: a_schoolName,
+        principalName: a_principalName,
+        teacherName: a_teacherName,
+        grade: a_grade,
+        subject: finalSubject,
+        date: a_date,
+        language: a_language,
+        purpose: a_purpose,
+        keyPoints: a_keyPoints,
+        tone: a_tone,
+        includeSignatureLine: true,
+        includeReplySlip: a_replySlip,
+        additionalInstructions: a_extraInstructions,
+      };
+      const result = await generateAdminDoc(input);
+      setAdminResult(result);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Generation failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    const result = activeTab === 'teaching' ? teachingResult : activeTab === 'visual' ? visualResult : adminResult;
+    if (!result) return;
+
+    setIsSaving(true);
+    try {
+      const data: Record<string, any> = {
+        teacherId: user.uid,
+        createdAt: serverTimestamp(),
+        tab: activeTab,
+      };
+
+      if (activeTab === 'teaching' && teachingResult) {
+        toast({ title: '✅ Content generated and saved to Archive', description: 'Content was saved by the generation flow.' });
+        setIsSaving(false);
+        return; 
+      } else if (activeTab === 'visual' && visualResult) {
+        Object.assign(data, {
+          contentType: v_type,
+          grade: v_grade,
+          subject: v_subject,
+          topic: v_topic,
+          content: visualResult.content,
+          memo: '',
+          rubric: '',
+        });
+      } else if (activeTab === 'admin' && adminResult) {
+        Object.assign(data, {
+          contentType: adminResult.documentType,
+          grade: a_grade || '',
+          subject: a_subject || '',
+          topic: a_purpose,
+          content: adminResult.content,
+          memo: '',
+          rubric: '',
+        });
+      }
+      
+      if (activeTab === 'visual' || activeTab === 'admin') {
+        await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), data);
+        toast({ title: '✅ Saved to Archive' });
+      }
+      
+    } catch (err: any) {
+      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePrint = () => window.print();
+
+  const hasResult = (activeTab === 'teaching' && !!teachingResult)
+    || (activeTab === 'visual' && !!visualResult)
+    || (activeTab === 'admin' && !!adminResult);
+
+  // ─── Form Fields ──────────────────────────────────────────────────────────
+
+  const FieldRow = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={cn('grid grid-cols-2 gap-4', className)}>{children}</div>
+  );
+
+  const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
+    <div className="space-y-2">
+      <Label className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+        {label}{required && <span className="text-yellow-400 ml-1">*</span>}
+      </Label>
+      {children}
+    </div>
+  );
+
+  const selectClass = "bg-white/10 border-white/20 text-white [&_*]:text-foreground";
+  const inputClass = "bg-white/10 border-white/20 text-white placeholder:text-white/40";
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Page Header */}
+      <div className="px-4 sm:px-8 pt-6 pb-4 no-print">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Content Creator Studio</h1>
+            <p className="text-muted-foreground mt-1">
+              Generate world-class, CAPS-aligned educational content in seconds.
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/content-archive">
+                <BookOpen className="mr-2 h-4 w-4" /> Archive
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[480px_1fr] gap-0 border-t">
+
+        {/* ─── LEFT PANEL: Form ────────────────────────────────────────────── */}
+        <div
+          className="border-r overflow-y-auto bg-slate-900 text-white no-print"
+          style={{ maxHeight: 'calc(100vh - 140px)', overflowAnchor: 'none' }}
+        >
+          <Tabs value={activeTab} onValueChange={(v) => {
+            setActiveTab(v);
+            setTeachingResult(null);
+            setVisualResult(null);
+            setAdminResult(null);
+          }}>
+            {/* Tab Navigation */}
+            <div className="sticky top-0 z-10 bg-slate-900 border-b border-white/10 p-4">
+              <TabsList className="grid grid-cols-4 bg-white/5 rounded-2xl h-auto p-1 gap-1">
+                <TabsTrigger
+                  value="teaching"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <FlaskConical className="h-5 w-5" />
+                  <span className="hidden sm:block">Teaching Lab</span>
+                  <span className="sm:hidden">Teach</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="visual"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-purple-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <Palette className="h-5 w-5" />
+                  <span className="hidden sm:block">Visual Aids</span>
+                  <span className="sm:hidden">Visual</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="admin"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-slate-600 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <FileText className="h-5 w-5" />
+                  <span className="hidden sm:block">Admin Docs</span>
+                  <span className="sm:hidden">Admin</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="grade1"
+                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl data-[state=active]:bg-yellow-500 data-[state=active]:text-white text-slate-400 text-xs font-semibold"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span className="hidden sm:block">Grade 1 Packs</span>
+                  <span className="sm:hidden">Gr 1</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* ── TEACHING TOOLS TAB ──────────────────────────────────────── */}
+            <TabsContent value="teaching" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-blue-300 font-semibold uppercase tracking-widest mb-1">🎓 Assessments & Teaching Tools Lab</p>
+                <p className="text-slate-400 text-xs">Lesson plans, worksheets, tests, memos, rubrics — perfectly CAPS-aligned.</p>
+              </div>
+
+              {/* Category + Type */}
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={t_category} onValueChange={v => { setT_Category(v); setT_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(TEACHING_CATEGORIES).map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Document Type" required>
+                  <Select value={t_type} onValueChange={setT_Type} disabled={!t_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {t_category && TEACHING_CATEGORIES[t_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Grade + Language */}
+              <FieldRow>
+                <Field label="Grade" required>
+                  <Select value={t_grade} onValueChange={v => { setT_Grade(v); setT_Subject(''); setT_Topic(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Language">
+                  <Select value={t_language} onValueChange={setT_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Subject */}
+              <Field label="Subject" required>
+                <Select value={t_subject} onValueChange={v => { setT_Subject(v); setT_Topic(''); }} disabled={!t_grade}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {t_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {t_subject === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={t_customSubject} onBlur={e => setT_CustomSubject(e.target.value)} />
+                )}
+              </Field>
+
+              {/* Topic */}
+              <Field label="Topic / Strand" required>
+                <Select value={t_topic} onValueChange={setT_Topic} disabled={!t_subject}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
+                  <SelectContent>
+                    {t_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {t_topic === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" defaultValue={t_customTopic} onBlur={e => setT_CustomTopic(e.target.value)} />
+                )}
+              </Field>
+
+              {/* Term + Difficulty */}
+              <FieldRow>
+                <Field label="Term">
+                  <Select value={t_term} onValueChange={setT_Term}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Term" /></SelectTrigger>
+                    <SelectContent>
+                      {TERMS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Difficulty">
+                  <Select value={t_difficulty} onValueChange={setT_Difficulty}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Difficulty" /></SelectTrigger>
+                    <SelectContent>
+                      {DIFFICULTIES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              {/* Duration + Items */}
+              <FieldRow>
+                <Field label="Duration">
+                  <Input className={inputClass} placeholder="e.g. 45 min" defaultValue={t_duration} onBlur={e => setT_Duration(e.target.value)} />
+                </Field>
+                <Field label="No. of Questions">
+                  <Input className={inputClass} placeholder="e.g. 15" defaultValue={t_items} onBlur={e => setT_Items(e.target.value)} />
+                </Field>
+              </FieldRow>
+
+              {/* Memo + Rubric Toggles */}
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch checked={t_memo} onCheckedChange={setT_Memo} id="t-memo" />
+                  <Label htmlFor="t-memo" className="text-sm text-slate-300 cursor-pointer">Include Memo</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={t_rubric} onCheckedChange={setT_Rubric} id="t-rubric" />
+                  <Label htmlFor="t-rubric" className="text-sm text-slate-300 cursor-pointer">Include Rubric</Label>
+                </div>
+              </div>
+
+              <AdvancedSection label="Advanced Options">
+                <Field label="Learning Objective">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="What should learners know/do by the end?" defaultValue={t_objective} onBlur={e => setT_Objective(e.target.value)} />
+                </Field>
+                <Field label="Learner Profile / Needs">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="e.g. 35 learners, mixed ability, some with reading barriers..." defaultValue={t_profile} onBlur={e => setT_Profile(e.target.value)} />
+                </Field>
+                <Field label="Differentiation Required">
+                  <Input className={inputClass} placeholder="e.g. Extension for advanced, simplified for support group" defaultValue={t_differentiation} onBlur={e => setT_Differentiation(e.target.value)} />
+                </Field>
+                <Field label="Additional Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other specific requirements..." defaultValue={t_extraInstructions} onBlur={e => setT_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateTeaching}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</>
+                ) : (
+                  <><Zap className="mr-2 h-5 w-5" /> Generate {t_type || 'Content'}</>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* ── VISUAL AIDS TAB ──────────────────────────────────────────── */}
+            <TabsContent value="visual" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-purple-300 font-semibold uppercase tracking-widest mb-1">🎨 Visual Aids & Media Tools</p>
+                <p className="text-slate-400 text-xs">Posters, labels, flashcards, diagrams, word walls — eye-catching classroom resources.</p>
+              </div>
+
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={v_category} onValueChange={v => { setV_Category(v); setV_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(VISUAL_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Visual Type" required>
+                  <Select value={v_type} onValueChange={setV_Type} disabled={!v_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {v_category && VISUAL_TYPES[v_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <FieldRow>
+                <Field label="Grade" required>
+                  <Select value={v_grade} onValueChange={v => { setV_Grade(v); setV_Subject(''); setV_Topic(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Language">
+                  <Select value={v_language} onValueChange={setV_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Subject" required>
+                <Select value={v_subject} onValueChange={v => { setV_Subject(v); setV_Topic(''); }} disabled={!v_grade}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {v_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {v_subject === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={v_customSubject} onBlur={e => setV_CustomSubject(e.target.value)} />
+                )}
+              </Field>
+
+              <Field label="Topic / Theme" required>
+                <Select value={v_topic} onValueChange={setV_Topic} disabled={!v_subject}>
+                  <SelectTrigger className={selectClass}><SelectValue placeholder="Select topic" /></SelectTrigger>
+                  <SelectContent>
+                    {v_topics.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    <SelectItem value="Other">Other (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {v_topic === 'Other' && (
+                  <Input className={cn(inputClass, 'mt-2')} placeholder="Enter topic name" defaultValue={v_customTopic} onBlur={e => setV_CustomTopic(e.target.value)} />
+                )}
+              </Field>
+
+              <FieldRow>
+                <Field label="Colour Scheme">
+                  <Select value={v_colorScheme} onValueChange={setV_ColorScheme}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Colours" /></SelectTrigger>
+                    <SelectContent>
+                      {COLOR_SCHEMES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Design Style">
+                  <Select value={v_style} onValueChange={setV_Style}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Style" /></SelectTrigger>
+                    <SelectContent>
+                      {VISUAL_STYLES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Quantity / Size">
+                <Input className={inputClass} placeholder="e.g. 12 labels, A4 portrait, 26 alphabet cards" defaultValue={v_quantity} onBlur={e => setV_Quantity(e.target.value)} />
+              </Field>
+
+              <Field label="Specific Content to Include">
+                <Textarea className={cn(inputClass, 'min-h-[80px]')} placeholder="Specific words, concepts, numbers, or items you want included..." defaultValue={v_specificContent} onBlur={e => setV_SpecificContent(e.target.value)} />
+              </Field>
+
+              <div className="flex items-start gap-3 bg-white/5 rounded-xl p-4">
+                <Switch checked={v_generateImage} onCheckedChange={setV_GenerateImage} id="v-image" />
+                <div>
+                  <Label htmlFor="v-image" className="text-sm font-semibold text-slate-200 cursor-pointer">
+                    🖼️ Generate AI Image (Imagen 4 Fast)
+                  </Label>
+                  <p className="text-xs text-slate-400 mt-0.5">Slower but adds an AI-generated illustration to your visual</p>
+                </div>
+              </div>
+
+              <AdvancedSection label="Additional Options">
+                <Field label="Extra Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any other requirements..." defaultValue={v_extraInstructions} onBlur={e => setV_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateVisual}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Visual...</>
+                ) : (
+                  <><ImageIcon className="mr-2 h-5 w-5" /> Create {v_type || 'Visual Aid'}</>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* ── ADMIN DOCS TAB ───────────────────────────────────────────── */}
+            <TabsContent value="admin" className="p-5 space-y-5 m-0">
+              <div>
+                <p className="text-xs text-slate-300 font-semibold uppercase tracking-widest mb-1">📋 General & Admin Documents</p>
+                <p className="text-slate-400 text-xs">Professional school documents — letters, notices, permits, reports.</p>
+              </div>
+
+              <FieldRow>
+                <Field label="Category" required>
+                  <Select value={a_category} onValueChange={v => { setA_Category(v); setA_Type(''); }}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(ADMIN_TYPES).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Document Type" required>
+                  <Select value={a_type} onValueChange={setA_Type} disabled={!a_category}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      {a_category && ADMIN_TYPES[a_category]?.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Purpose / Key Message" required>
+                <Textarea
+                  className={cn(inputClass, 'min-h-[88px]')}
+                  placeholder="What is this document for? e.g. 'Inform parents about the Grade 7 camp from 10-12 June' or 'Thank parents for attending the meeting and share key decisions'"
+                  defaultValue={a_purpose}
+                  onBlur={e => setA_Purpose(e.target.value)}
+                />
+              </Field>
+
+              <FieldRow>
+                <Field label="Language">
+                  <Select value={a_language} onValueChange={setA_Language}>
+                    <SelectTrigger className={selectClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Tone">
+                  <Select value={a_tone} onValueChange={setA_Tone}>
+                    <SelectTrigger className={selectClass}><SelectValue placeholder="Tone" /></SelectTrigger>
+                    <SelectContent>
+                      {TONES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldRow>
+
+              <Field label="Key Points to Cover">
+                <Textarea
+                  className={cn(inputClass, 'min-h-[72px]')}
+                  placeholder="List specific points, e.g: Date, Time, Venue, Cost (R150), What to bring, Permission deadline"
+                  defaultValue={a_keyPoints}
+                  onBlur={e => setA_KeyPoints(e.target.value)}
+                />
+              </Field>
+
+              <AdvancedSection label="Admin & General Tab">
+                <FieldRow>
+                  <Field label="School Name">
+                    <Input className={inputClass} placeholder="e.g. Themba Primary School" defaultValue={a_schoolName} onBlur={e => setA_SchoolName(e.target.value)} />
+                  </Field>
+                  <Field label="Date">
+                    <Input className={inputClass} type="date" defaultValue={a_date} onBlur={e => setA_Date(e.target.value)} />
+                  </Field>
+                </FieldRow>
+                <FieldRow>
+                  <Field label="Teacher Name">
+                    <Input className={inputClass} placeholder="Your name" defaultValue={a_teacherName} onBlur={e => setA_TeacherName(e.target.value)} />
+                  </Field>
+                  <Field label="Principal Name">
+                    <Input className={inputClass} placeholder="Principal's name" defaultValue={a_principalName} onBlur={e => setA_PrincipalName(e.target.value)} />
+                  </Field>
+                </FieldRow>
+                <FieldRow>
+                  <Field label="Grade / Class">
+                    <Select value={a_grade} onValueChange={v => { setA_Grade(v); setA_Subject(''); }}>
+                      <SelectTrigger className={selectClass}><SelectValue placeholder="Grade" /></SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(educationalData).map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Subject">
+                    <Select value={a_subject} onValueChange={setA_Subject} disabled={!a_grade}>
+                      <SelectTrigger className={selectClass}><SelectValue placeholder="Select subject" /></SelectTrigger>
+                      <SelectContent>
+                        {a_subjects.map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        <SelectItem value="Other">Other (specify below)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {a_subject === 'Other' && (
+                      <Input className={cn(inputClass, 'mt-2')} placeholder="Enter subject name" defaultValue={a_customSubject} onBlur={e => setA_CustomSubject(e.target.value)} />
+                    )}
+                  </Field>
+                </FieldRow>
+                <div className="flex items-center gap-2">
+                  <Switch checked={a_replySlip} onCheckedChange={setA_ReplySlip} id="a-reply" />
+                  <Label htmlFor="a-reply" className="text-sm text-slate-300 cursor-pointer">Include Tear-Off Reply Slip</Label>
+                </div>
+                <Field label="Additional Instructions">
+                  <Textarea className={cn(inputClass, 'min-h-[72px]')} placeholder="Any specific requirements..." defaultValue={a_extraInstructions} onBlur={e => setA_ExtraInstructions(e.target.value)} />
+                </Field>
+              </AdvancedSection>
+
+              <Button
+                onClick={handleGenerateAdmin}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl bg-slate-600 hover:bg-slate-500 text-white font-bold text-base"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</>
+                ) : (
+                  <><ClipboardList className="mr-2 h-5 w-5" /> Generate {a_type || 'Document'}</>
+                )}
+              </Button>
+            </TabsContent>
+            <TabsContent value="grade1" className="p-5 space-y-5 m-0">
+              <Grade1EnglishGenerator />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* ─── RIGHT PANEL: Preview ─────────────────────────────────────────── */}
+        <div className="flex flex-col" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          <PreviewPanel
+            isLoading={isLoading}
+            activeTab={activeTab}
+            activePreviewTab={activePreviewTab}
+            setActivePreviewTab={setActivePreviewTab}
+            teachingResult={teachingResult}
+            visualResult={visualResult}
+            adminResult={adminResult}
+            isSaving={isSaving}
+            onSave={handleSave}
+            onPrint={handlePrint}
+          />
+        </div>
+      </div>
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          .no-print { display: none !important; }
+          header, nav, aside, footer { display: none !important; }
+          body { background: white !important; }
+          main { padding: 0 !important; }
+        }
+      `}</style>
+    </div>
+  );
+}

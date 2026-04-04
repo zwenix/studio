@@ -133,7 +133,7 @@ async function generateImage(prompt: string, subject: string, grade: string): Pr
 
   try {
     const response = await ai.generate({
-      model: 'googleai/imagen-3.0-generate-001', 
+      model: 'googleai/gemini-3.1-flash-image-preview',
       prompt: enrichedPrompt,
       output: { format: 'media' },
     });

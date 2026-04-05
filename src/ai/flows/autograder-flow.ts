@@ -1,8 +1,13 @@
 'use server';
 
-import { z } from 'zod';
-import { ai } from '@/genkit';
-import { buildAutograderPrompt } from '@/ai/prompts';
+/**
+ * FIX: z is now imported from 'genkit' (not raw 'zod').
+ * Raw zod schemas used with Genkit's output: { schema: ... } can cause
+ * silent validation failures on complex or nested schemas.
+ */
+
+import { z } from 'genkit'; // FIX: was 'zod'
+import { ai } from '@/ai/genkit';
 
 export const AutogradeInputSchema = z.object({
   assignmentContent: z.string(),
@@ -13,41 +18,30 @@ export const AutogradeInputSchema = z.object({
 });
 
 export type AutogradeInput = z.infer<typeof AutogradeInputSchema>;
-
-const AutogradeOutputSchema = z.object({
-  grade: z.string().describe('The grade assigned to the submission.'),
-  feedback: z.string().describe('Constructive feedback for the student.'),
-  rubric: z.string().describe('A rubric showing how the grade was determined.'),
-});
-
-export type AutogradeOutput = z.infer<typeof AutogradeOutputSchema>;
+export type AutogradeOutput = { grade: string; feedback: string; rubric: string; };
 
 export async function autograde(input: AutogradeInput): Promise<AutogradeOutput> {
-  try {
-    const promptParams = buildAutograderPrompt({
-      subject: input.subject || 'General',
-      grade: input.grade || 'N/A',
-      taskInstructions: input.gradingInstructions,
-      memo: 'Use the task instructions as the grading criteria',
-      rubric: '4-point rubric: (1) Beginning, (2) Developing, (3) Proficient, (4) Distinguished',
-      learnerSubmission: input.assignmentContent,
-    });
+  const response = await ai.generate({
+    model: 'googleai/gemini-2.5-pro',
+    system: `You are an expert AI grader for South African school assignments.
+    ${input.culturalContextIntegration ? 'Use a positive, encouraging, culturally sensitive tone relevant to South Africa.' : ''}`,
+    prompt: `Subject: ${input.subject || 'General'}
+Grade Level: ${input.grade || 'N/A'}
+Grading Instructions / Memo: ${input.gradingInstructions}
+Student's Submission: ${input.assignmentContent}`,
+    output: {
+      format: 'json',
+      schema: z.object({
+        grade: z.string().describe('Score or percentage'),
+        feedback: z.string().describe('HTML feedback'),
+        rubric: z.string().describe('HTML rubric used'),
+      }),
+    },
+  });
 
-    // ai.generate<T> generic type is NOT valid Genkit syntax — output type is inferred via output.schema
-    // gemini-pro-latest = Gemini 3.1 Pro (per geminichat.txt) — correct for high-accuracy rubric grading
-    const response = await ai.generate({
-      model: 'googleai/gemini-pro-latest',
-      system: promptParams.systemInstruction,
-      prompt: promptParams.userPrompt,
-      output: { schema: AutogradeOutputSchema },
-    });
-
-    if (!response.output) throw new Error('AI autograder returned no structured output.');
-    return response.output;
-  } catch (error) {
-    console.error('AI Autograder error:', error);
-    throw new Error(
-      `AI Autograder failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+  if (!response.output) {
+    throw new Error('Autograding returned no output. Please try again.');
   }
+
+  return response.output;
 }

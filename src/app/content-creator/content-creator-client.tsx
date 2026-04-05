@@ -591,57 +591,68 @@ export function ContentCreatorClient() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
-    const result = activeTab === 'teaching' ? teachingResult : activeTab === 'visual' ? visualResult : adminResult;
+    if (!user?.uid) {
+      toast({ title: "Not logged in", description: "Please sign in to save content.", variant: "destructive" });
+      return;
+    }
+
+    const result = activeTab === "teaching" ? teachingResult 
+                 : activeTab === "visual" ? visualResult 
+                 : activeTab === "admin" ? adminResult 
+                 : null;
+
     if (!result) return;
 
     setIsSaving(true);
     try {
-      const data: Record<string, any> = {
+      const data = {
         teacherId: user.uid,
         createdAt: serverTimestamp(),
         tab: activeTab,
+        type: activeTab === "teaching" ? "teaching" : activeTab === "visual" ? "visual-aid" : "admin-doc",
+        ...(activeTab === "teaching" && teachingResult && {
+          content: teachingResult.content || "",
+          memo: teachingResult.memo || "",
+          rubric: teachingResult.rubric || "",
+          assessment: teachingResult.assessmentCriteria || "",
+          successIndicators: teachingResult.successIndicators || [],
+        }),
+        ...(activeTab === "visual" && visualResult && {
+          content: visualResult.content,
+          printInstructions: visualResult.printInstructions,
+          description: visualResult.description,
+        }),
+        ...(activeTab === "admin" && adminResult && {
+          content: adminResult.content,
+          notes: adminResult.notes,
+        }),
       };
 
-      if (activeTab === 'teaching' && teachingResult) {
-        toast({ title: '✅ Content generated and saved to Archive', description: 'Content was saved by the generation flow.' });
-        setIsSaving(false);
-        return; 
-      } else if (activeTab === 'visual' && visualResult) {
-        Object.assign(data, {
-          contentType: v_type,
-          grade: v_grade,
-          subject: v_subject,
-          topic: v_topic,
-          content: visualResult.content,
-          memo: '',
-          rubric: '',
-        });
-      } else if (activeTab === 'admin' && adminResult) {
-        Object.assign(data, {
-          contentType: adminResult.documentType,
-          grade: a_grade || '',
-          subject: a_subject || '',
-          topic: a_purpose,
-          content: adminResult.content,
-          memo: '',
-          rubric: '',
-        });
-      }
-      
-      if (activeTab === 'visual' || activeTab === 'admin') {
-        await addDoc(collection(firestore, 'teachers', user.uid, 'generatedContent'), data);
-        toast({ title: '✅ Saved to Archive' });
-      }
-      
+      await addDoc(collection(firestore, "teachers", user.uid, "generatedContent"), data);
+
+      toast({
+        title: "Content successfully saved in the Archive",
+        description: "You can find it in the Archive tab.",
+      });
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+      console.error("Save error:", err);
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handlePrint = () => window.print();
+
+  const handlePrint = () => {
+    const printContent = document.getElementById("printable-content");
+    if (printContent) {
+      const original = document.body.innerHTML;
+      document.body.innerHTML = printContent.innerHTML;
+      window.print();
+      document.body.innerHTML = original;
+      window.location.reload();
+    }
+  };
 
   const hasResult = (activeTab === 'teaching' && !!teachingResult)
     || (activeTab === 'visual' && !!visualResult)

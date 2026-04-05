@@ -12,7 +12,7 @@
  */
 
 import { z } from 'genkit'; // FIX #1: was 'zod' — raw zod causes Genkit schema validation failures
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 import { createClient } from 'pexels';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

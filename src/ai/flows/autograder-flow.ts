@@ -7,7 +7,7 @@
  */
 
 import { z } from 'genkit'; // FIX: was 'zod'
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 
 export const AutogradeInputSchema = z.object({
   assignmentContent: z.string(),

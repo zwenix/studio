@@ -5,7 +5,7 @@
  */
 
 import { z } from 'genkit'; // FIX: was 'zod'
-import { ai } from '@/ai/genkit';
+import { ai } from '@/genkit';
 
 const GradeSchema = z.string().describe('The grade level (R, 1–12, or custom).');
 const AssessmentFormatSchema = z.enum(['multiple choice','short answer','essay','fill in the blanks','true or false','worksheet','mixed']);

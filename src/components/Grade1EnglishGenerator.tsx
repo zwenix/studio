@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { generateGrade1English } from '@/ai/flows/grade1-english';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp } from 'firebase/firestore'; // ← FIXED: Timestamp instead of serverTimestamp
 
 const materialOptions = [
   { id: 'phonicsBook', label: 'Phonics Book 1 (Full Booklet)' },
@@ -33,12 +33,13 @@ export default function Grade1EnglishGenerator() {
     setSaved(false);
 
     try {
-      // Pass userId to the flow for Firebase storage
       const data = await generateGrade1English({ materialType: selectedType as any, userId: user.uid });
 
       setResult(data);
 
-      // Save to Firebase Content Archive with new CAPS metadata
+      // FIX: Use Timestamp.fromDate(new Date()) instead of serverTimestamp().
+      // serverTimestamp() resolves to null locally until Firestore acknowledges it,
+      // so orderBy('createdAt', 'desc') in the archive silently excludes the document.
       await addDoc(collection(db, 'teachers', user.uid, 'generatedContent'), {
         teacherId: user.uid,
         grade: '1',
@@ -46,19 +47,19 @@ export default function Grade1EnglishGenerator() {
         topic: data.title,
         contentType: materialOptions.find(o => o.id === selectedType)?.label || selectedType,
         content: data.content,
-        description: data.description, // Save description
-        assessmentCriteria: data.assessmentCriteria, // Save assessment criteria
-        successIndicators: data.successIndicators, // Save success indicators
+        description: data.description,
+        assessmentCriteria: data.assessmentCriteria,
+        successIndicators: data.successIndicators,
         memo: '',
         rubric: '',
-        createdAt: serverTimestamp(),
-        modelUsed: 'gemini31Pro', // Indicate the model used
-        capsAligned: true, // Indicate CAPS alignment
+        createdAt: Timestamp.fromDate(new Date()),   // ← FIXED: was serverTimestamp()
+        modelUsed: 'gemini-3.1-pro-preview',
+        capsAligned: true,
       });
 
       setSaved(true);
     } catch (err: any) {
-      setError(err.message || 'Generation failed');
+      setError(err.message || 'Generation failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,31 +99,33 @@ export default function Grade1EnglishGenerator() {
           <h2 className="text-4xl font-bold mb-8 text-primary">
             {result.title}
           </h2>
-          <p className="text-blue-100">CAPS Aligned • Saved to Firebase</p>
+          <p className="text-muted-foreground text-sm mb-6">CAPS Aligned • Saved to Archive</p>
 
           <div
             className="prose dark:prose-invert max-w-none text-xl leading-relaxed font-comic-neue"
             dangerouslySetInnerHTML={{ __html: result.content }}
           />
 
-          {/* New: CAPS Assessment Section */}
-          <div className="mt-12 border-t pt-8">
-            <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-4">CAPS Assessment Criteria</h3>
-            <div className="bg-blue-50 dark:bg-blue-950 p-6 rounded-2xl">
-              <div dangerouslySetInnerHTML={{ __html: result.assessmentCriteria }} />
-            </div>
+          {/* CAPS Assessment Section */}
+          {result.assessmentCriteria && (
+            <div className="mt-12 border-t pt-8">
+              <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-4">CAPS Assessment Criteria</h3>
+              <div className="bg-blue-50 dark:bg-blue-950 p-6 rounded-2xl">
+                <div dangerouslySetInnerHTML={{ __html: result.assessmentCriteria }} />
+              </div>
 
-            {result.successIndicators && result.successIndicators.length > 0 && (
-              <>
-                <h4 className="font-semibold mt-8 mb-3">Success Indicators (Observable):</h4>
-                <ul className="list-disc pl-6 space-y-2">
-                  {result.successIndicators.map((item: string, i: number) => (
-                    <li key={i} className="text-lg">{item}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
+              {result.successIndicators && result.successIndicators.length > 0 && (
+                <>
+                  <h4 className="font-semibold mt-8 mb-3">Success Indicators (Observable):</h4>
+                  <ul className="list-disc pl-6 space-y-2">
+                    {result.successIndicators.map((item: string, i: number) => (
+                      <li key={i} className="text-lg">{item}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

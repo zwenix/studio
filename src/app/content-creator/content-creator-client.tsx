@@ -270,10 +270,10 @@ const PreviewPanel = React.memo(function PreviewPanel({
           </div>
           <div className="flex gap-2">
             {t && 'estimatedMarks' in t && t.estimatedMarks && (
-              <Badge variant="secondary" className="text-xs">{String(t.estimatedMarks as any)}</Badge>
+              <Badge variant="secondary" className="text-xs">{String(t.estimatedMarks)}</Badge>
             )}
             {t && 'estimatedDuration' in t && t.estimatedDuration && (
-              <Badge variant="secondary" className="text-xs">{String(t.estimatedDuration as any)}</Badge>
+              <Badge variant="secondary" className="text-xs">{String(t.estimatedDuration)}</Badge>
             )}
             <Button variant="outline" size="sm" onClick={onSave} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}

@@ -637,6 +637,14 @@ export function ContentCreatorClient() {
 
     setIsSaving(true);
     try {
+      let contentData = "";
+      if (activeTab === "teaching" && teachingResult) contentData = teachingResult.content || "";
+      else if (activeTab === "visual" && visualResult) contentData = visualResult.content || "";
+      else if (activeTab === "admin" && adminResult) contentData = adminResult.content || "";
+
+      if (contentData.length > 1048000) {
+        throw new Error("Content exceeds the 1MB Firebase limit. Please generate a smaller document.");
+      }
       const data = {
         teacherId: user.uid,
         createdAt: Timestamp.fromDate(new Date()),
@@ -681,13 +689,20 @@ export function ContentCreatorClient() {
 
     setIsAssigning(true);
     try {
+      if (result.content && result.content.length > 1048000) {
+        throw new Error("Content exceeds the 1MB Firebase limit. Please generate a smaller document.");
+      }
+      // TEMPORARY TRUNCATION FIX (Prevent 1MB Firestore error during assign)
+      const contentToAssign = result.content && result.content.length > 1048000
+        ? result.content.substring(0, 1048000) + "<div class=\"p-4 bg-red-50 text-red-600 font-bold\">Content truncated due to size limits.</div>"
+        : result.content;
       const contentData = {
         teacherId: user.uid,
         grade: activeTab === "visual" ? v_grade : activeTab === "admin" ? a_grade : t_grade || "Any",
         subject: activeTab === "visual" ? v_subject : activeTab === "admin" ? a_subject : t_subject || "General",
         topic: activeTab === "visual" ? v_topic : activeTab === "admin" ? a_purpose : t_topic || "Assigned Content",
         contentType: activeTab === "visual" ? v_type : activeTab === "admin" ? a_type : t_type || "Document",
-        content: result.content,
+        content: contentToAssign,
         memo: (result as any).memo || "",
         rubric: (result as any).rubric || "",
         createdAt: serverTimestamp(),

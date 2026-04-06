@@ -130,6 +130,7 @@ async function generateImage(prompt: string): Promise<string> {
       model: 'googleai/gemini-3.1-flash-image-preview',
       prompt: enrichedPrompt,
       output: { format: 'media' },
+      config: { responseMimeType: 'image/jpeg' },
     } as any);
 
     if (response.media?.url) return response.media.url;

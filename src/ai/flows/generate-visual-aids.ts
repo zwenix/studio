@@ -124,6 +124,7 @@ The image should be: well-composed, high-quality, suitable for classroom display
       model: 'googleai/gemini-3.1-flash-image-preview',
       prompt: imagePrompt,
       output: { format: 'media' },
+      config: { responseMimeType: 'image/jpeg' },
     } as any);
 
     const media = (result as any).media;

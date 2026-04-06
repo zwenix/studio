@@ -121,6 +121,7 @@ export async function generateAdminDoc(input: AdminDocInput): Promise<AdminDocOu
 
   const response = await ai.generate({
     model: 'googleai/gemini-3.1-pro-preview',
+    config: { temperature: 0.65, maxOutputTokens: 8192 },
     system: ADMIN_SYSTEM_PROMPT,
     prompt: `Create a ${input.documentType}:
 

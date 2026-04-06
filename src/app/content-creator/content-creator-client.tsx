@@ -20,18 +20,18 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Loader2, Sparkles, Printer, Save, Trash2, Download,
+  Loader2, Sparkles, Printer, Save, Trash2, Download, Send,
   FlaskConical, Palette, FileText, Eye, BookOpen, GraduationCap,
   ChevronDown, ChevronUp, Zap, ClipboardList, ImageIcon, Settings2, RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, addDoc, doc, Timestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { collection, addDoc, doc, serverTimestamp, writeBatch, Timestamp, query, where } from 'firebase/firestore';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";
 import { generateVisualAid, type VisualAidInput, type VisualAidOutput } from '@/ai/flows/generate-visual-aids';
 import { generateAdminDoc, type AdminDocInput, type AdminDocOutput } from '@/ai/flows/generate-admin-docs';
-import type { Teacher } from '@/lib/types';
+import type { Teacher, Class } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -169,6 +169,11 @@ interface PreviewPanelProps {
   isSaving: boolean;
   onSave: () => void;
   onPrint: () => void;
+  isAssigning: boolean;
+  onAssign: () => void;
+  teacherClasses: Class[] | undefined;
+  selectedClassId: string;
+  setSelectedClassId: (id: string) => void;
 }
 
 const PreviewPanel = React.memo(function PreviewPanel({
@@ -182,6 +187,11 @@ const PreviewPanel = React.memo(function PreviewPanel({
   isSaving,
   onSave,
   onPrint,
+  isAssigning,
+  onAssign,
+  teacherClasses,
+  selectedClassId,
+  setSelectedClassId,
 }: PreviewPanelProps) {
   const t = teachingResult;
   const v = visualResult;
@@ -269,6 +279,20 @@ const PreviewPanel = React.memo(function PreviewPanel({
               {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
               <span className="hidden sm:inline ml-1">Save</span>
             </Button>
+            <div className="flex gap-1">
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger className="h-8 text-xs px-2 w-[120px]">
+                  <SelectValue placeholder="Assign..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="secondary" size="sm" disabled={!selectedClassId || isAssigning} onClick={onAssign}>
+                {isAssigning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                <span className="hidden sm:inline">Assign</span>
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={onPrint}>
               <Printer className="h-3 w-3" />
               <span className="hidden sm:inline ml-1">Print</span>
@@ -382,6 +406,14 @@ export function ContentCreatorClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
+  const teacherClassesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, "classes"), where("teacherId", "==", user.uid));
+  }, [firestore, user]);
+  const { data: teacherClasses } = useCollection<Class>(teacherClassesQuery);
+
 
   const [activeTab, setActiveTab] = useState('teaching');
   const [isLoading, setIsLoading] = useState(false);
@@ -642,31 +674,65 @@ export function ContentCreatorClient() {
     }
   };
 
-const handlePrint = () => {
-  const activeResult =
-    activeTab === 'teaching' ? teachingResult?.content :
-    activeTab === 'visual'   ? visualResult?.content :
-    activeTab === 'admin'    ? adminResult?.content   : '';
-  if (!activeResult) return;
-  const win = window.open('', '_blank');
-  if (!win) return;
-  win.document.write(`<!DOCTYPE html><html><head><title>EduAI - Print</title><style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 portrait;margin:15mm}body{font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;background:#fff}img{max-width:100%;height:auto}table{width:100%;border-collapse:collapse}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body>${activeResult}</body></html>`);
-  win.document.close();
-  win.focus();
-  setTimeout(() => { win.print(); win.close(); }, 500);
-};
-  
-  /**OPTIONAL handlePrint by Grok
-  const handlePrint = () => {
-    const printContent = document.getElementById("printable-content");
-    if (printContent) {
-      const original = document.body.innerHTML;
-      document.body.innerHTML = printContent.innerHTML;
-      window.print();
-      document.body.innerHTML = original;
-      window.location.reload();
+  const handleAssign = async () => {
+    if (!user?.uid || !selectedClassId) return;
+    const result = activeTab === "teaching" ? teachingResult : activeTab === "visual" ? visualResult : activeTab === "admin" ? adminResult : null;
+    if (!result) return;
+
+    setIsAssigning(true);
+    try {
+      const contentData = {
+        teacherId: user.uid,
+        grade: activeTab === "visual" ? v_grade : activeTab === "admin" ? a_grade : t_grade || "Any",
+        subject: activeTab === "visual" ? v_subject : activeTab === "admin" ? a_subject : t_subject || "General",
+        topic: activeTab === "visual" ? v_topic : activeTab === "admin" ? a_purpose : t_topic || "Assigned Content",
+        contentType: activeTab === "visual" ? v_type : activeTab === "admin" ? a_type : t_type || "Document",
+        content: result.content,
+        memo: (result as any).memo || "",
+        rubric: (result as any).rubric || "",
+        createdAt: serverTimestamp(),
+      };
+
+      const contentRef = await addDoc(collection(firestore, "content"), contentData);
+      const batch = writeBatch(firestore);
+      const selectedClass = teacherClasses?.find(c => c.id === selectedClassId);
+      const dueDate = Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 7 days from now
+
+      selectedClass?.learnerIds.forEach(learnerId => {
+        const assignmentRef = doc(collection(firestore, "classes", selectedClassId, "assignments"));
+        batch.set(assignmentRef, {
+          contentId: contentRef.id,
+          learnerId,
+          teacherId: user.uid,
+          status: "assigned",
+          dueDate,
+          createdAt: serverTimestamp(),
+          rubric: (result as any).rubric || ""
+        });
+      });
+
+      await batch.commit();
+      toast({ title: "Assigned successfully!" });
+    } catch (error: any) {
+      toast({ title: "Assignment Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsAssigning(false);
     }
-  }; */
+  };
+
+  const handlePrint = () => {
+    const activeResult =
+      activeTab === 'teaching' ? teachingResult?.content :
+      activeTab === 'visual'   ? visualResult?.content :
+      activeTab === 'admin'    ? adminResult?.content   : '';
+    if (!activeResult) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>EduAI - Print</title><style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 portrait;margin:15mm}body{font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;background:#fff}img{max-width:100%;height:auto}table{width:100%;border-collapse:collapse}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body>${activeResult}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
+  };
 
   //
   const hasResult = (activeTab === 'teaching' && !!teachingResult)
@@ -1188,6 +1254,11 @@ const handlePrint = () => {
             isSaving={isSaving}
             onSave={handleSave}
             onPrint={handlePrint}
+            isAssigning={isAssigning}
+            onAssign={handleAssign}
+            teacherClasses={teacherClasses}
+            selectedClassId={selectedClassId}
+            setSelectedClassId={setSelectedClassId}
           />
         </div>
       </div>

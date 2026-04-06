@@ -183,7 +183,7 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
     model: 'googleai/gemini-3.1-pro-preview',
     system: MASTER_SYSTEM_PROMPT,
     prompt: userPrompt,
-    config: { temperature: 0.65 },
+    config: { temperature: 0.65, maxOutputTokens: 8192 },
     output: {
       format: 'json',
       schema: CAPSContentOutputSchema,

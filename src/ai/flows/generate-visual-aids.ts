@@ -163,7 +163,7 @@ export async function generateVisualAid(
 
   const response = await ai.generate({
     model: 'googleai/gemini-3.1-pro-preview',
-    config: { temperature: 0.8 },
+    config: { temperature: 0.8, maxOutputTokens: 8192 },
     system: VISUAL_HTML_SYSTEM,
     prompt: `Create a stunning ${input.visualType} for:
 

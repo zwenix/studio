@@ -123,7 +123,6 @@ function getSpecificPromptTemplate(contentType: string, grade: string, subject: 
 async function generateImage(prompt: string): Promise<string> {
   const enrichedPrompt = `${prompt}\n\nUltra-detailed digital illustration, professional educational graphic design, vibrant colors, perfect composition, 300 DPI print quality, no text overlays, no watermarks, suitable for South African classroom display.`;
 
-  // Primary: Gemini 3.1 Flash Image
   try {
     const response = await ai.generate({
       model: 'googleai/gemini-3.1-flash-image-preview',
@@ -138,25 +137,7 @@ async function generateImage(prompt: string): Promise<string> {
       if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
     }
   } catch (e) {
-    console.warn('Primary image model failed, trying fallback:', e);
-  }
-
-  // Fallback: Gemini 3 Pro Image
-  try {
-    const fallback = await ai.generate({
-      model: 'googleai/gemini-3-pro-image-preview',
-      prompt: enrichedPrompt,
-      output: { format: 'media' },
-    } as any);
-
-    if (fallback.media?.url) return fallback.media.url;
-    const parts = (fallback as any).candidates?.[0]?.message?.content ?? [];
-    for (const part of parts) {
-      if (part?.media?.url) return part.media.url;
-      if (part?.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-    }
-  } catch (e) {
-    console.warn('Fallback image model also failed:', e);
+    console.warn('Image generation failed (non-fatal):', e);
   }
 
   return '';
@@ -259,11 +240,15 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
   const successIndicators = parsedContent.successIndicators || [];
   const rubricHtml = parsedContent.rubric || '';
 
-  // ── Step 4: Save to Firestore (non-blocking — NEVER kills the response) ────
+  // ── Step 4: Save to Firestore ─────────────────────────────────────────────
+  // FIX: Use Timestamp.fromDate(new Date()) instead of serverTimestamp().
+  // serverTimestamp() resolves to null locally until Firestore acknowledges it.
+  // The archive queries with orderBy('createdAt', 'desc') which silently excludes
+  // documents where createdAt is null — making saved content invisible in the archive.
   let docId: string | undefined;
   try {
     const { initializeApp, getApps } = await import('firebase/app');
-    const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+    const { getFirestore, collection, addDoc, Timestamp } = await import('firebase/firestore');
     const { firebaseConfig } = await import('@/firebase/config');
 
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -282,14 +267,13 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
       successIndicators,
       memo: memoHtml,
       rubric: rubricHtml,
-      createdAt: serverTimestamp(),
+      createdAt: Timestamp.fromDate(new Date()),   // ← FIXED: was serverTimestamp()
       modelUsed: 'gemini-3.1-pro-preview',
       capsAligned: true,
     });
 
     docId = docRef.id;
   } catch (firestoreErr) {
-    // Non-fatal: content is still returned to the teacher even if save fails
     console.error('Firestore save failed (content still returned):', firestoreErr);
   }
 

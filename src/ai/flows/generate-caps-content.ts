@@ -2,6 +2,7 @@
 
 import { z } from 'genkit';
 import { ai } from '@/genkit';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export type GenerateCAPSContentOutput = {
   docId?: string;
   assessmentCriteria?: string;
   successIndicators?: string[];
+  contentStorageUrl?: string;
 };
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
@@ -144,6 +146,48 @@ async function generateImage(prompt: string): Promise<string> {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
+
+/**
+ * Truncates content if it's too large for Firestore (1MB limit)
+ * @param content The content to check and potentially truncate
+ * @returns The content (truncated if necessary) and a flag indicating if truncation occurred
+ */
+function truncateIfTooLarge(content: string): { content: string; wasTruncated: boolean } {
+  // Firestore limit is 1MB = 1,048,576 bytes
+  // We'll use 900KB as a safety margin to leave room for other document fields
+  const MAX_SIZE_BYTES = 900 * 1024; // 900KB
+  
+  const contentSize = new TextEncoder().encode(content).length;
+  
+  if (contentSize <= MAX_SIZE_BYTES) {
+    return { content, wasTruncated: false };
+  }
+  
+  // If too large, truncate to fit within limit
+  // We need to reserve space for the truncation notice
+  const truncationNotice = '\n\n[NOTE: Content was truncated due to size limits. The full content is still available in the response.]';
+  const noticeSize = new TextEncoder().encode(truncationNotice).length;
+  const maxContentSize = MAX_SIZE_BYTES - noticeSize;
+  
+  // Convert to bytes, truncate, then convert back to string
+  const contentBytes = new TextEncoder().encode(content);
+  const truncatedBytes = contentBytes.slice(0, maxContentSize);
+  let truncatedContent = new TextDecoder().decode(truncatedBytes);
+  
+  // Ensure we don't cut off in the middle of a multi-byte UTF-8 character
+  // by checking if the last character is valid UTF-8
+  while (truncatedContent.length > 0) {
+    try {
+      new TextEncoder().encode(truncatedContent);
+      break; // Valid UTF-8
+    } catch (e) {
+      // Invalid UTF-8, remove last character and try again
+      truncatedContent = truncatedContent.slice(0, -1);
+    }
+  }
+  
+  return { content: truncatedContent + truncationNotice, wasTruncated: true };
+}
 
 export async function generateCAPSContent(
   input: GenerateCAPSContentInput
@@ -245,7 +289,8 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
   // serverTimestamp() resolves to null locally until Firestore acknowledges it.
   // The archive queries with orderBy('createdAt', 'desc') which silently excludes
   // documents where createdAt is null — making saved content invisible in the archive.
-  let docId: string | undefined;
+    let docId: string | undefined;
+    let contentStorageUrl: string | null = null; // Declare in outer scope for return value
   try {
     const { initializeApp, getApps } = await import('firebase/app');
     const { getFirestore, collection, addDoc, Timestamp } = await import('firebase/firestore');
@@ -254,6 +299,39 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const db = getFirestore(app);
 
+    // Check if content is too large for Firestore (1MB limit)
+    const contentSize = new TextEncoder().encode(finalHtmlContent).length;
+    const FIRESTORE_LIMIT_BYTES = 1024 * 1024; // 1MB
+    let contentToSave: string = finalHtmlContent;
+    
+    if (contentSize > FIRESTORE_LIMIT_BYTES) {
+      // Content is too large for Firestore, store in Firebase Storage instead
+      try {
+        const { getStorage, ref, uploadString, getDownloadURL } = await import('firebase/storage');
+        
+        const storage = getStorage(app);
+        
+        // Create a unique filename for the content
+        const timestamp = new Date().toISOString();
+        const filename = `content-${input.userId}-${timestamp}.html`;
+        const contentRef = ref(storage, `generated-content/${filename}`);
+        
+        // Upload the content as a string
+        await uploadString(contentRef, finalHtmlContent);
+        
+        // Get the download URL
+        contentStorageUrl = await getDownloadURL(contentRef);
+        
+        // Store only a reference in Firestore, not the full content
+        contentToSave = `[Content stored in Firebase Storage due to size (${Math.round(contentSize / 1024)} KB)\nDownload URL: ${contentStorageUrl}]`;
+      } catch (storageError) {
+        console.error('Failed to store content in Firebase Storage:', storageError);
+        // Fallback: try to save truncated content to Firestore
+        const { content: truncatedContent } = truncateIfTooLarge(finalHtmlContent);
+        contentToSave = truncatedContent;
+      }
+    }
+    
     const docRef = await addDoc(collection(db, 'teachers', input.userId, 'generatedContent'), {
       teacherId: input.userId,
       grade: input.grade,
@@ -261,7 +339,7 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
       topic: input.topic,
       contentType: input.contentType,
       category: input.category,
-      content: finalHtmlContent,
+      content: contentToSave,
       description: parsedContent.description || '',
       assessmentCriteria,
       successIndicators,
@@ -270,6 +348,8 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
       createdAt: Timestamp.fromDate(new Date()),   // ← FIXED: was serverTimestamp()
       modelUsed: 'gemini-3.1-pro-preview',
       capsAligned: true,
+      // Store the storage URL if we used Firebase Storage
+      ...(contentStorageUrl ? { contentStorageUrl } : {}),
     });
 
     docId = docRef.id;
@@ -277,12 +357,13 @@ REMEMBER: Return ONLY raw JSON. No markdown fences. No extra text.
     console.error('Firestore save failed (content still returned):', firestoreErr);
   }
 
-  return {
-    content: finalHtmlContent,
-    memo: memoHtml,
-    rubric: rubricHtml,
-    docId,
-    assessmentCriteria,
-    successIndicators,
-  };
+   return {
+     content: finalHtmlContent,
+     memo: memoHtml,
+     rubric: rubricHtml,
+     docId,
+     assessmentCriteria,
+     successIndicators,
+     ...(contentStorageUrl ? { contentStorageUrl } : {}),
+   };
 }

@@ -25,7 +25,7 @@ import {
   ChevronDown, ChevronUp, Zap, ClipboardList, ImageIcon, Settings2, RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, addDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, Timestamp } from 'firebase/firestore';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";
@@ -607,7 +607,7 @@ export function ContentCreatorClient() {
     try {
       const data = {
         teacherId: user.uid,
-        createdAt: serverTimestamp(),
+        createdAt: Timestamp.fromDate(new Date()),
         tab: activeTab,
         type: activeTab === "teaching" ? "teaching" : activeTab === "visual" ? "visual-aid" : "admin-doc",
         ...(activeTab === "teaching" && teachingResult && {
@@ -642,7 +642,21 @@ export function ContentCreatorClient() {
     }
   };
 
-
+const handlePrint = () => {
+  const activeResult =
+    activeTab === 'teaching' ? teachingResult?.content :
+    activeTab === 'visual'   ? visualResult?.content :
+    activeTab === 'admin'    ? adminResult?.content   : '';
+  if (!activeResult) return;
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html><head><title>EduAI - Print</title><style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 portrait;margin:15mm}body{font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;background:#fff}img{max-width:100%;height:auto}table{width:100%;border-collapse:collapse}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body>${activeResult}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 500);
+};
+  
+  /**OPTIONAL handlePrint by Grok
   const handlePrint = () => {
     const printContent = document.getElementById("printable-content");
     if (printContent) {
@@ -652,8 +666,9 @@ export function ContentCreatorClient() {
       document.body.innerHTML = original;
       window.location.reload();
     }
-  };
+  }; */
 
+  //
   const hasResult = (activeTab === 'teaching' && !!teachingResult)
     || (activeTab === 'visual' && !!visualResult)
     || (activeTab === 'admin' && !!adminResult);

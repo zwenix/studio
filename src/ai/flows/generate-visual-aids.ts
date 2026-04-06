@@ -5,15 +5,9 @@
  *
  * Generates educational posters, classroom labels, word walls, diagrams,
  * booklet covers, flashcards, and other visual learning materials.
- *
- * Strategy:
- * - For image-heavy output (posters, labels): Use Imagen 4 Fast via googleAI.model()
- * - For structured visual HTML (diagrams, mind maps): Use Gemini 2.5 Pro
- * - Always returns base64-embedded images (no external URLs to break)
  */
 
 import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { z } from 'genkit';
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -36,15 +30,15 @@ export const VisualAidInputSchema = z.object({
 export type VisualAidInput = z.infer<typeof VisualAidInputSchema>;
 
 export type VisualAidOutput = {
-  content: string;          // HTML or base64 image tag
-  printInstructions: string; // How to print/use
-  imageDataUri?: string;    // Base64 image if generated
-  description: string;       // Description of what was generated
+  content: string;
+  printInstructions: string;
+  imageDataUri?: string;
+  description: string;
 };
 
 // ─── System Prompt for HTML Visual Aids ──────────────────────────────────────
 
-const VISUAL_HTML_SYSTEM = `You are Amahle Khumalo, South Africa's top educational graphic designer who creates viral classroom resources. Your visual aids are photographed and shared across thousands of South African teacher WhatsApp groups. Your work is pinned in classrooms from Limpopo to the Western Cape.
+const VISUAL_HTML_SYSTEM = `You are Zwelakhe Msuthu, South Africa's top educational graphic designer who creates viral classroom resources. Your visual aids are photographed and shared across thousands of South African teacher WhatsApp groups. Your work is pinned in classrooms from Limpopo to the Western Cape.
 
 You create stunning, eye-catching educational visuals using pure HTML with inline styles — no external CSS, no class names, no Tailwind utilities.
 
@@ -96,50 +90,12 @@ SUBJECT COLOURS:
 - Technology/EMS: #374151 (slate)
 
 ═══════════════════════════════════════════════════════
-COMPONENT PATTERNS
-═══════════════════════════════════════════════════════
-
-POSTER HEADER:
-<div style="background:linear-gradient(135deg,#1E40AF,#7C3AED);padding:32px 24px;text-align:center;border-radius:0 0 20px 20px;">
-  <div style="font-size:11px;letter-spacing:4px;color:rgba(255,255,255,0.7);text-transform:uppercase;margin-bottom:8px;">Grade X · Subject</div>
-  <h1 style="font-size:42px;font-weight:900;color:#fff;margin:0;text-shadow:2px 2px 0 rgba(0,0,0,0.2);line-height:1.1;">TITLE</h1>
-</div>
-
-CONTENT CARD:
-<div style="background:#fff;border-radius:12px;padding:20px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-left:4px solid #1E40AF;">
-  <h3 style="font-size:16px;font-weight:700;color:#1E40AF;margin:0 0 8px;">Card Title</h3>
-  <p style="font-size:14px;color:#374151;margin:0;line-height:1.5;">Card content</p>
-</div>
-
-LABEL CARD (for classroom labels):
-<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:120px;height:90px;background:#EFF6FF;border:2px solid #1E40AF;border-radius:12px;padding:8px;text-align:center;">
-  <span style="font-size:28px;margin-bottom:4px;">🔢</span>
-  <span style="font-size:13px;font-weight:700;color:#1E40AF;">Label Text</span>
-</div>
-
-WORD WALL CARD:
-<div style="display:inline-flex;flex-direction:column;align-items:center;padding:12px 20px;background:linear-gradient(135deg,#1E40AF,#2563EB);border-radius:8px;margin:4px;min-width:100px;text-align:center;">
-  <span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:1px;">WORD</span>
-  <span style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:4px;">definition</span>
-</div>
-
-FLASHCARD (front):
-<div style="width:200px;height:140px;background:linear-gradient(135deg,#1E40AF,#3B82F6);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:8px;box-shadow:0 4px 12px rgba(30,64,175,0.3);">
-  <p style="font-size:22px;font-weight:900;color:#fff;text-align:center;padding:16px;margin:0;">TERM</p>
-</div>
-
-FLASHCARD (back):
-<div style="width:200px;height:140px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);border:2px solid #E5E7EB;">
-  <p style="font-size:14px;color:#374151;text-align:center;padding:16px;margin:0;line-height:1.4;">Definition or answer</p>
-</div>
-
-═══════════════════════════════════════════════════════
 ABSOLUTE RULES
 ═══════════════════════════════════════════════════════
 1. Return ONLY valid JSON with "content", "printInstructions", "description"
 2. HTML must use ONLY inline styles — NO class names, NO external CSS
 3. NO code fences, NO markdown
-4. HTML must start with <div style="..."> 
+4. HTML must start with <div style="...">
 5. All text must be readable: dark text on light, white text on dark — NEVER same-color
 6. Must be gorgeous — teachers must gasp when they see it`;
 
@@ -157,7 +113,7 @@ async function generateImageForVisualAid(
     const gradeNum = parseInt(grade);
     const isFoundation = grade === 'R' || gradeNum <= 3;
 
-    const imagePrompt = `Educational ${visualType} for South African grade ${grade} ${subject} about "${topic}". 
+    const imagePrompt = `Educational ${visualType} for South African grade ${grade} ${subject} about "${topic}".
 ${isFoundation ? 'Bright, cheerful, child-friendly cartoon style with bold colors.' : 'Clean, professional educational design.'}
 ${style ? `Style: ${style}.` : ''}
 ${colorScheme ? `Colors: ${colorScheme}.` : 'Vibrant, high-contrast colors.'}
@@ -171,24 +127,11 @@ The image should be: well-composed, high-quality, suitable for classroom display
     } as any);
 
     const media = (result as any).media;
-    if (media?.url) {
-      return media.url;
-    }
+    if (media?.url) return media.url;
     return null;
   } catch (err) {
-    console.error('Imagen generation failed:', err);
-    // Try Gemini 2.5 Flash Image as fallback
-    try {
-      const fallback = await ai.generate({
-        model: 'googleai/gemini-3.1-flash-image-preview',
-        prompt: `Generate an educational image for: ${visualType} about ${topic} for grade ${grade} ${subject}. ${style || 'Clean educational style'}. ${colorScheme || 'Bright colors'}.`,
-        output: { format: 'media' },
-      } as any);
-      const fallbackMedia = (fallback as any).media;
-      return fallbackMedia?.url || null;
-    } catch {
-      return null;
-    }
+    console.warn('Image generation for visual aid failed (non-fatal):', err);
+    return null;
   }
 }
 
@@ -212,6 +155,12 @@ export async function generateVisualAid(
     if (imgResult) imageDataUri = imgResult;
   }
 
+  const outputSchema = z.object({
+    content: z.string(),
+    printInstructions: z.string(),
+    description: z.string(),
+  });
+
   const response = await ai.generate({
     model: 'googleai/gemini-3.1-pro-preview',
     config: { temperature: 0.8 },
@@ -219,7 +168,7 @@ export async function generateVisualAid(
     prompt: `Create a stunning ${input.visualType} for:
 
 Grade: ${input.grade}
-Subject: ${input.subject}  
+Subject: ${input.subject}
 Topic: ${input.topic}
 Language: ${input.language || 'English'}
 Color Scheme: ${input.colorScheme || 'Subject-appropriate vibrant colors'}
@@ -242,20 +191,40 @@ For Foundation Phase: make it JOYFUL and COLORFUL with emojis and large text.
 For Senior Phase: make it CLEAN and AUTHORITATIVE.`,
     output: {
       format: 'json',
-      schema: z.object({
-        content: z.string(),
-        printInstructions: z.string(),
-        description: z.string(),
-      })
+      schema: outputSchema,
     }
   });
 
-  const output = response.output!;
+  // FIX: Robust output handling — never crash on response.output being null.
+  // When Gemini wraps its response in markdown fences or produces slightly
+  // non-conforming JSON, response.output is null. Fall back to response.text.
+  let parsed: { content: string; printInstructions: string; description: string };
+
+  if (response.output) {
+    parsed = response.output;
+  } else if (response.text) {
+    let clean = response.text.trim();
+    if (clean.startsWith('```json')) clean = clean.slice(7);
+    else if (clean.startsWith('```')) clean = clean.slice(3);
+    if (clean.endsWith('```')) clean = clean.slice(0, -3);
+    try {
+      parsed = JSON.parse(clean.trim());
+    } catch {
+      // Last resort: wrap raw text as content
+      parsed = {
+        content: `<div style="font-family:Arial,sans-serif;padding:24px;">${response.text}</div>`,
+        printInstructions: 'Print on A4 paper.',
+        description: `${input.visualType} for Grade ${input.grade} ${input.subject}`,
+      };
+    }
+  } else {
+    throw new Error('Visual Aid generation returned no output. Please try again.');
+  }
 
   const clean = (html: string) =>
     html.replace(/^```(?:html)?\s*/gim, '').replace(/```\s*$/gim, '').trim();
 
-  let content = clean(output.content);
+  let content = clean(parsed.content);
 
   // Embed the generated image if available
   if (imageDataUri) {
@@ -264,8 +233,8 @@ For Senior Phase: make it CLEAN and AUTHORITATIVE.`,
 
   return {
     content,
-    printInstructions: output.printInstructions,
+    printInstructions: parsed.printInstructions,
     imageDataUri,
-    description: output.description,
+    description: parsed.description,
   };
 }

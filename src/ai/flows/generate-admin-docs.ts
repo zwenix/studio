@@ -35,7 +35,7 @@ export type AdminDocOutput = {
   notes: string;
 };
 
-const ADMIN_SYSTEM_PROMPT = `You are Nokwanda Sithole, a highly experienced South African school secretary and communications officer with 20 years of experience across government and independent schools. You produce the finest official school documents in the country — professional, legally sound, and culturally appropriate.
+const ADMIN_SYSTEM_PROMPT = `You are Thandile Yawa, a highly experienced South African school secretary and communications officer with 20 years of experience across government and independent schools. You produce the finest official school documents in the country — professional, legally sound, and culturally appropriate.
 
 Your documents are used as templates by the Western Cape Education Department, and principals throughout South Africa request your templates for their school management systems.
 
@@ -77,11 +77,6 @@ NOTICE HEADER:
 BODY PARAGRAPH:
 <p style="margin:0 0 16px;text-align:justify;color:#1a1a1a;">Text</p>
 
-BULLET LIST:
-<ul style="margin:0 0 16px;padding-left:20px;color:#1a1a1a;">
-  <li style="margin-bottom:8px;">Item</li>
-</ul>
-
 SIGNATURE BLOCK:
 <div style="margin-top:48px;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
@@ -118,8 +113,13 @@ DOCUMENT STANDARDS
 - ALWAYS include return/contact information`;
 
 export async function generateAdminDoc(input: AdminDocInput): Promise<AdminDocOutput> {
+
+  const outputSchema = z.object({
+    content: z.string(),
+    notes: z.string(),
+  });
+
   const response = await ai.generate({
-    // gemini-pro-latest = Gemini 3.1 Pro (per geminichat.txt alias table) — correct for professional document generation
     model: 'googleai/gemini-3.1-pro-preview',
     system: ADMIN_SYSTEM_PROMPT,
     prompt: `Create a ${input.documentType}:
@@ -140,7 +140,7 @@ DETAILS:
 - Include Reply Slip: ${input.includeReplySlip ? 'Yes' : 'No'}
 - Additional Instructions: ${input.additionalInstructions || 'None'}
 
-Create a COMPLETE, professional, immediately-usable document. 
+Create a COMPLETE, professional, immediately-usable document.
 Every line should be polished and correct — no placeholder text except where blanks are intentionally needed (names, dates, etc.).
 
 OUTPUT FORMAT — return ONLY this JSON:
@@ -150,20 +150,40 @@ OUTPUT FORMAT — return ONLY this JSON:
 }`,
     output: {
       format: 'json',
-      schema: z.object({
-        content: z.string(),
-        notes: z.string(),
-      })
+      schema: outputSchema,
     }
   });
 
-  const output = response.output!;
+  // FIX: Robust output handling — never crash on response.output being null.
+  // When Gemini wraps its response in markdown fences or produces slightly
+  // non-conforming JSON, response.output is null. Fall back to response.text.
+  let parsed: { content: string; notes: string };
+
+  if (response.output) {
+    parsed = response.output;
+  } else if (response.text) {
+    let clean = response.text.trim();
+    if (clean.startsWith('```json')) clean = clean.slice(7);
+    else if (clean.startsWith('```')) clean = clean.slice(3);
+    if (clean.endsWith('```')) clean = clean.slice(0, -3);
+    try {
+      parsed = JSON.parse(clean.trim());
+    } catch {
+      parsed = {
+        content: `<div style="font-family:Arial,sans-serif;padding:48px 56px;">${response.text}</div>`,
+        notes: 'Document generated. Please review before printing.',
+      };
+    }
+  } else {
+    throw new Error('Admin document generation returned no output. Please try again.');
+  }
+
   const clean = (html: string) =>
     html.replace(/^```(?:html)?\s*/gim, '').replace(/```\s*$/gim, '').trim();
 
   return {
-    content: clean(output.content),
+    content: clean(parsed.content),
     documentType: input.documentType,
-    notes: output.notes,
+    notes: parsed.notes,
   };
 }

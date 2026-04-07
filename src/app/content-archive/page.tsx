@@ -53,6 +53,37 @@ export default function ContentArchivePage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
 
+  const [dialogContent, setDialogContent] = useState<string>('');
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      if (!selectedItem) {
+        setDialogContent('');
+        return;
+      }
+
+      if (selectedItem.contentStorageUrl) {
+        setIsLoadingContent(true);
+        try {
+          const response = await fetch(selectedItem.contentStorageUrl);
+          if (!response.ok) throw new Error(`Storage fetch failed: ${response.status}`);
+          const text = await response.text();
+          setDialogContent(text);
+        } catch (err) {
+          console.error('[resolveContent] Failed to fetch from Firebase Storage:', err);
+          setDialogContent(selectedItem.content || '<p style="color:red;">Content temporarily unavailable. Please try again.</p>');
+        } finally {
+          setIsLoadingContent(false);
+        }
+      } else {
+        setDialogContent(selectedItem.content || '');
+      }
+    };
+    fetchContent();
+  }, [selectedItem]);
+
+
   const contentHistoryQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -100,7 +131,8 @@ export default function ContentArchivePage() {
             subject: item.subject,
             topic: item.isSystem ? itemAny.title : itemAny.topic,
             contentType: item.contentType,
-            content: item.content,
+            content: dialogContent || item.content, // assign the full content
+            contentStorageUrl: item.contentStorageUrl || null,
             memo: itemAny.memo || '',
             rubric: itemAny.rubric || '',
             createdAt: serverTimestamp(),
@@ -163,7 +195,7 @@ export default function ContentArchivePage() {
 
       const wrapper = document.createElement('div');
       wrapper.className = "prose max-w-none p-8 font-body text-black";
-      wrapper.innerHTML = selectedItem.content;
+      wrapper.innerHTML = dialogContent;
       
       wrapper.style.position = 'absolute';
       wrapper.style.left = '-9999px';
@@ -296,7 +328,11 @@ export default function ContentArchivePage() {
             
             <div className="flex-1 overflow-auto bg-muted/20 p-8" ref={printableRef}>
               <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] p-10 shadow-inner prose dark:prose-invert max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: selectedItem?.content || '' }} />
+                {isLoadingContent ? (
+                  <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <div dangerouslySetInnerHTML={{ __html: dialogContent }} />
+                )}
               </div>
             </div>
             
@@ -321,7 +357,7 @@ export default function ContentArchivePage() {
                     {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button disabled={!selectedClassId || isAssigning} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full font-bold">
+                <Button disabled={!selectedClassId || isAssigning || isLoadingContent} onClick={() => selectedItem && handleAssign(selectedItem)} className="h-14 px-10 rounded-full font-bold">
                   {isAssigning ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2 h-5 w-5" />} Assign
                 </Button>
               </div>

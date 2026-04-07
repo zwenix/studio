@@ -24,13 +24,14 @@ import {
   FlaskConical, Palette, FileText, Eye, BookOpen, GraduationCap,
   ChevronDown, ChevronUp, Zap, ClipboardList, ImageIcon, Settings2, RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection, useStorage } from '@/firebase';
 import { collection, addDoc, doc, serverTimestamp, writeBatch, Timestamp, query, where } from 'firebase/firestore';
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";
 import { generateVisualAid, type VisualAidInput, type VisualAidOutput } from '@/ai/flows/generate-visual-aids';
 import { generateAdminDoc, type AdminDocInput, type AdminDocOutput } from '@/ai/flows/generate-admin-docs';
+import { saveContentSafely } from '@/lib/content-storage';
 import type { Teacher, Class } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -406,6 +407,7 @@ export function ContentCreatorClient() {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const [selectedClassId, setSelectedClassId] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
   const teacherClassesQuery = useMemoFirebase(() => {
@@ -642,28 +644,27 @@ export function ContentCreatorClient() {
       else if (activeTab === "visual" && visualResult) contentData = visualResult.content || "";
       else if (activeTab === "admin" && adminResult) contentData = adminResult.content || "";
 
-      if (contentData.length > 1048000) {
-        throw new Error("Content exceeds the 1MB Firebase limit. Please generate a smaller document.");
-      }
+      const path = `generated-content/${user.uid}/${Date.now()}-archive.html`;
+      const saveResult = await saveContentSafely(contentData, storage, path);
+
       const data = {
         teacherId: user.uid,
         createdAt: Timestamp.fromDate(new Date()),
         tab: activeTab,
         type: activeTab === "teaching" ? "teaching" : activeTab === "visual" ? "visual-aid" : "admin-doc",
+        content: saveResult.inlineContent,
+        contentStorageUrl: saveResult.contentStorageUrl || null,
         ...(activeTab === "teaching" && teachingResult && {
-          content: teachingResult.content || "",
           memo: teachingResult.memo || "",
           rubric: teachingResult.rubric || "",
           assessment: teachingResult.assessmentCriteria || "",
           successIndicators: teachingResult.successIndicators || [],
         }),
         ...(activeTab === "visual" && visualResult && {
-          content: visualResult.content,
           printInstructions: visualResult.printInstructions,
           description: visualResult.description,
         }),
         ...(activeTab === "admin" && adminResult && {
-          content: adminResult.content,
           notes: adminResult.notes,
         }),
       };
@@ -689,20 +690,18 @@ export function ContentCreatorClient() {
 
     setIsAssigning(true);
     try {
-      if (result.content && result.content.length > 1048000) {
-        throw new Error("Content exceeds the 1MB Firebase limit. Please generate a smaller document.");
-      }
-      // TEMPORARY TRUNCATION FIX (Prevent 1MB Firestore error during assign)
-      const contentToAssign = result.content && result.content.length > 1048000
-        ? result.content.substring(0, 1048000) + "<div class=\"p-4 bg-red-50 text-red-600 font-bold\">Content truncated due to size limits.</div>"
-        : result.content;
+      const contentToAssign = result.content || "";
+      const path = `generated-content/${user.uid}/${Date.now()}-assignment.html`;
+      const saveResult = await saveContentSafely(contentToAssign, storage, path);
+
       const contentData = {
         teacherId: user.uid,
         grade: activeTab === "visual" ? v_grade : activeTab === "admin" ? a_grade : t_grade || "Any",
         subject: activeTab === "visual" ? v_subject : activeTab === "admin" ? a_subject : t_subject || "General",
         topic: activeTab === "visual" ? v_topic : activeTab === "admin" ? a_purpose : t_topic || "Assigned Content",
         contentType: activeTab === "visual" ? v_type : activeTab === "admin" ? a_type : t_type || "Document",
-        content: contentToAssign,
+        content: saveResult.inlineContent,
+        contentStorageUrl: saveResult.contentStorageUrl || null,
         memo: (result as any).memo || "",
         rubric: (result as any).rubric || "",
         createdAt: serverTimestamp(),

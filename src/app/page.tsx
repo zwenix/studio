@@ -18,9 +18,16 @@ const AdventureBox = ({ icon: Icon, title, description, color }: { icon: any; ti
 );
 
 export default function LandingPage() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
 
   useEffect(() => {
+    // Only show the splash once per browser session
+    const hasSeenSplash = sessionStorage.getItem('splashShown');
+    if (hasSeenSplash) return;
+
+    sessionStorage.setItem('splashShown', 'true');
+    setShowSplash(true);
+
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 2500);

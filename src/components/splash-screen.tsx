@@ -2,7 +2,10 @@ import Image from 'next/image';
 
 export const SplashScreen = () => {
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-500 to-indigo-600">
+    <div
+      className="fixed inset-0 z-[100] flex h-screen w-screen items-center justify-center bg-gradient-to-br from-indigo-600 via-blue-500 to-cyan-500"
+      style={{ backgroundColor: '#4f46e5' /* indigo-600 fallback while gradient loads */ }}
+    >
       <div className="animate-fadeInZoom text-center">
         <Image
           src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png"
@@ -11,7 +14,7 @@ export const SplashScreen = () => {
           height={299}
           priority
           style={{ width: 'auto', height: '299px' }}
-          className="mx-auto"
+          className="mx-auto drop-shadow-glow"
         />
         <h1 className="text-4xl font-bold text-white mt-6 font-patrick-hand">
           EduAI <span className="text-yellow-400">Companion</span>

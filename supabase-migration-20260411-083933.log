@@ -1,0 +1,12 @@
+[0;32m  ✅ node — /c/Program Files/nodejs/node[0m
+[0;32m  ✅ npm — /c/Program Files/nodejs/npm[0m
+[0;32m  ✅ git — /mingw64/bin/git[0m
+[0;32m  ✅ curl — /mingw64/bin/curl[0m
+[0;32m  ✅ Node.js v25 ✓[0m
+[0;32m  ✅ Vercel CLI — 50.43.0[0m
+[0;36m[08:39:43][0m Added Scoop shims to PATH: /c/Users/Zwelakhe Msuthu/scoop/shims
+[0;36m[08:39:43][0m Added Scoop shims to PATH: /c/Users/Zwelakhe Msuthu/scoop/shims
+[0;36m[08:39:43][0m Found supabase.exe at: /c/Users/Zwelakhe Msuthu/scoop/apps/supabase/current/supabase.exe
+[0;32m  ✅ Supabase CLI found — 2.84.2[0m
+[0;32m  ✅ package.json found — correct directory[0m
+[0;32m  ✅ All prerequisites satisfied[0m

@@ -1,71 +1,82 @@
 'use server';
 
-import { ai } from '@/genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-import { z } from 'genkit';
+/**
+ * Text-to-Speech Flow
+ *
+ * Original used Gemini TTS (googleai/gemini-2.5-flash-preview-tts via Genkit).
+ * Replacement uses:
+ *   Primary:  Groq Whisper TTS API (free, fast, supports multiple voices)
+ *   Fallback: Anthropic does not offer TTS — if Groq unavailable, throws a
+ *             clear error so the UI can show a helpful message.
+ *
+ * Voice mapping from original Gemini voice names → Groq-compatible voices.
+ * Groq supports: alloy, echo, fable, onyx, nova, shimmer
+ */
 
-const TextToSpeechInputSchema = z.object({
-  text: z.string().describe('The text to convert to speech.'),
-  voice: z.string().describe('The Gemini prebuilt voice name (e.g. "Algenib", "Achernar").'),
-});
-export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
+export type TextToSpeechInput = {
+  text:  string;
+  voice: string; // Original voice name e.g. 'Algenib', 'Achernar', etc.
+};
 
-const TextToSpeechOutputSchema = z.object({
-  audio: z.string().describe('Base64 WAV audio as a data URI: data:audio/wav;base64,...'),
-});
-export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
+export type TextToSpeechOutput = {
+  audio: string; // base64 data URI: "data:audio/wav;base64,..."
+};
 
-export async function textToSpeech(input: TextToSpeechInput): Promise<TextToSpeechOutput> {
-  return ttsFlow(input);
+// Map your original Gemini voice names to Groq voices
+const VOICE_MAP: Record<string, string> = {
+  Algenib:  'nova',     // Female
+  Enif:     'shimmer',  // Female
+  Achernar: 'onyx',     // Male
+  Canopus:  'echo',     // Male
+  Arcturus: 'fable',    // Male
+  Procyon:  'alloy',    // Male (neutral)
+};
+
+function mapVoice(originalVoice: string): string {
+  return VOICE_MAP[originalVoice] ?? 'nova'; // default to nova if unmapped
 }
 
-function pcmToWavDataUri(pcmBuffer: Buffer, sampleRate = 24000, channels = 1, bitDepth = 16): string {
-  const byteRate = (sampleRate * channels * bitDepth) / 8;
-  const blockAlign = (channels * bitDepth) / 8;
-  const dataSize = pcmBuffer.length;
-  const wavBuffer = Buffer.alloc(44 + dataSize);
-  wavBuffer.write('RIFF', 0);
-  wavBuffer.writeUInt32LE(36 + dataSize, 4);
-  wavBuffer.write('WAVE', 8);
-  wavBuffer.write('fmt ', 12);
-  wavBuffer.writeUInt32LE(16, 16);
-  wavBuffer.writeUInt16LE(1, 20);
-  wavBuffer.writeUInt16LE(channels, 22);
-  wavBuffer.writeUInt32LE(sampleRate, 24);
-  wavBuffer.writeUInt32LE(byteRate, 28);
-  wavBuffer.writeUInt16LE(blockAlign, 32);
-  wavBuffer.writeUInt16LE(bitDepth, 34);
-  wavBuffer.write('data', 36);
-  wavBuffer.writeUInt32LE(dataSize, 40);
-  pcmBuffer.copy(wavBuffer, 44);
-  return `data:audio/wav;base64,${wavBuffer.toString('base64')}`;
-}
+export async function textToSpeech(
+  input: TextToSpeechInput
+): Promise<TextToSpeechOutput> {
+  const groqKey = process.env.GROQ_API_KEY;
 
-const ttsFlow = ai.defineFlow(
-  {
-    name: 'ttsFlow',
-    inputSchema: TextToSpeechInputSchema,
-    outputSchema: TextToSpeechOutputSchema,
-  },
-  async ({ text, voice }) => {
-    const { media } = await ai.generate({
-      // gemini-2.5-flash-preview-tts = dedicated TTS model (per geminichat.txt + verified in @genkit-ai/google-genai v1.31.0)
-      model: 'googleai/gemini-2.5-flash-preview-tts',
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice },
-          },
-        },
-      },
-      prompt: text,
-    });
-
-    if (!media?.url) throw new Error('Gemini TTS returned no audio media.');
-
-    const base64Data = media.url.substring(media.url.indexOf(',') + 1);
-    const pcmBuffer = Buffer.from(base64Data, 'base64');
-    return { audio: pcmToWavDataUri(pcmBuffer) };
+  if (!groqKey) {
+    throw new Error(
+      'GROQ_API_KEY is required for text-to-speech. Add it to your environment variables.'
+    );
   }
-);
+
+  const groqVoice = mapVoice(input.voice);
+
+  const response = await fetch(
+    'https://api.groq.com/openai/v1/audio/speech',
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${groqKey}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        model: 'playai-tts',   // Groq's TTS model
+        input: input.text,
+        voice: groqVoice,
+        response_format: 'wav',
+      }),
+      signal: AbortSignal.timeout(60_000),
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Groq TTS error ${response.status}: ${body}`);
+  }
+
+  // Convert the binary WAV response to a base64 data URI
+  const arrayBuffer = await response.arrayBuffer();
+  const base64      = Buffer.from(arrayBuffer).toString('base64');
+
+  return {
+    audio: `data:audio/wav;base64,${base64}`,
+  };
+}

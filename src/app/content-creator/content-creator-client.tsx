@@ -24,8 +24,7 @@ import {
   FlaskConical, Palette, FileText, Eye, BookOpen, GraduationCap,
   ChevronDown, ChevronUp, Zap, ClipboardList, ImageIcon, Settings2, RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection, useStorage } from '@/firebase';
-import { collection, addDoc, doc, serverTimestamp, writeBatch, Timestamp, query, where } from 'firebase/firestore';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection, useStorage } from "@/lib/supabase";
 import { educationalData } from '@/lib/educational-data';
 import { generateCAPSContent, type GenerateCAPSContentInput, type GenerateCAPSContentOutput } from '@/ai/flows/generate-caps-content';
 import Grade1EnglishGenerator from "@/components/Grade1EnglishGenerator";

@@ -1,54 +1,92 @@
 'use server';
+
 /**
- * @fileOverview OCR and handwriting recognition flow.
- *
- * Model: googleai/gemini-flash-latest (= Gemini 3 Flash, per geminichat.txt alias table)
- * Rationale: Fast multimodal model sufficient for OCR — no heavy reasoning needed.
- * Previously used gemini-flash-live-latest which DOES NOT EXIST in @genkit-ai/google-genai v1.31.0.
+ * OCR & Handwriting Recognition
+ * Original prompt preserved verbatim.
+ * Uses Claude's vision capability directly (Groq does not support image input).
  */
 
-import {ai} from '@/genkit';
-import {z} from 'genkit';
+export type ExtractTextFromImageInput = {
+  photoDataUri: string; // "data:<mimetype>;base64,<data>"
+};
 
-const ExtractTextFromImageInputSchema = z.object({
-  photoDataUri: z
-    .string()
-    .describe(
-      "A photo containing text, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type ExtractTextFromImageInput = z.infer<typeof ExtractTextFromImageInputSchema>;
+export type ExtractTextFromImageOutput = {
+  extractedText: string;
+};
 
-const ExtractTextFromImageOutputSchema = z.object({
-  extractedText: z.string().describe('The extracted text from the image.'),
-});
-export type ExtractTextFromImageOutput = z.infer<typeof ExtractTextFromImageOutputSchema>;
+export async function extractTextFromImage(
+  input: ExtractTextFromImageInput
+): Promise<ExtractTextFromImageOutput> {
 
-export async function extractTextFromImage(input: ExtractTextFromImageInput): Promise<ExtractTextFromImageOutput> {
-  return extractTextFromImageFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'extractTextFromImagePrompt',
-  // gemini-flash-latest = Gemini 3 Flash (per geminichat.txt) — fast multimodal, ideal for OCR
-  model: 'googleai/gemini-flash-latest',
-  input: {schema: ExtractTextFromImageInputSchema},
-  output: {schema: ExtractTextFromImageOutputSchema},
-  prompt: `You are an expert OCR and handwriting recognition AI.
-
-Extract all text from the image accurately, preserving the original structure and layout where possible.
-
-Photo: {{media url=photoDataUri}}`,
-});
-
-const extractTextFromImageFlow = ai.defineFlow(
-  {
-    name: 'extractTextFromImageFlow',
-    inputSchema: ExtractTextFromImageInputSchema,
-    outputSchema: ExtractTextFromImageOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY is required for image OCR.');
   }
-);
+
+  // Parse the data URI — "data:image/jpeg;base64,<data>"
+  const matches = input.photoDataUri.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matches) {
+    throw new Error(
+      'Invalid photoDataUri format. Expected: data:<mimetype>;base64,<encoded_data>'
+    );
+  }
+  const [, mediaType, imageData] = matches;
+
+  // ╔══════════════════════════════════════════════════════════════════════════╗
+  // ║  ORIGINAL PROMPT — preserved verbatim from extract-text-from-images.ts  ║
+  // ║  (originally a Genkit definePrompt — now sent as the user message)       ║
+  // ╚══════════════════════════════════════════════════════════════════════════╝
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method:  'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model:      'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            // Image block — equivalent of {{media url=photoDataUri}} in Genkit
+            {
+              type:   'image',
+              source: {
+                type:       'base64',
+                media_type: mediaType as
+                  | 'image/jpeg'
+                  | 'image/png'
+                  | 'image/webp'
+                  | 'image/gif',
+                data:       imageData,
+              },
+            },
+            // Text block — original prompt text preserved verbatim
+            {
+              type: 'text',
+              text: `You are an expert OCR and handwriting recognition AI.
+
+You will use this information to extract the text from the image.
+
+Use the following as the primary source of information about the image.
+
+Photo: [image provided above]`,
+            },
+          ],
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Claude OCR error ${response.status}: ${body}`);
+  }
+
+  const data          = await response.json();
+  const extractedText = (data.content[0]?.text ?? '') as string;
+
+  return { extractedText };
+}

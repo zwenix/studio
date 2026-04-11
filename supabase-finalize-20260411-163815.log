@@ -1,0 +1,78 @@
+[0;32m  ✅ next.config.mjs updated[0m
+[0;32m  ✅ Backup created in backup_firebase_* folder[0m
+[0;36m[16:38:23][0m Replacing common Firebase import patterns...
+[0;32m  ✅ Common Firebase import paths updated[0m
+[0;36m[16:39:14][0m Updating dependencies...
+
+added 24 packages, removed 522 packages, changed 23 packages, and audited 527 packages in 10m
+
+119 packages are looking for funding
+  run `npm fund` for details
+
+3 vulnerabilities (1 moderate, 1 high, 1 critical)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+up to date, audited 527 packages in 2m
+
+119 packages are looking for funding
+  run `npm fund` for details
+
+3 vulnerabilities (1 moderate, 1 high, 1 critical)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[0;32m  ✅ Firebase packages removed + Supabase packages confirmed[0m
+[0;32m  ✅ Old Firebase config files and folder removed[0m
+
+> nextn@0.1.0 build
+> cross-env NODE_OPTIONS=--max-old-space-size=8192 NODE_ENV=production next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⨯ Failed to patch lockfile, please try uninstalling and reinstalling next in this workspace
+TypeError: Cannot read properties of undefined (reading 'os')
+    at fetchPkgInfo (C:\studio\node_modules\next\dist\lib\patch-incorrect-lockfile.js:73:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 5)
+    at async patchIncorrectLockfile (C:\studio\node_modules\next\dist\lib\patch-incorrect-lockfile.js:162:26)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (215kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+Failed to compile.
+
+./src/app/ai-tutor/page.tsx
+Module not found: Can't resolve '@/firebase'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/ai-tutor/page.tsx
+Module not found: Can't resolve 'firebase/firestore'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/autograding/page.tsx
+Module not found: Can't resolve '@/firebase'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/autograding/page.tsx
+Module not found: Can't resolve 'firebase/firestore'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/classes/[classId]/assignments/[assignmentId]/page.tsx
+Module not found: Can't resolve '@/firebase'
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+> Build failed because of webpack errors
+[1;33m  ⚠️  Build still has errors. Check the log file: supabase-finalize-20260411-163815.log[0m
+[1;33m  ⚠️  Please share the build error output with me for further fixes.[0m

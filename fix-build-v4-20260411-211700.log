@@ -1,0 +1,5 @@
+[0;32m  ✅ Supabase files created[0m
+[1;33m  ⚠️  File /src/app/ai-tutor/page.tsx not found — skipping[0m
+[1;33m  ⚠️  File /src/app/autograding/page.tsx not found — skipping[0m
+[1;33m  ⚠️  File /src/app/classes/[classId]/assignments/[assignmentId]/page.tsx not found — skipping[0m
+[0;32m  ✅ All import fixes applied[0m

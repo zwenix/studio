@@ -1,39 +1,43 @@
 'use server';
 
 /**
- * FIX: z is now imported from 'genkit' (not raw 'zod').
+ * Memos & Rubrics Generator
+ * Original system prompt preserved verbatim.
+ * Transport: Genkit removed → direct Anthropic + Groq via /lib/ai.ts
  */
 
-import { z } from 'genkit'; // FIX: was 'zod'
-import { ai } from '@/genkit';
+import { generateJSON } from '@/lib/ai';
 
-const GenerateMemosAndRubricsInputSchema = z.object({
-  taskDescription: z.string(),
-  gradeLevel: z.string(),
-  subject: z.string(),
-  capsCompliance: z.string().optional().default('Yes'),
-});
+export type GenerateMemosAndRubricsInput = {
+  taskDescription: string;
+  gradeLevel:      string;
+  subject:         string;
+  capsCompliance?: string;
+};
 
-export type GenerateMemosAndRubricsInput = z.infer<typeof GenerateMemosAndRubricsInputSchema>;
-export type GenerateMemosAndRubricsOutput = { memo: string; rubric: string; };
+export type GenerateMemosAndRubricsOutput = {
+  memo:   string;
+  rubric: string;
+};
 
-export async function generateMemosAndRubrics(input: GenerateMemosAndRubricsInput): Promise<GenerateMemosAndRubricsOutput> {
-  const response = await ai.generate({
-    model: 'googleai/gemini-2.5-pro',
-    system: 'You are an expert South African CAPS-compliant educational assistant. Generate a detailed Memo and Rubric in clean HTML.',
-    prompt: `Task: ${input.taskDescription}\nGrade: ${input.gradeLevel}\nSubject: ${input.subject}`,
-    output: {
-      format: 'json',
-      schema: z.object({
-        memo: z.string(),
-        rubric: z.string(),
-      }),
-    },
+export async function generateMemosAndRubrics(
+  input: GenerateMemosAndRubricsInput
+): Promise<GenerateMemosAndRubricsOutput> {
+
+  // ╔══════════════════════════════════════════════════════════════════════════╗
+  // ║  ORIGINAL SYSTEM PROMPT — preserved verbatim from generate-memos-       ║
+  // ║  rubrics.ts                                                              ║
+  // ╚══════════════════════════════════════════════════════════════════════════╝
+  const systemPrompt = `You are an expert South African CAPS-compliant educational assistant. Generate a detailed Memo and Rubric in clean HTML.`;
+
+  // ╔══════════════════════════════════════════════════════════════════════════╗
+  // ║  ORIGINAL USER PROMPT — preserved verbatim                              ║
+  // ╚══════════════════════════════════════════════════════════════════════════╝
+  const userPrompt = `Task: ${input.taskDescription}
+Grade: ${input.gradeLevel}
+Subject: ${input.subject}`;
+
+  return generateJSON<GenerateMemosAndRubricsOutput>(userPrompt, systemPrompt, {
+    maxTokens: 4096,
   });
-
-  if (!response.output) {
-    throw new Error('Memo/rubric generation returned no output. Please try again.');
-  }
-
-  return response.output;
 }

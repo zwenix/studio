@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from "@/lib/supabase";
+import { createUserWithEmailAndPassword } // firebase/auth removed - use Supabase auth;
 import { Loader2, Star, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 

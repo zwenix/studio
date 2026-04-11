@@ -29,8 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Search, Box, History, ExternalLink, Library, Loader2, Eye, Send, Trash2, Edit3, FileDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, where, addDoc, doc, writeBatch, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/lib/supabase";
 import type { GeneratedContent, Class, Template } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';

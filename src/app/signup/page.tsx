@@ -1,98 +1,121 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from "@/lib/supabase";
-import { createUserWithEmailAndPassword } // firebase/auth removed - use Supabase auth;
-import { Loader2, Star, Sparkles } from 'lucide-react';
-import Image from 'next/image';
+import { type FormEvent, useState } from 'react';
+import { Loader2, Sparkles, Star } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const auth = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.push('/role-selection');
-    } catch (error: any) {
-      toast({ title: 'Sign-up Failed', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
     }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      await supabase.from('profiles').upsert([
+        {
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          role: 'teacher',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    }
+
+    setMessage('Account created. Continue by choosing your role.');
+    router.push('/role-selection');
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
-      <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
-      <Sparkles className="absolute bottom-10 right-10 w-8 h-8 text-yellow-200 animate-bounce opacity-20" />
-      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 bg-indigo-950 text-white">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4 bg-transparent p-2">
-            <Image 
-              src="https://i.ibb.co/tTc5gG5k/eduaicompanion-logo2-preview-1772467621580-2-preview-1772473153046.png" 
-              alt="EduAI" 
-              width={48} 
-              height={72} 
-              priority
-              style={{ width: 'auto', height: '72px' }}
-              className="drop-shadow-glow" 
-            />
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <Sparkles className="h-4 w-4" />
+            <span>Create account</span>
+            <Star className="h-4 w-4" />
           </div>
-          <CardTitle className="text-3xl font-patrick-hand text-white">Join the Team!</CardTitle>
-          <CardDescription className="text-indigo-200">Start your learning adventure today.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email" className="text-indigo-100">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
-                required 
-                autoComplete="email"
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password" title="password" className="text-indigo-100">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                autoComplete="new-password"
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:ring-yellow-400"
-              />
-            </div>
-            <Button type="submit" className="w-full rounded-full h-12 text-lg font-bold bg-yellow-400 text-indigo-950 hover:bg-yellow-300 shadow-lg" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Create Account'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-indigo-200">
-            Already have an account? <Link href="/login" className="underline font-bold text-yellow-400 hover:text-yellow-300">Login</Link>
+          <h1 className="text-3xl font-semibold tracking-tight">Create your Supabase account</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This replaces the Firebase auth call with a direct Supabase sign-up flow and routes users to role selection.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+        {message ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{message}</div> : null}
+
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Full name</span>
+            <input value={fullName} onChange={(event) => setFullName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Email</span>
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Password</span>
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Confirm password</span>
+            <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {loading ? 'Creating account...' : 'Create account'}
+            </button>
+
+            <Link href="/" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+              Back home
+            </Link>
           </div>
-        </CardContent>
-      </Card>
-      <div className="mt-8 text-white/40 text-[10px] sm:text-xs text-center z-10">
-        <p>© 2026 EduAI Companion. All rights reserved by Zwelakhe Msuthu - Owner & Developer</p>
+        </form>
       </div>
-    </div>
+    </main>
   );
 }

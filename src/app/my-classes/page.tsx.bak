@@ -1,105 +1,119 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, PlusCircle, ArrowUpRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/lib/supabase";
-import { collection, query, where, doc } // firebase/firestore removed - migrated to Supabase;
-import type { Class, User } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { BookOpen, Loader2, PlusCircle, Users } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+  teacher_name?: string;
+  learner_count?: number;
+  created_at?: string;
+};
 
 export default function MyClassesPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-  const { data: userProfile } = useDoc<User>(userProfileRef);
+  useEffect(() => {
+    let active = true;
 
-  const classesQuery = useMemoFirebase(() => {
-    if (!user || !userProfile) return null;
+    async function loadClasses() {
+      setLoading(true);
+      setError('');
 
-    if (userProfile.role === 'teacher') {
-      return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
+      const { data, error: loadError } = await supabase
+        .from('classes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        setError(loadError.message);
+        setClasses([]);
+      } else {
+        setClasses((data ?? []) as ClassRecord[]);
+      }
+
+      setLoading(false);
     }
-    if (userProfile.role === 'student') {
-      return query(collection(firestore, 'classes'), where('learnerIds', 'array-contains', user.uid));
-    }
-    return null;
-  }, [firestore, user, userProfile]);
 
-  const { data: classes, isLoading } = useCollection<Class>(classesQuery);
+    loadClasses();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
-    <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-            <Users className="mr-3 h-8 w-8" />
-            My Classes
-          </h1>
-          {userProfile?.role === 'teacher' && (
-            <Button asChild>
-              <Link href="/my-classes/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add New Class
-              </Link>
-            </Button>
-          )}
-        </div>
-
-        {isLoading && (
-          <div className="flex justify-center items-center py-16">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="flex flex-col gap-4 border-b border-slate-800 pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">My Classes</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Manage your Supabase-backed classes</h1>
+            <p className="max-w-2xl text-sm text-slate-400">
+              This page now loads classes from Supabase instead of Firebase and links through to your class detail view.
+            </p>
           </div>
-        )}
+          <Link href="/my-classes/new" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
+            <PlusCircle className="h-4 w-4" />
+            New Class
+          </Link>
+        </header>
 
-        {!isLoading && classes?.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <h3 className="text-xl font-medium">No classes found</h3>
-              <p className="text-muted-foreground mt-2">
-                {userProfile?.role === 'teacher' ? 'Get started by creating your first class.' : 'You have not been enrolled in any classes yet.'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {error ? (
+          <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div>
+        ) : null}
 
-        <div className="grid gap-6">
-          {classes?.map((cls) => (
-            <Card key={cls.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>{cls.name}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="secondary" className="mr-2">Grade {cls.grade}</Badge>
-                    {cls.subject}
-                  </CardDescription>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/my-classes/${cls.id}`}>
-                     View Class <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <h4 className="text-sm font-semibold mb-2 text-muted-foreground">{cls.learnerIds?.length || 0} Students</h4>
-                <div className="flex flex-wrap gap-2">
-                  {cls.learnerIds?.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">Student avatars would be shown here.</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No students have been added to this class yet.</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading classes...
+          </div>
+        ) : classes.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-10 text-center">
+            <BookOpen className="mx-auto mb-4 h-10 w-10 text-slate-500" />
+            <h2 className="text-lg font-semibold text-white">No classes yet</h2>
+            <p className="mt-2 text-sm text-slate-400">Create your first class to start tracking learners, assignments, and progress reports.</p>
+          </div>
+        ) : (
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {classes.map((item) => {
+              const label = item.name ?? item.title ?? 'Untitled Class';
+
+              return (
+                <Link
+                  key={item.id}
+                  href={'/my-classes/' + item.id}
+                  className="group rounded-3xl border border-slate-800 bg-slate-900/60 p-5 transition hover:border-indigo-500/50 hover:bg-slate-900"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-white transition group-hover:text-indigo-200">{label}</h2>
+                      <p className="mt-1 text-sm text-slate-400">{item.subject ?? 'No subject set'}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-950 px-3 py-2 text-xs text-slate-300">{item.grade ?? 'Grade N/A'}</div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-sm text-slate-400">
+                    <Users className="h-4 w-4" />
+                    <span>{item.learner_count ?? 0} learners</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
+        )}
       </div>
-    </AppLayout>
+    </main>
   );
 }

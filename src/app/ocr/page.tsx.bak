@@ -1,511 +1,183 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { AppLayout } from '@/components/app-layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { 
-    Camera, 
-    FileUp, 
-    Loader2, 
-    ScanText, 
-    ClipboardCopy, 
-    Save, 
-    Printer, 
-    GraduationCap, 
-    ClipboardCheck, 
-    Trash2, 
-    Edit3,
-    History,
-    FileText,
-    ArrowRight
-} from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
-import { useToast } from '@/hooks/use-toast';
-import { extractTextFromImage } from '@/ai/flows/extract-text-from-images';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/lib/supabase";
-import { collection, query, orderBy, limit, addDoc, serverTimestamp, doc, updateDoc, deleteDoc, getDocs, setDoc, where } // firebase/firestore removed - migrated to Supabase;
-import type { User as UserProfile, OcrUpload, Learner, Parent as ParentType } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { FileText, Loader2, ScanSearch, Upload } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
 
-const OCR_LIMITS = {
-    teacher: 20,
-    student: 5,
-    parent: 1,
-    admin: 100,
+type OcrRecord = {
+  id: string;
+  file_name?: string;
+  extracted_text?: string;
+  status?: string;
+  created_at?: string;
 };
 
-const CONTENT_TYPES = [
-    "Assessment",
-    "Exercise",
-    "Lesson Plan",
-    "Handwritten Note",
-    "Homework",
-    "Reading Material",
-    "Memo",
-    "Other"
-];
-
 export default function OcrPage() {
-    const router = useRouter();
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
+  const [file, setFile] = useState<File | null>(null);
+  const [documentName, setDocumentName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [uploads, setUploads] = useState<OcrRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-    // User Profile
-    const { data: userProfile } = useDoc<UserProfile>(useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]));
+  useEffect(() => {
+    let active = true;
 
-    // State
-    const [file, setFile] = useState<File | null>(null);
-    const [preview, setPreview] = useState<string | null>(null);
-    const [extractedText, setExtractedText] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [contentType, setContentType] = useState<string>('');
-    const [isSaving, setIsSaving] = useState(false);
-    
-    // History State
-    const [isEditingId, setIsEditingId] = useState<string | null>(null);
-    const [editedText, setEditingText] = useState('');
+    async function loadUploads() {
+      const { data, error: loadError } = await supabase
+        .from('ocr_uploads')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    // Send to Learner Dialog
-    const [isSendOpen, setIsSendOpen] = useState(false);
-    const [selectedLearnerId, setSelectedLearnerId] = useState('');
-    const [isSendingToLearner, setIsSendingToLearner] = useState(false);
+      if (!active) {
+        return;
+      }
 
-    // Camera state
-    const [isCameraOpen, setCameraOpen] = useState(false);
-    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+      if (loadError) {
+        setError(loadError.message);
+        setUploads([]);
+      } else {
+        setUploads((data ?? []) as OcrRecord[]);
+      }
 
-    // OCR History Query
-    const ocrHistoryQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'users', user.uid, 'ocrUploads'), orderBy('createdAt', 'desc'));
-    }, [firestore, user]);
-    const { data: ocrHistory } = useCollection<OcrUpload>(ocrHistoryQuery);
+      setLoading(false);
+    }
 
-    // Fetch Learners for "Send to" feature
-    const learnersQuery = useMemoFirebase(() => {
-        if (!userProfile || userProfile.role !== 'teacher') return null;
-        return query(collection(firestore, 'users'), where('role', '==', 'student'));
-    }, [firestore, userProfile]);
-    const { data: allLearners } = useCollection<UserProfile>(learnersQuery);
+    loadUploads();
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        if (acceptedFiles.length > 0) {
-            const currentFile = acceptedFiles[0];
-            setFile(currentFile);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreview(reader.result as string);
-            };
-            reader.readAsDataURL(currentFile);
-        }
-    }, []);
-
-    const { getRootProps, getInputProps, open, isDragActive } = useDropzone({
-        onDrop,
-        accept: { 'image/*': ['.jpeg', '.png', '.jpg', '.webp'] },
-        multiple: false,
-        noClick: true,
-    });
-
-    useEffect(() => {
-        if (isCameraOpen) {
-            const getCameraPermission = async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    setHasCameraPermission(true);
-                    streamRef.current = stream;
-
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                } catch (error) {
-                    console.error('Error accessing camera:', error);
-                    setHasCameraPermission(false);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Camera Access Denied',
-                        description: 'Please enable camera permissions in your browser settings.',
-                    });
-                }
-            };
-            getCameraPermission();
-        } else {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-        }
-        return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [isCameraOpen, toast]);
-
-    const handleCapture = () => {
-        if (!videoRef.current || !canvasRef.current) return;
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const context = canvas.getContext('2d');
-        if (context) {
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/png');
-            setPreview(dataUrl);
-            fetch(dataUrl)
-                .then(res => res.blob())
-                .then(blob => {
-                    const capturedFile = new File([blob], "capture.png", { type: "image/png" });
-                    setFile(capturedFile);
-                });
-            setCameraOpen(false);
-        }
+    return () => {
+      active = false;
     };
+  }, []);
 
-    const handleExtract = async () => {
-        if (!file || !preview) {
-            toast({ title: 'No file selected', description: 'Please upload an image.', variant: 'destructive' });
-            return;
-        }
-        if (!contentType) {
-            toast({ title: 'Type Required', description: 'Please specify the content type.', variant: 'destructive' });
-            return;
-        }
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-        setIsLoading(true);
-        setExtractedText('');
+    if (!file) {
+      setError('Please choose a file to process.');
+      return;
+    }
 
-        try {
-            const result = await extractTextFromImage({ photoDataUri: preview });
-            setExtractedText(result.extractedText);
-        } catch (error) {
-            toast({ title: 'Extraction Failed', variant: 'destructive' });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    setProcessing(true);
+    setError('');
+    setSuccess('');
 
-    const handleSaveToHistory = async () => {
-        if (!extractedText || !user || !userProfile) return;
-        setIsSaving(true);
-        try {
-            const userLimit = OCR_LIMITS[userProfile.role as keyof typeof OCR_LIMITS] || 5;
-            const userOcrCollection = collection(firestore, 'users', user.uid, 'ocrUploads');
-            
-            // Check limits
-            const snapshot = await getDocs(query(userOcrCollection, orderBy('createdAt', 'asc')));
-            if (snapshot.size >= userLimit) {
-                // Delete oldest
-                const oldestDoc = snapshot.docs[0];
-                await deleteDoc(doc(firestore, 'users', user.uid, 'ocrUploads', oldestDoc.id));
-            }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentName', documentName);
+    formData.append('notes', notes);
 
-            await addDoc(userOcrCollection, {
-                userId: user.uid,
-                contentType,
-                text: extractedText,
-                createdAt: serverTimestamp(),
-            });
+    try {
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        body: formData,
+      });
 
-            toast({ title: 'Saved to History' });
-        } catch (error: any) {
-            toast({ title: 'Save Failed', description: error.message, variant: 'destructive' });
-        } finally {
-            setIsSaving(false);
-        }
-    };
+      if (!response.ok) {
+        throw new Error('OCR request failed with status ' + response.status + '.');
+      }
 
-    const handleSendToLearner = async () => {
-        if (!selectedLearnerId || !extractedText || !user) return;
-        setIsSendingToLearner(true);
-        try {
-            const recordRef = collection(firestore, 'learners', selectedLearnerId, 'academicRecords');
-            await addDoc(recordRef, {
-                learnerId: selectedLearnerId,
-                senderId: user.uid,
-                type: contentType,
-                content: extractedText,
-                createdAt: serverTimestamp(),
-                teacherNotified: true,
-            });
-            toast({ title: 'Sent to Learner Profile', description: 'This content is now part of the student\'s record.' });
-            setIsSendOpen(false);
-        } catch (error: any) {
-            toast({ title: 'Sending Failed', variant: 'destructive' });
-        } finally {
-            setIsSendingToLearner(false);
-        }
-    };
+      const payload = (await response.json()) as { extractedText?: string; status?: string };
 
-    const handlePrint = (text: string, title: string = 'Extracted Text') => {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(`
-                <html>
-                    <head><title>${title}</title><style>body{font-family:sans-serif;padding:2rem;line-height:1.6;}h1{border-bottom:2px solid #eee;padding-bottom:1rem;}</style></head>
-                    <body><h1>${title}</h1><pre style="white-space:pre-wrap;">${text}</pre></body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
-    };
+      const record = {
+        file_name: documentName || file.name,
+        extracted_text: payload.extractedText ?? '',
+        status: payload.status ?? 'processed',
+        created_at: new Date().toISOString(),
+      };
 
-    const handleDelete = async (id: string) => {
-        if (!user) return;
-        try {
-            await deleteDoc(doc(firestore, 'users', user.uid, 'ocrUploads', id));
-            toast({ title: 'Item deleted' });
-        } catch (e) {
-            toast({ title: 'Delete failed', variant: 'destructive' });
-        }
-    };
+      const { error: insertError } = await supabase.from('ocr_uploads').insert([record]);
 
-    const handleUpdate = async () => {
-        if (!user || !isEditingId) return;
-        try {
-            await updateDoc(doc(firestore, 'users', user.uid, 'ocrUploads', isEditingId), {
-                text: editedText
-            });
-            toast({ title: 'Updated successfully' });
-            setIsEditingId(null);
-        } catch (e) {
-            toast({ title: 'Update failed', variant: 'destructive' });
-        }
-    };
+      if (insertError) {
+        setError(insertError.message);
+      } else {
+        setSuccess('OCR upload processed successfully.');
+        setUploads((current) => [record as OcrRecord, ...current]);
+        setFile(null);
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'OCR upload failed.');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
-    return (
-        <AppLayout>
-            <div className="flex-1 space-y-8 p-4 sm:p-8 pt-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-                        <ScanText className="mr-3 h-8 w-8 text-primary" />
-                        OCR & Handwriting Tool
-                    </h1>
-                    {userProfile && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                            <History className="h-4 w-4" />
-                            Storage: {ocrHistory?.length || 0} / {OCR_LIMITS[userProfile.role as keyof typeof OCR_LIMITS]}
-                        </div>
-                    )}
-                </div>
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">OCR</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Upload images and store OCR output in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            The syntax error is gone and this page now uses a clean upload flow instead of the broken Firebase-specific imports.
+          </p>
+        </header>
 
-                <div className="grid gap-8 md:grid-cols-2">
-                    {/* Input Column */}
-                    <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>1. Select Content Type</CardTitle>
-                                <CardDescription>Identify what you are scanning.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    <Label>Content Category</Label>
-                                    <Select value={contentType} onValueChange={setContentType}>
-                                        <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {CONTENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardContent>
-                        </Card>
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Document name</span>
+              <input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="Grade 4 worksheet" className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+            </label>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>2. Upload or Capture</CardTitle>
-                                <CardDescription>Provide an image with text or handwriting.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
-                                    <input {...getInputProps()} />
-                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                        <FileUp className="h-10 w-10" />
-                                        <p>Drag & drop image or use buttons below</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <Button onClick={open} variant="outline" className="flex-1">
-                                        <FileUp className="mr-2 h-4 w-4" /> Upload
-                                    </Button>
-                                    <Dialog open={isCameraOpen} onOpenChange={setCameraOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" className="flex-1">
-                                                <Camera className="mr-2 h-4 w-4" /> Camera
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader><DialogTitle>Camera Capture</DialogTitle></DialogHeader>
-                                            {hasCameraPermission === false ? (
-                                                <Alert variant="destructive"><AlertTitle>Access Required</AlertTitle></Alert>
-                                            ) : (
-                                                <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-                                            )}
-                                            <DialogFooter><Button onClick={handleCapture}>Capture</Button></DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">File</span>
+              <input type="file" accept="image/*,application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-500" />
+            </label>
+          </div>
 
-                                {preview && (
-                                    <div className="mt-4 border rounded-md p-2 bg-muted/30">
-                                        <img src={preview} alt="Preview" className="max-h-40 mx-auto rounded" />
-                                    </div>
-                                )}
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Notes</span>
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder="Optional notes for the OCR request." className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+          </label>
 
-                                <Button onClick={handleExtract} disabled={!file || isLoading || !contentType} className="w-full">
-                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanText className="mr-2 h-4 w-4" />}
-                                    Extract Text
-                                </Button>
-                            </CardContent>
-                        </Card>
+          {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+          {success ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{success}</div> : null}
+
+          <button type="submit" disabled={processing || !file} className="inline-flex w-fit items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
+            {processing ? 'Processing...' : 'Run OCR'}
+          </button>
+        </form>
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <div className="flex items-center gap-3 text-slate-300">
+            <Upload className="h-4 w-4" />
+            <h2 className="text-lg font-semibold text-white">Recent uploads</h2>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {loading ? (
+              <div className="flex items-center gap-3 text-sm text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading OCR history...
+              </div>
+            ) : uploads.length === 0 ? (
+              <p className="text-sm text-slate-400">No OCR uploads found yet.</p>
+            ) : (
+              uploads.map((item) => (
+                <article key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-medium text-white">{item.file_name ?? 'Untitled upload'}</h3>
+                      <p className="text-sm text-slate-400">{item.status ?? 'processed'}</p>
                     </div>
+                    <FileText className="h-4 w-4 text-slate-500" />
+                  </div>
+                  {item.extracted_text ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{item.extracted_text}</p> : null}
+                </article>
+              ))
+            )}
+          </div>
 
-                    {/* Result Column */}
-                    <Card className="flex flex-col">
-                        <CardHeader>
-                            <CardTitle>3. Action Center</CardTitle>
-                            <CardDescription>Extracted text results and tools.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col space-y-4">
-                            <div className="relative flex-1">
-                                <Textarea
-                                    readOnly={!extractedText}
-                                    value={isLoading ? 'Analyzing image...' : extractedText}
-                                    onChange={(e) => setExtractedText(e.target.value)}
-                                    placeholder="Extracted text will appear here."
-                                    className="h-full min-h-[300px] resize-none"
-                                />
-                                {extractedText && (
-                                    <Button size="icon" variant="ghost" className="absolute top-2 right-2" onClick={() => { navigator.clipboard.writeText(extractedText); toast({ title: "Copied!" }); }}>
-                                        <ClipboardCopy className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-
-                            {extractedText && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Button variant="secondary" onClick={handleSaveToHistory} disabled={isSaving}>
-                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Save to History
-                                    </Button>
-                                    <Button variant="secondary" onClick={() => handlePrint(extractedText, contentType)}>
-                                        <Printer className="mr-2 h-4 w-4" /> Print
-                                    </Button>
-                                    <Button variant="secondary" onClick={() => {
-                                        router.push('/autograding');
-                                    }}>
-                                        <ClipboardCheck className="mr-2 h-4 w-4" /> Autograde
-                                    </Button>
-                                    {userProfile?.role === 'teacher' && (
-                                        <Dialog open={isSendOpen} onOpenChange={setIsSendOpen}>
-                                            <DialogTrigger asChild>
-                                                <Button variant="secondary">
-                                                    <GraduationCap className="mr-2 h-4 w-4" /> Send to Learner
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader>
-                                                    <DialogTitle>File to Learner Record</DialogTitle>
-                                                    <DialogDescription>Select a student to add this to their academic history.</DialogDescription>
-                                                </DialogHeader>
-                                                <div className="space-y-4 py-4">
-                                                    <Label>Select Student</Label>
-                                                    <Select value={selectedLearnerId} onValueChange={setSelectedLearnerId}>
-                                                        <SelectTrigger><SelectValue placeholder="Choose learner..." /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {allLearners?.map(l => <SelectItem key={l.id} value={l.id}>{l.firstName} {l.lastName}</SelectItem>)}
-                                                            {(!allLearners || allLearners.length === 0) && <SelectItem value="none" disabled>No students found</SelectItem>}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <DialogFooter>
-                                                    <Button variant="outline" onClick={() => setIsSendOpen(false)}>Cancel</Button>
-                                                    <Button onClick={handleSendToLearner} disabled={!selectedLearnerId || isSendingToLearner}>
-                                                        {isSendingToLearner ? <Loader2 className="h-4 w-4 animate-spin" /> : 'File Record'}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    )}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* History Section */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <History className="h-5 w-5 text-primary" />
-                            <CardTitle>Capture History</CardTitle>
-                        </div>
-                        <CardDescription>Your recently scanned documents and notes.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {!ocrHistory || ocrHistory.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                                    No saved items yet.
-                                </div>
-                            ) : (
-                                ocrHistory.map(item => (
-                                    <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors gap-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-md">
-                                                <FileText className="h-5 w-5 text-primary" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">{item.contentType}</p>
-                                                <p className="text-xs text-muted-foreground">{item.createdAt?.toDate().toLocaleString()}</p>
-                                                <p className="text-sm line-clamp-1 mt-1">{item.text}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <Button variant="ghost" size="icon" onClick={() => {
-                                                setIsEditingId(item.id);
-                                                setEditingText(item.text);
-                                            }}><Edit3 className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handlePrint(item.text, item.contentType)}><Printer className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Edit Dialog */}
-                <Dialog open={!!isEditingId} onOpenChange={(open) => !open && setIsEditingId(null)}>
-                    <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
-                        <DialogHeader><DialogTitle>Edit Capture</DialogTitle></DialogHeader>
-                        <div className="flex-1 py-4">
-                            <Textarea 
-                                className="h-full resize-none" 
-                                value={editedText} 
-                                onChange={(e) => setEditingText(e.target.value)}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsEditingId(null)}>Cancel</Button>
-                            <Button onClick={handleUpdate}>Update Changes</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
-        </AppLayout>
-    );
+          <Link href="/my-classes" className="mt-5 inline-flex text-sm text-indigo-300 transition hover:text-indigo-200">
+            View classes
+          </Link>
+        </section>
+      </div>
+    </main>
+  );
 }

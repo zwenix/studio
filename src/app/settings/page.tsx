@@ -1,300 +1,246 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { AppLayout } from '@/components/app-layout';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useAuth, useStorage, useMemoFirebase } from "@/lib/supabase";
-import { doc, setDoc } // firebase/firestore removed - migrated to Supabase;
-import { updateProfile } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Cog, Save, User, Building, Bot, Camera } from 'lucide-react';
-import type { User as UserProfile, Teacher } from '@/lib/types';
+import Link from 'next/link';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Bot, Camera, Cog, Loader2, Save, User, Building } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
 
+type ProfileRecord = {
+  id: string;
+  full_name?: string;
+  school_name?: string;
+  bio?: string;
+  role?: string;
+  avatar_url?: string;
+};
 
 export default function SettingsPage() {
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
-  const storage = useStorage();
-  const { toast } = useToast();
-
-  const userRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userData, isLoading: isUserDocLoading } = useDoc<UserProfile>(userRef);
-
-  const teacherRef = useMemoFirebase(() => (user && userData?.role === 'teacher') ? doc(firestore, 'teachers', user.uid) : null, [firestore, user, userData]);
-  const { data: teacherData, isLoading: isTeacherLoading } = useDoc<Teacher>(teacherRef);
-
-  // User Profile State
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [bio, setBio] = useState('');
+  const [role, setRole] = useState('teacher');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Teacher Profile State
-  const [school, setSchool] = useState('');
-  const [signatureUrl, setSignatureUrl] = useState('');
-
-  // AI Settings State
-  const [aiDifficultyAdaptation, setAiDifficultyAdaptation] = useState(false);
-  const [culturalContextIntegration, setCulturalContextIntegration] = useState(false);
-  const [parentNotifications, setParentNotifications] = useState(false);
-
-  const [isSaving, setIsSaving] = useState(false);
-  const isLoading = isUserLoading || isUserDocLoading || isTeacherLoading;
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
-    if (userData) {
-      setFirstName(userData.firstName || '');
-      setLastName(userData.lastName || '');
-      setPhoneNumber(userData.phoneNumber || '');
-      setAvatarUrl(userData.avatarUrl || user?.photoURL || '');
-    } else if (user) {
-        setAvatarUrl(user.photoURL || '');
-    }
-    if (teacherData) {
-      setSchool(teacherData.school || '');
-      setSignatureUrl(teacherData.signatureUrl || '');
-      setAiDifficultyAdaptation(teacherData.aiDifficultyAdaptation ?? false);
-      setCulturalContextIntegration(teacherData.culturalContextIntegration ?? false);
-      setParentNotifications(teacherData.parentNotifications ?? false);
-    }
-  }, [userData, teacherData, user]);
+    let active = true;
 
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
+    async function loadProfile() {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0 || !user || !storage || !userRef) {
+      if (!active) {
+        return;
+      }
+
+      if (authError || !authData.user) {
+        setError('Please sign in to manage settings.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        setError(profileError.message);
+      } else if (profileData) {
+        const profile = profileData as ProfileRecord;
+        setFullName(profile.full_name ?? authData.user.user_metadata?.full_name ?? '');
+        setSchoolName(profile.school_name ?? '');
+        setBio(profile.bio ?? '');
+        setRole(profile.role ?? 'teacher');
+        setAvatarUrl(profile.avatar_url ?? '');
+      } else {
+        setFullName(authData.user.user_metadata?.full_name ?? '');
+      }
+
+      setLoading(false);
+    }
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setMessage('');
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      setError('You must be signed in to save settings.');
+      setSaving(false);
       return;
     }
-    const file = event.target.files[0];
-    setIsUploading(true);
+
+    let nextAvatarUrl = avatarUrl;
 
     try {
-      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      if (avatarFile) {
+        const filePath = 'avatars/' + authData.user.id + '/' + Date.now() + '-' + avatarFile.name;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
 
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      }
-      await setDoc(userRef, { avatarUrl: downloadURL }, { merge: true });
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
 
-      setAvatarUrl(downloadURL);
-      toast({ title: 'Profile picture updated!' });
-    } catch (error: any) {
-      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const getInitials = () => {
-    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
-  };
-
-  const handleSaveSettings = async () => {
-    if (!user || !userRef || !auth.currentUser) {
-      toast({ title: 'Not logged in', variant: 'destructive' });
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const displayName = `${firstName} ${lastName}`.trim();
-
-      // Update Firebase Auth profile
-      if (auth.currentUser.displayName !== displayName) {
-          await updateProfile(auth.currentUser, { displayName });
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        nextAvatarUrl = data.publicUrl;
       }
 
-      // Update user document in Firestore
-      await setDoc(userRef, { 
-        firstName,
-        lastName,
-        phoneNumber,
-      }, { merge: true });
+      const { error: profileError } = await supabase.from('profiles').upsert([
+        {
+          id: authData.user.id,
+          full_name: fullName,
+          school_name: schoolName,
+          bio,
+          role,
+          avatar_url: nextAvatarUrl,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
 
-      // Update teacher document if applicable
-      if (userData?.role === 'teacher' && teacherRef) {
-        await setDoc(teacherRef, { 
-            school,
-            signatureUrl,
-            aiDifficultyAdaptation,
-            culturalContextIntegration,
-            parentNotifications
-        }, { merge: true });
+      if (profileError) {
+        throw new Error(profileError.message);
       }
 
-      toast({
-        title: 'Settings Saved!',
-        description: 'Your settings have been successfully updated.',
+      const { error: updateUserError } = await supabase.auth.updateUser({
+        data: {
+          full_name: fullName,
+          school_name: schoolName,
+          bio,
+          role,
+          avatar_url: nextAvatarUrl,
+        },
       });
-    } catch (error: any) {
-      console.error('Failed to save settings:', error);
-      toast({
-        title: 'Error Saving Settings',
-        description: error.message || 'Could not save your settings.',
-        variant: 'destructive',
-      });
+
+      if (updateUserError) {
+        throw new Error(updateUserError.message);
+      }
+
+      setAvatarUrl(nextAvatarUrl);
+      setMessage('Settings saved successfully.');
+      setAvatarFile(null);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to save settings.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
-
-  if (isLoading) {
-    return (
-        <AppLayout>
-            <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        </AppLayout>
-    );
-  }
 
   return (
-    <AppLayout>
-      <div className="flex-1 space-y-8 p-4 sm:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-          <Cog className="mr-3 h-8 w-8" />
-          Settings
-        </h1>
-        
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-8">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center"><User className="mr-2"/> Profile Picture</CardTitle>
-                        <CardDescription>Update your avatar.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center gap-6">
-                        <div className="relative">
-                            <Avatar className="h-24 w-24 border">
-                                <AvatarImage src={avatarUrl} alt="User avatar" />
-                                <AvatarFallback>{getInitials()}</AvatarFallback>
-                            </Avatar>
-                            <Button onClick={handleFileSelect} disabled={isUploading} size="icon" className="absolute -bottom-2 -right-2 rounded-full border-2 border-background">
-                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-                            </Button>
-                            <Input ref={fileInputRef} type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleFileChange} />
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Click the camera icon to upload a new photo.
-                            <br />
-                            Recommended size: 200x200px.
-                        </p>
-                    </CardContent>
-                </Card>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <Cog className="h-4 w-4" />
+            <span>Settings</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Profile and workspace settings</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page replaces the broken Firebase profile update path with direct Supabase auth and storage updates.
+          </p>
+        </header>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center"><User className="mr-2"/> Personal Information</CardTitle>
-                        <CardDescription>Update your personal details.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="firstName">First Name</Label>
-                                <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)} disabled={isSaving}/>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lastName">Last Name</Label>
-                                <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} disabled={isSaving}/>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" value={user?.email || ''} disabled readOnly />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="phoneNumber">Phone Number</Label>
-                            <Input id="phoneNumber" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} disabled={isSaving} placeholder="e.g. +27 12 345 6789"/>
-                        </div>
-                    </CardContent>
-                </Card>
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+        {message ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{message}</div> : null}
 
-                {userData?.role === 'teacher' && (
-                    <>
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex items-center"><Building className="mr-2"/> Teacher Profile</CardTitle>
-                            <CardDescription>Manage teacher-specific information.</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="school">School Name</Label>
-                                <Input id="school" value={school} onChange={e => setSchool(e.target.value)} disabled={isSaving} placeholder="e.g. Springfield High School" />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="signature-url">Signature/Stamp Image URL</Label>
-                                <Input id="signature-url" placeholder="https://example.com/signature.png" value={signatureUrl} onChange={(e) => setSignatureUrl(e.target.value)} disabled={isSaving} />
-                                <p className="text-sm text-muted-foreground">
-                                    Host your signature on a service like <a href="https://imgbb.com/" target="_blank" rel="noopener noreferrer" className="underline">imgbb.com</a> and paste the URL here.
-                                </p>
-                              </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="flex items-center"><Bot className="mr-2"/> AI Configuration</CardTitle>
-                            <CardDescription>Customize how the AI assistant behaves.</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
-                             <div className="flex items-center justify-between">
-                                <Label htmlFor="ai-difficulty" className="flex flex-col space-y-1">
-                                    <span>AI Difficulty Adaptation</span>
-                                    <span className="font-normal leading-snug text-muted-foreground text-xs">Adjust content difficulty based on student performance.</span>
-                                </Label>
-                                <Switch id="ai-difficulty" checked={aiDifficultyAdaptation} onCheckedChange={setAiDifficultyAdaptation} disabled={isSaving} />
-                             </div>
-                             <Separator />
-                             <div className="flex items-center justify-between">
-                                <Label htmlFor="cultural-context" className="flex flex-col space-y-1">
-                                    <span>Cultural Context Integration</span>
-                                    <span className="font-normal leading-snug text-muted-foreground text-xs">Use local examples and cultural contexts in lessons.</span>
-                                </Label>
-                                <Switch id="cultural-context" checked={culturalContextIntegration} onCheckedChange={setCulturalContextIntegration} disabled={isSaving}/>
-                             </div>
-                              <Separator />
-                             <div className="flex items-center justify-between">
-                                <Label htmlFor="parent-notifications" className="flex flex-col space-y-1">
-                                    <span>Parent Notifications</span>
-                                    <span className="font-normal leading-snug text-muted-foreground text-xs">Auto-notify parents of progress updates.</span>
-                                </Label>
-                                <Switch id="parent-notifications" checked={parentNotifications} onCheckedChange={setParentNotifications} disabled={isSaving}/>
-                             </div>
-                          </CardContent>
-                        </Card>
-                    </>
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading profile...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="grid gap-5 md:grid-cols-[1fr_1.2fr]">
+              <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-300">
+                    <User className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-400">Avatar</p>
+                    <p className="text-sm text-white">Upload a new profile image</p>
+                  </div>
+                </div>
+
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile avatar" className="h-40 w-full rounded-2xl object-cover" />
+                ) : (
+                  <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-slate-700 text-sm text-slate-500">
+                    No avatar uploaded yet
+                  </div>
                 )}
+
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900">
+                  <Camera className="h-4 w-4" />
+                  <span>{avatarFile ? avatarFile.name : 'Choose avatar file'}</span>
+                  <input type="file" accept="image/*" onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)} className="hidden" />
+                </label>
+
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Bot className="h-4 w-4" />
+                  Supabase Storage bucket: avatars
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Full name</span>
+                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="flex items-center gap-2 text-slate-300"><Building className="h-4 w-4" />School name</span>
+                  <input value={schoolName} onChange={(event) => setSchoolName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Role</span>
+                  <select value={role} onChange={(event) => setRole(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500">
+                    <option value="teacher">Teacher</option>
+                    <option value="student">Student</option>
+                    <option value="parent">Parent</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Bio</span>
+                  <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={5} className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+              </div>
             </div>
 
-            <div className="lg:col-span-1">
-                 <Button onClick={handleSaveSettings} disabled={isSaving || isLoading} className="w-full text-lg py-6">
-                    {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                    Save All Settings
-                 </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save settings'}
+              </button>
+
+              <Link href="/" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+                Cancel
+              </Link>
             </div>
-        </div>
+          </form>
+        )}
       </div>
-    </AppLayout>
+    </main>
   );
 }

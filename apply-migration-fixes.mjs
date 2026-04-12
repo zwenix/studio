@@ -19,6 +19,61 @@ async function writeFile(relativePath, content) {
   console.log(`Wrote ${relativePath}`);
 }
 
+const auditRules = [
+  { label: 'firebase/storage', regex: /firebase\/storage/ },
+  { label: 'firebase/auth', regex: /firebase\/auth/ },
+  { label: 'firebase/firestore', regex: /firebase\/firestore/ },
+  { label: 'genkit', regex: /\bgenkit\b/ },
+  { label: 'broken firebase comment', regex: /\/\/\s*firebase\/(storage|auth|firestore) removed - migrated to Supabase;/ },
+];
+
+async function walkSourceFiles(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const results = [];
+
+  for (const entry of entries) {
+    const absolutePath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      results.push(...(await walkSourceFiles(absolutePath)));
+      continue;
+    }
+
+    if (/\.(ts|tsx|js|jsx)$/.test(entry.name)) {
+      results.push(absolutePath);
+    }
+  }
+
+  return results;
+}
+
+async function auditSourceTree() {
+  const srcRoot = path.join(root, 'src');
+
+  try {
+    await fs.access(srcRoot);
+  } catch {
+    return [];
+  }
+
+  const files = await walkSourceFiles(srcRoot);
+  const findings = [];
+
+  for (const absolutePath of files) {
+    const content = await fs.readFile(absolutePath, 'utf8');
+    const matches = auditRules.filter((rule) => rule.regex.test(content)).map((rule) => rule.label);
+
+    if (matches.length > 0) {
+      findings.push({
+        path: path.relative(root, absolutePath),
+        matches,
+      });
+    }
+  }
+
+  return findings;
+}
+
 const files = [
   {
     path: 'src/lib/content-storage.ts',
@@ -1556,10 +1611,848 @@ export default function ProgressReportsPage() {
 }
 `,
   },
+  {
+    path: 'src/app/role-selection/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { GraduationCap, Loader2, School, Shield, Sparkles, Star, Users, type LucideIcon } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type Role = 'teacher' | 'student' | 'parent' | 'admin';
+
+type RoleOption = {
+  value: Role;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+const ROLE_OPTIONS: RoleOption[] = [
+  {
+    value: 'teacher',
+    title: 'Teacher',
+    description: 'Create lessons, manage classes, and track learner progress.',
+    icon: GraduationCap,
+  },
+  {
+    value: 'student',
+    title: 'Student',
+    description: 'View class material, assignments, and class updates.',
+    icon: School,
+  },
+  {
+    value: 'parent',
+    title: 'Parent',
+    description: 'Follow learner progress and school communication.',
+    icon: Users,
+  },
+  {
+    value: 'admin',
+    title: 'Admin',
+    description: 'Oversee settings, approvals, and the school workspace.',
+    icon: Shield,
+  },
+];
+
+export default function RoleSelectionPage() {
+  const router = useRouter();
+  const [selectedRole, setSelectedRole] = useState<Role>('teacher');
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      const { data, error: userError } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      if (userError) {
+        setError(userError.message);
+      }
+
+      setEmail(data.user?.email ?? '');
+      setCheckingUser(false);
+    }
+
+    loadUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleContinue = async () => {
+    setLoading(true);
+    setError('');
+
+    const { data, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !data.user) {
+      setError('Please sign in before choosing a role.');
+      setLoading(false);
+      return;
+    }
+
+    const payload = {
+      id: data.user.id,
+      email: data.user.email ?? email,
+      role: selectedRole,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: upsertError } = await supabase.from('profiles').upsert([payload]);
+
+    if (upsertError) {
+      setError(upsertError.message);
+    } else {
+      router.push('/');
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <Sparkles className="h-4 w-4" />
+            <span>Role setup</span>
+            <Star className="h-4 w-4" />
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Choose your workspace role</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This replaces the broken Firebase write path and saves the selected role directly to Supabase.
+          </p>
+          {email ? <p className="text-sm text-slate-300">Signed in as {email}</p> : null}
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        <section className="grid gap-3 md:grid-cols-2">
+          {ROLE_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            const active = selectedRole === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSelectedRole(option.value)}
+                className={
+                  'rounded-3xl border p-5 text-left transition ' +
+                  (active
+                    ? 'border-indigo-500 bg-indigo-500/10'
+                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-600')
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="h-5 w-5 text-indigo-300" />
+                  <div>
+                    <h2 className="font-semibold text-white">{option.title}</h2>
+                    <p className="text-sm text-slate-400">{option.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </section>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={loading || checkingUser}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+            {checkingUser ? 'Checking sign in...' : 'Save role'}
+          </button>
+
+          <Link href="/signup" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+            Back to sign up
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/settings/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Bot, Camera, Cog, Loader2, Save, User, Building } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ProfileRecord = {
+  id: string;
+  full_name?: string;
+  school_name?: string;
+  bio?: string;
+  role?: string;
+  avatar_url?: string;
+};
+
+export default function SettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [bio, setBio] = useState('');
+  const [role, setRole] = useState('teacher');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      if (authError || !authData.user) {
+        setError('Please sign in to manage settings.');
+        setLoading(false);
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        setError(profileError.message);
+      } else if (profileData) {
+        const profile = profileData as ProfileRecord;
+        setFullName(profile.full_name ?? authData.user.user_metadata?.full_name ?? '');
+        setSchoolName(profile.school_name ?? '');
+        setBio(profile.bio ?? '');
+        setRole(profile.role ?? 'teacher');
+        setAvatarUrl(profile.avatar_url ?? '');
+      } else {
+        setFullName(authData.user.user_metadata?.full_name ?? '');
+      }
+
+      setLoading(false);
+    }
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setMessage('');
+
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      setError('You must be signed in to save settings.');
+      setSaving(false);
+      return;
+    }
+
+    let nextAvatarUrl = avatarUrl;
+
+    try {
+      if (avatarFile) {
+        const filePath = 'avatars/' + authData.user.id + '/' + Date.now() + '-' + avatarFile.name;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        nextAvatarUrl = data.publicUrl;
+      }
+
+      const { error: profileError } = await supabase.from('profiles').upsert([
+        {
+          id: authData.user.id,
+          full_name: fullName,
+          school_name: schoolName,
+          bio,
+          role,
+          avatar_url: nextAvatarUrl,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (profileError) {
+        throw new Error(profileError.message);
+      }
+
+      const { error: updateUserError } = await supabase.auth.updateUser({
+        data: {
+          full_name: fullName,
+          school_name: schoolName,
+          bio,
+          role,
+          avatar_url: nextAvatarUrl,
+        },
+      });
+
+      if (updateUserError) {
+        throw new Error(updateUserError.message);
+      }
+
+      setAvatarUrl(nextAvatarUrl);
+      setMessage('Settings saved successfully.');
+      setAvatarFile(null);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to save settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <Cog className="h-4 w-4" />
+            <span>Settings</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Profile and workspace settings</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page replaces the broken Firebase profile update path with direct Supabase auth and storage updates.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+        {message ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{message}</div> : null}
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading profile...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="grid gap-5 md:grid-cols-[1fr_1.2fr]">
+              <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-300">
+                    <User className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-400">Avatar</p>
+                    <p className="text-sm text-white">Upload a new profile image</p>
+                  </div>
+                </div>
+
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile avatar" className="h-40 w-full rounded-2xl object-cover" />
+                ) : (
+                  <div className="flex h-40 items-center justify-center rounded-2xl border border-dashed border-slate-700 text-sm text-slate-500">
+                    No avatar uploaded yet
+                  </div>
+                )}
+
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900">
+                  <Camera className="h-4 w-4" />
+                  <span>{avatarFile ? avatarFile.name : 'Choose avatar file'}</span>
+                  <input type="file" accept="image/*" onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)} className="hidden" />
+                </label>
+
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Bot className="h-4 w-4" />
+                  Supabase Storage bucket: avatars
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Full name</span>
+                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="flex items-center gap-2 text-slate-300"><Building className="h-4 w-4" />School name</span>
+                  <input value={schoolName} onChange={(event) => setSchoolName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Role</span>
+                  <select value={role} onChange={(event) => setRole(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500">
+                    <option value="teacher">Teacher</option>
+                    <option value="student">Student</option>
+                    <option value="parent">Parent</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Bio</span>
+                  <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={5} className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save settings'}
+              </button>
+
+              <Link href="/" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+                Cancel
+              </Link>
+            </div>
+          </form>
+        )}
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/signup/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { type FormEvent, useState } from 'react';
+import { Loader2, Sparkles, Star } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      await supabase.from('profiles').upsert([
+        {
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          role: 'teacher',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    }
+
+    setMessage('Account created. Continue by choosing your role.');
+    router.push('/role-selection');
+    setLoading(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <Sparkles className="h-4 w-4" />
+            <span>Create account</span>
+            <Star className="h-4 w-4" />
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Create your Supabase account</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This replaces the Firebase auth call with a direct Supabase sign-up flow and routes users to role selection.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+        {message ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{message}</div> : null}
+
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Full name</span>
+            <input value={fullName} onChange={(event) => setFullName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Email</span>
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Password</span>
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Confirm password</span>
+            <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {loading ? 'Creating account...' : 'Create account'}
+            </button>
+
+            <Link href="/" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+              Back home
+            </Link>
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/students/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Edit2, GraduationCap, Loader2, Mail, UserPlus, Users } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type StudentRecord = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  grade?: string;
+  guardian_name?: string;
+  created_at?: string;
+};
+
+export default function StudentsPage() {
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [grade, setGrade] = useState('');
+  const [guardianName, setGuardianName] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadStudents() {
+      const { data, error: loadError } = await supabase.from('learners').select('*').order('created_at', { ascending: false });
+
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        setError(loadError.message);
+        setStudents([]);
+      } else {
+        setStudents((data ?? []) as StudentRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadStudents();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filteredStudents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return students;
+    }
+
+    return students.filter((student) => {
+      const haystack = [student.first_name, student.last_name, student.full_name, student.email, student.grade, student.guardian_name]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [search, students]);
+
+  const clearForm = () => {
+    setEditingId(null);
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setGrade('');
+    setGuardianName('');
+  };
+
+  const startEdit = (student: StudentRecord) => {
+    setEditingId(student.id);
+    setFirstName(student.first_name ?? '');
+    setLastName(student.last_name ?? '');
+    setEmail(student.email ?? '');
+    setGrade(student.grade ?? '');
+    setGuardianName(student.guardian_name ?? '');
+  };
+
+  const refreshStudents = async () => {
+    const { data, error: loadError } = await supabase.from('learners').select('*').order('created_at', { ascending: false });
+
+    if (loadError) {
+      setError(loadError.message);
+      return;
+    }
+
+    setStudents((data ?? []) as StudentRecord[]);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+
+    const fullName = (firstName + ' ' + lastName).trim();
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      full_name: fullName,
+      email,
+      grade,
+      guardian_name: guardianName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const request = editingId
+      ? supabase.from('learners').update(payload).eq('id', editingId)
+      : supabase.from('learners').insert([payload]);
+
+    const { error: saveError } = await request;
+
+    if (saveError) {
+      setError(saveError.message);
+    } else {
+      clearForm();
+      await refreshStudents();
+    }
+
+    setSaving(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <GraduationCap className="h-4 w-4" />
+            <span>Students</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Manage learners in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page removes the broken Firebase import fragment and gives you a simple learner directory with add and edit support.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        <section className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+          <form onSubmit={handleSubmit} className="grid gap-4 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="flex items-center gap-3 text-slate-300">
+              <UserPlus className="h-4 w-4" />
+              <span className="text-sm font-semibold uppercase tracking-[0.25em]">{editingId ? 'Edit learner' : 'Add learner'}</span>
+            </div>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">First name</span>
+              <input value={firstName} onChange={(event) => setFirstName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Last name</span>
+              <input value={lastName} onChange={(event) => setLastName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Email</span>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Grade</span>
+              <input value={grade} onChange={(event) => setGrade(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Guardian name</span>
+              <input value={guardianName} onChange={(event) => setGuardianName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={saving || firstName.trim().length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                {saving ? 'Saving...' : editingId ? 'Update learner' : 'Add learner'}
+              </button>
+
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-slate-300">
+                <Users className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Learner list</span>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-300">
+                <Mail className="h-4 w-4" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search learners" className="bg-transparent outline-none placeholder:text-slate-500" />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {loading ? (
+                <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading learners...
+                </div>
+              ) : filteredStudents.length === 0 ? (
+                <p className="text-sm text-slate-400">No learners found.</p>
+              ) : (
+                filteredStudents.map((student) => (
+                  <article key={student.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      {(() => {
+                        const displayName = student.full_name ?? (((student.first_name ?? '') + ' ' + (student.last_name ?? '')).trim() || 'Unnamed learner');
+
+                        return (
+                          <>
+                            <h3 className="font-medium text-white">{displayName}</h3>
+                            <p className="text-sm text-slate-400">Grade {student.grade ?? 'N/A'}</p>
+                            {student.email ? <p className="mt-2 text-sm text-slate-400">{student.email}</p> : null}
+                            {student.guardian_name ? <p className="text-sm text-slate-500">Guardian: {student.guardian_name}</p> : null}
+                          </>
+                        );
+                      })()}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => startEdit(student)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        Edit
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <Link href="/my-classes" className="mt-5 inline-flex text-sm text-indigo-300 transition hover:text-indigo-200">
+              Back to classes
+            </Link>
+          </section>
+        </section>
+      </div>
+    </main>
+  );
+}
+`,
+  },
 ];
 
 for (const file of files) {
   await writeFile(file.path, file.content);
+}
+
+const findings = await auditSourceTree();
+
+if (findings.length > 0) {
+  console.warn('Residual migration markers were found in source files:');
+
+  for (const finding of findings) {
+    console.warn(`- ${finding.path}: ${finding.matches.join(', ')}`);
+  }
+} else {
+  console.log('Audit passed: no leftover Firebase or Genkit markers found in src/.');
 }
 
 console.log('Migration fixes written successfully.');

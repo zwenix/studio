@@ -87,4 +87,5 @@ export async function generateLessonStudio(input: LessonStudioInput) {
 }
 
 export const generateLessonStudioContent = generateLessonStudio;
+export const generateLessonStudioFlow = generateLessonStudio;
 export default generateLessonStudio;

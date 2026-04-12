@@ -88,6 +88,8 @@ type UploadOptions = {
   contentType?: string;
 };
 
+type UploadInput = File | Blob | ArrayBuffer | string;
+
 let supabaseInstance: SupabaseClient | null = null;
 
 function getSupabaseClient(): SupabaseClient {
@@ -120,20 +122,33 @@ function createLazyProxy<T extends object>(getTarget: () => T): T {
   return new Proxy({} as T, handler);
 }
 
+function toBlob(file: UploadInput): Blob {
+  if (typeof file === 'string') {
+    return new Blob([file], { type: 'text/plain' });
+  }
+
+  if (file instanceof Blob) {
+    return file;
+  }
+
+  return new Blob([file]);
+}
+
 export const supabase = createLazyProxy(getSupabaseClient) as SupabaseClient;
 export const storage = createLazyProxy(() => getSupabaseClient().storage) as SupabaseClient['storage'];
 
 export async function uploadContent(
   bucket: string,
   path: string,
-  file: File | Blob,
+  file: UploadInput,
   options: UploadOptions = {}
 ): Promise<string> {
   const client = getSupabaseClient();
-  const { error } = await client.storage.from(bucket).upload(path, file, {
+  const blob = toBlob(file);
+  const { error } = await client.storage.from(bucket).upload(path, blob, {
     cacheControl: options.cacheControl ?? '3600',
     upsert: options.upsert ?? true,
-    contentType: options.contentType,
+    contentType: options.contentType || blob.type || undefined,
   });
 
   if (error) {
@@ -142,6 +157,15 @@ export async function uploadContent(
 
   const { data } = client.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
+}
+
+export async function saveContentSafely(
+  bucket: string,
+  path: string,
+  file: UploadInput,
+  options: UploadOptions = {}
+): Promise<string> {
+  return uploadContent(bucket, path, file, options);
 }
 
 export function getContentUrl(bucket: string, path: string): string {
@@ -162,6 +186,177 @@ export async function deleteContent(bucket: string, pathOrPaths: string | string
   }
 }
 
+export default supabase;
+`
+  },
+  {
+    path: 'src/lib/supabase/client.ts',
+    content: `import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+let supabaseInstance: SupabaseClient | null = null;
+
+function createLazyProxy<T extends object>(getTarget: () => T): T {
+  const handler: ProxyHandler<T> = {
+    get(_target, prop, receiver) {
+      const target = getTarget();
+      const value = Reflect.get(target as object, prop, receiver);
+
+      if (typeof value === 'function') {
+        return value.bind(target);
+      }
+
+      return value;
+    },
+  };
+
+  return new Proxy({} as T, handler);
+}
+
+export function getSupabaseClient(): SupabaseClient {
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  return supabaseInstance;
+}
+
+export const supabase = createLazyProxy(getSupabaseClient) as SupabaseClient;
+export default supabase;
+`
+  },
+  {
+    path: 'src/lib/supabase/index.ts',
+    content: `'use client';
+
+import { useEffect, useMemo, useState, type DependencyList } from 'react';
+import type { Session, User } from '@supabase/supabase-js';
+import { deleteContent, getContentUrl, saveContentSafely, uploadContent } from '@/lib/content-storage';
+import { getSupabaseClient, supabase } from './client';
+
+type AsyncResource<T> = {
+  data: T;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+};
+
+type AuthState = {
+  client: ReturnType<typeof getSupabaseClient>;
+  session: Session | null;
+  user: User | null;
+  loading: boolean;
+  error: Error | null;
+};
+
+function buildStaticResource<T>(data: T): AsyncResource<T> {
+  return {
+    data,
+    loading: false,
+    error: null,
+    refetch: async () => {},
+  };
+}
+
+export function useAuth(): AuthState {
+  const client = getSupabaseClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    client.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!active) {
+          return;
+        }
+
+        if (sessionError) {
+          setError(sessionError);
+        }
+
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((thrown) => {
+        if (!active) {
+          return;
+        }
+
+        setError(thrown instanceof Error ? thrown : new Error('Unable to load auth session.'));
+        setLoading(false);
+      });
+
+    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) {
+        return;
+      }
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, [client]);
+
+  return {
+    client,
+    session,
+    user,
+    loading,
+    error,
+  };
+}
+
+export function useUser(): AuthState {
+  return useAuth();
+}
+
+export function useFirestore() {
+  return getSupabaseClient();
+}
+
+export function useStorage() {
+  const client = getSupabaseClient();
+
+  return {
+    storage: client.storage,
+    uploadContent,
+    saveContentSafely,
+    deleteContent,
+    getContentUrl,
+  };
+}
+
+export function useCollection<T = unknown>(..._args: unknown[]): AsyncResource<T[]> {
+  return useMemo(() => buildStaticResource<T[]>([]), []);
+}
+
+export function useDoc<T = unknown>(..._args: unknown[]): AsyncResource<T | null> {
+  return useMemo(() => buildStaticResource<T | null>(null), []);
+}
+
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+  return useMemo(factory, deps);
+}
+
+export { getSupabaseClient, supabase };
 export default supabase;
 `
   },
@@ -537,6 +732,7 @@ export async function generateLessonStudio(input: LessonStudioInput) {
 }
 
 export const generateLessonStudioContent = generateLessonStudio;
+export const generateLessonStudioFlow = generateLessonStudio;
 export default generateLessonStudio;
 `
   },

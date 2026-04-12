@@ -9,6 +9,8 @@ type UploadOptions = {
   contentType?: string;
 };
 
+type UploadInput = File | Blob | ArrayBuffer | string;
+
 let supabaseInstance: SupabaseClient | null = null;
 
 function getSupabaseClient(): SupabaseClient {
@@ -41,20 +43,33 @@ function createLazyProxy<T extends object>(getTarget: () => T): T {
   return new Proxy({} as T, handler);
 }
 
+function toBlob(file: UploadInput): Blob {
+  if (typeof file === 'string') {
+    return new Blob([file], { type: 'text/plain' });
+  }
+
+  if (file instanceof Blob) {
+    return file;
+  }
+
+  return new Blob([file]);
+}
+
 export const supabase = createLazyProxy(getSupabaseClient) as SupabaseClient;
 export const storage = createLazyProxy(() => getSupabaseClient().storage) as SupabaseClient['storage'];
 
 export async function uploadContent(
   bucket: string,
   path: string,
-  file: File | Blob,
+  file: UploadInput,
   options: UploadOptions = {}
 ): Promise<string> {
   const client = getSupabaseClient();
-  const { error } = await client.storage.from(bucket).upload(path, file, {
+  const blob = toBlob(file);
+  const { error } = await client.storage.from(bucket).upload(path, blob, {
     cacheControl: options.cacheControl ?? '3600',
     upsert: options.upsert ?? true,
-    contentType: options.contentType,
+    contentType: options.contentType || blob.type || undefined,
   });
 
   if (error) {
@@ -63,6 +78,15 @@ export async function uploadContent(
 
   const { data } = client.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
+}
+
+export async function saveContentSafely(
+  bucket: string,
+  path: string,
+  file: UploadInput,
+  options: UploadOptions = {}
+): Promise<string> {
+  return uploadContent(bucket, path, file, options);
 }
 
 export function getContentUrl(bucket: string, path: string): string {

@@ -1,212 +1,270 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { AppLayout } from '@/components/app-layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, UserPlus, Loader2, Edit2, Mail, GraduationCap } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/lib/supabase";
-import { collection, query, where, doc, setDoc, updateDoc, serverTimestamp, getDoc } // firebase/firestore removed - migrated to Supabase;
-import { useToast } from '@/hooks/use-toast';
-import type { User as UserProfile, Learner } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Link from 'next/link';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Edit2, GraduationCap, Loader2, Mail, UserPlus, Users } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type StudentRecord = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  grade?: string;
+  guardian_name?: string;
+  created_at?: string;
+};
 
 export default function StudentsPage() {
-  const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [grade, setGrade] = useState('');
+  const [guardianName, setGuardianName] = useState('');
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<UserProfile | null>(null);
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', grade: '' });
-  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
 
-  // Fetch all students
-  const studentsQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'student')), [firestore]);
-  const { data: students, isLoading: areStudentsLoading } = useCollection<UserProfile>(studentsQuery);
+    async function loadStudents() {
+      const { data, error: loadError } = await supabase.from('learners').select('*').order('created_at', { ascending: false });
 
-  const handleOpenDialog = (student: UserProfile | null = null) => {
-    if (student) {
-      setEditingStudent(student);
-      setFormData({ 
-        firstName: student.firstName || '', 
-        lastName: student.lastName || '', 
-        email: student.email || '',
-        grade: '' 
-      });
-      // Fetch grade from learners collection
-      getDoc(doc(firestore, 'learners', student.id)).then(snap => {
-        if (snap.exists()) {
-          setFormData(prev => ({ ...prev, grade: (snap.data() as Learner).grade }));
-        }
-      });
-    } else {
-      setEditingStudent(null);
-      setFormData({ firstName: '', lastName: '', email: '', grade: '' });
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        setError(loadError.message);
+        setStudents([]);
+      } else {
+        setStudents((data ?? []) as StudentRecord[]);
+      }
+
+      setLoading(false);
     }
-    setIsDialogOpen(true);
+
+    loadStudents();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filteredStudents = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return students;
+    }
+
+    return students.filter((student) => {
+      const haystack = [student.first_name, student.last_name, student.full_name, student.email, student.grade, student.guardian_name]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [search, students]);
+
+  const clearForm = () => {
+    setEditingId(null);
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setGrade('');
+    setGuardianName('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.grade) {
-      toast({ title: 'Required Fields', description: 'Please fill in all details including grade.', variant: 'destructive' });
+  const startEdit = (student: StudentRecord) => {
+    setEditingId(student.id);
+    setFirstName(student.first_name ?? '');
+    setLastName(student.last_name ?? '');
+    setEmail(student.email ?? '');
+    setGrade(student.grade ?? '');
+    setGuardianName(student.guardian_name ?? '');
+  };
+
+  const refreshStudents = async () => {
+    const { data, error: loadError } = await supabase.from('learners').select('*').order('created_at', { ascending: false });
+
+    if (loadError) {
+      setError(loadError.message);
       return;
     }
 
-    setIsLoading(true);
-    try {
-      if (editingStudent) {
-        // Update existing student
-        const userRef = doc(firestore, 'users', editingStudent.id);
-        await updateDoc(userRef, {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-        });
-        
-        const learnerRef = doc(firestore, 'learners', editingStudent.id);
-        await setDoc(learnerRef, { grade: formData.grade }, { merge: true });
+    setStudents((data ?? []) as StudentRecord[]);
+  };
 
-        toast({ title: 'Student updated successfully' });
-      } else {
-        // Create new student record
-        const newStudentId = doc(collection(firestore, 'users')).id;
-        const userRef = doc(firestore, 'users', newStudentId);
-        
-        await setDoc(userRef, {
-          id: newStudentId,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          role: 'student',
-          createdAt: serverTimestamp(),
-        });
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
 
-        const learnerRef = doc(firestore, 'learners', newStudentId);
-        await setDoc(learnerRef, {
-          id: newStudentId,
-          userId: newStudentId,
-          grade: formData.grade,
-          learningPreferences: '',
-        });
+    const fullName = (firstName + ' ' + lastName).trim();
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      full_name: fullName,
+      email,
+      grade,
+      guardian_name: guardianName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-        toast({ title: 'Student record created!' });
-      }
-      setIsDialogOpen(false);
-    } catch (error: any) {
-      console.error("Student management error:", error);
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
+    const request = editingId
+      ? supabase.from('learners').update(payload).eq('id', editingId)
+      : supabase.from('learners').insert([payload]);
+
+    const { error: saveError } = await request;
+
+    if (saveError) {
+      setError(saveError.message);
+    } else {
+      clearForm();
+      await refreshStudents();
     }
+
+    setSaving(false);
   };
 
   return (
-    <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-            <Users className="mr-3 h-8 w-8" />
-            Student Management
-          </h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => handleOpenDialog()}><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingStudent ? 'Edit Student' : 'Add New Student'}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} placeholder="John" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} placeholder="Doe" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="student@school.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="grade">Grade</Label>
-                  <Select value={formData.grade} onValueChange={v => setFormData({...formData, grade: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select Grade" /></SelectTrigger>
-                    <SelectContent>
-                      {['R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
-                        <SelectItem key={g} value={g}>Grade {g}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? <Loader2 className="animate-spin" /> : (editingStudent ? 'Update Student' : 'Create Student')}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <div className="flex items-center gap-2 text-sm text-indigo-300">
+            <GraduationCap className="h-4 w-4" />
+            <span>Students</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">Manage learners in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page removes the broken Firebase import fragment and gives you a simple learner directory with add and edit support.
+          </p>
+        </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>All Students</CardTitle>
-            <CardDescription>View and manage all registered students in the system.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {areStudentsLoading ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students?.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={s.avatarUrl} />
-                            <AvatarFallback>{s.firstName?.[0]}{s.lastName?.[0]}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{s.firstName} {s.lastName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{s.email}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(s)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {students?.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">No students found.</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        <section className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+          <form onSubmit={handleSubmit} className="grid gap-4 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="flex items-center gap-3 text-slate-300">
+              <UserPlus className="h-4 w-4" />
+              <span className="text-sm font-semibold uppercase tracking-[0.25em]">{editingId ? 'Edit learner' : 'Add learner'}</span>
+            </div>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">First name</span>
+              <input value={firstName} onChange={(event) => setFirstName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Last name</span>
+              <input value={lastName} onChange={(event) => setLastName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Email</span>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Grade</span>
+              <input value={grade} onChange={(event) => setGrade(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Guardian name</span>
+              <input value={guardianName} onChange={(event) => setGuardianName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={saving || firstName.trim().length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                {saving ? 'Saving...' : editingId ? 'Update learner' : 'Add learner'}
+              </button>
+
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-slate-300">
+                <Users className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Learner list</span>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-300">
+                <Mail className="h-4 w-4" />
+                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search learners" className="bg-transparent outline-none placeholder:text-slate-500" />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {loading ? (
+                <div className="flex items-center gap-3 text-sm text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading learners...
+                </div>
+              ) : filteredStudents.length === 0 ? (
+                <p className="text-sm text-slate-400">No learners found.</p>
+              ) : (
+                filteredStudents.map((student) => (
+                  <article key={student.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      {(() => {
+                        const displayName = student.full_name ?? (((student.first_name ?? '') + ' ' + (student.last_name ?? '')).trim() || 'Unnamed learner');
+
+                        return (
+                          <>
+                            <h3 className="font-medium text-white">{displayName}</h3>
+                            <p className="text-sm text-slate-400">Grade {student.grade ?? 'N/A'}</p>
+                            {student.email ? <p className="mt-2 text-sm text-slate-400">{student.email}</p> : null}
+                            {student.guardian_name ? <p className="text-sm text-slate-500">Guardian: {student.guardian_name}</p> : null}
+                          </>
+                        );
+                      })()}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => startEdit(student)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        Edit
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <Link href="/my-classes" className="mt-5 inline-flex text-sm text-indigo-300 transition hover:text-indigo-200">
+              Back to classes
+            </Link>
+          </section>
+        </section>
       </div>
-    </AppLayout>
+    </main>
   );
 }

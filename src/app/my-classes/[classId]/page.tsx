@@ -1,358 +1,271 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowRight, Loader2, UserPlus, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/lib/supabase";
-import { collection, query, where, doc, getDoc, updateDoc, arrayUnion, arrayRemove, getDocs, documentId } // firebase/firestore removed - migrated to Supabase;
-import type { Class, Assignment, Content, User } from '@/lib/types';
-import { useEffect, useState, useMemo } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, BookOpen, ClipboardList, Loader2, Save, PlusCircle } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
 
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+  teacher_name?: string;
+  description?: string;
+};
 
-function StudentClassView({ classId, userId }: { classId: string, userId: string }) {
-    const firestore = useFirestore();
-    const assignmentsQuery = useMemoFirebase(() => {
-        if (!userId || !classId) return null;
-        return query(
-        collection(firestore, 'classes', classId, 'assignments'),
-        where('learnerId', '==', userId)
-        );
-    }, [firestore, classId, userId]);
-    const { data: assignments, isLoading: areAssignmentsLoading, error } = useCollection<Assignment>(assignmentsQuery);
+type AssignmentRecord = {
+  id: string;
+  title?: string;
+  status?: string;
+  due_date?: string;
+  created_at?: string;
+};
 
-    const [assignmentsWithContent, setAssignmentsWithContent] = useState<(Assignment & { contentTitle?: string, contentTopic?: string })[]>([]);
-    
-    useEffect(() => {
-        if (assignments) {
-        const fetchContent = async () => {
-            const enhancedAssignments = await Promise.all(
-            assignments.map(async (assign) => {
-                if (assign.contentId) {
-                const contentSnap = await getDoc(doc(firestore, 'content', assign.contentId));
-                if (contentSnap.exists()) {
-                    const contentData = contentSnap.data() as Content;
-                    return { ...assign, contentTitle: contentData.topic, contentTopic: contentData.topic };
-                }
-                }
-                return assign;
-            })
-            );
-            setAssignmentsWithContent(enhancedAssignments);
-        };
-        fetchContent();
-        }
-    }, [assignments, firestore]);
-    
-    if (error) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-destructive">Error Loading Assignments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-destructive-foreground bg-destructive p-4 rounded-md">There was a problem fetching your assignments. Please contact your teacher.</p>
-                </CardContent>
-            </Card>
-        )
-    }
+export default function ClassDetailPage() {
+  const params = useParams<{ classId: string }>();
+  const classId = useMemo(() => {
+    const value = params?.classId;
+    return Array.isArray(value) ? value[0] : value ?? '';
+  }, [params]);
 
-    return (
-        <Card>
-            <CardHeader>
-            <CardTitle>My Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-            {areAssignmentsLoading ? (
-                <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
-            ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Topic</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {assignmentsWithContent.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground">No assignments found.</TableCell>
-                        </TableRow>
-                        )}
-                        {assignmentsWithContent.map((assign) => (
-                        <TableRow key={assign.id}>
-                            <TableCell className="font-medium">{assign.contentTitle || 'Loading...'}</TableCell>
-                            <TableCell>{assign.dueDate.toDate().toLocaleDateString()}</TableCell>
-                            <TableCell>
-                            <Badge variant={assign.status === 'graded' ? 'default' : 'secondary'}>{assign.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/classes/${classId}/assignments/${assign.id}`}>
-                                {assign.status === 'graded' ? 'View Result' : 'Start'}
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                                </Link>
-                            </Button>
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
-            </CardContent>
-        </Card>
-    );
-}
+  const [classData, setClassData] = useState<ClassRecord | null>(null);
+  const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [assignmentTitle, setAssignmentTitle] = useState('');
+  const [assignmentDueDate, setAssignmentDueDate] = useState('');
 
-
-function TeacherClassView({ classData }: { classData: Class }) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const classRef = useMemoFirebase(() => doc(firestore, 'classes', classData.id), [firestore, classData.id]);
-  
-  const studentsInClassQuery = useMemoFirebase(() => {
-    if (!classData?.learnerIds || classData.learnerIds.length === 0) return null;
-    const studentIds = classData.learnerIds.length > 30 ? classData.learnerIds.slice(0, 30) : classData.learnerIds;
-    return query(collection(firestore, 'users'), where(documentId(), 'in', studentIds));
-  }, [firestore, classData.learnerIds]);
-  const { data: studentsInClass, isLoading: areStudentsInClassLoading } = useCollection<User>(studentsInClassQuery);
-
-  const allStudentsQuery = useMemoFirebase(() => query(collection(firestore, 'users'), where('role', '==', 'student')), [firestore]);
-  const { data: allStudents, isLoading: areAllStudentsLoading } = useCollection<User>(allStudentsQuery);
-
-  const [studentsToAdd, setStudentsToAdd] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const availableStudents = useMemo(() => {
-    if (!allStudents) return [];
-    const studentIdsInClass = new Set(classData.learnerIds || []);
-    return allStudents.filter(student => 
-        !studentIdsInClass.has(student.id) && 
-        (student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-         student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         student.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [allStudents, classData.learnerIds, searchTerm]);
-  
-  const handleAddStudents = async () => {
-    if (studentsToAdd.length === 0) {
-      toast({ title: 'No students selected', variant: 'destructive' });
+  useEffect(() => {
+    if (!classId) {
+      setLoading(false);
+      setError('Missing class id.');
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const parentIdsToAdd = new Set<string>();
-      for (const studentId of studentsToAdd) {
-        const q = query(collection(firestore, 'parents'), where('childIds', 'array-contains', studentId));
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-            parentIdsToAdd.add(doc.id);
-        });
+
+    let active = true;
+
+    async function loadClass() {
+      setLoading(true);
+      setError('');
+
+      const [{ data: classRow, error: classError }, { data: assignmentRows, error: assignmentError }] = await Promise.all([
+        supabase.from('classes').select('*').eq('id', classId).maybeSingle(),
+        supabase.from('assignments').select('*').eq('class_id', classId).order('created_at', { ascending: false }),
+      ]);
+
+      if (!active) {
+        return;
       }
 
-      await updateDoc(classRef, {
-        learnerIds: arrayUnion(...studentsToAdd),
-        parentIds: arrayUnion(...Array.from(parentIdsToAdd))
-      });
-      toast({ title: 'Students added successfully!' });
-      setStudentsToAdd([]);
-      setSearchTerm('');
-    } catch (error: any) {
-      toast({ title: 'Failed to add students', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
+      if (classError) {
+        setError(classError.message);
+      } else {
+        const nextClass = (classRow ?? null) as ClassRecord | null;
+        setClassData(nextClass);
+        setName(nextClass?.name ?? nextClass?.title ?? '');
+        setGrade(nextClass?.grade ?? '');
+        setSubject(nextClass?.subject ?? '');
+      }
+
+      if (assignmentError) {
+        setError((current) => current || assignmentError.message);
+        setAssignments([]);
+      } else {
+        setAssignments((assignmentRows ?? []) as AssignmentRecord[]);
+      }
+
+      setLoading(false);
     }
+
+    loadClass();
+
+    return () => {
+      active = false;
+    };
+  }, [classId]);
+
+  const classLabel = classData?.name ?? classData?.title ?? 'Class details';
+
+  const handleSaveClass = async () => {
+    if (!classId) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('classes')
+      .update({ name, title: name, grade, subject })
+      .eq('id', classId);
+
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setClassData((current) =>
+        current
+          ? {
+              ...current,
+              name,
+              title: name,
+              grade,
+              subject,
+            }
+          : current
+      );
+    }
+
+    setSaving(false);
   };
 
-  const handleRemoveStudent = async (studentId: string) => {
-    setIsSubmitting(true);
-    try {
-        await updateDoc(classRef, {
-            learnerIds: arrayRemove(studentId)
-        });
-        toast({ title: 'Student removed successfully' });
-    } catch (error: any) {
-        toast({ title: 'Failed to remove student', description: error.message, variant: 'destructive' });
-    } finally {
-        setIsSubmitting(false);
+  const handleAddAssignment = async () => {
+    if (!classId || assignmentTitle.trim().length === 0) {
+      return;
     }
-  };
 
-  const getInitials = (user: User) => {
-    const firstName = user.firstName || '';
-    const lastName = user.lastName || '';
-    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
-  }
+    setSaving(true);
+    setError('');
+
+    const { data, error: insertError } = await supabase.from('assignments').insert([
+      {
+        class_id: classId,
+        title: assignmentTitle,
+        due_date: assignmentDueDate || null,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      },
+    ]).select('*');
+
+    if (insertError) {
+      setError(insertError.message);
+    } else {
+      setAssignments((current) => [
+        ...((data ?? []) as AssignmentRecord[]),
+        ...current,
+      ]);
+      setAssignmentTitle('');
+      setAssignmentDueDate('');
+    }
+
+    setSaving(false);
+  };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between">
-        <div>
-          <CardTitle>Student Roster</CardTitle>
-          <CardDescription>Manage students in this class.</CardDescription>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button><UserPlus className="mr-2 h-4 w-4" /> Add Students</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Students to Class</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <Input placeholder="Search students by name or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-              <ScrollArea className="h-72">
-                <div className="flex flex-col gap-4 p-4">
-                  {areAllStudentsLoading ? <Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /> :
-                   availableStudents.length > 0 ? availableStudents.map(student => (
-                    <div key={student.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`student-${student.id}`} 
-                        checked={studentsToAdd.includes(student.id)}
-                        onCheckedChange={checked => {
-                          setStudentsToAdd(prev => checked ? [...prev, student.id] : prev.filter(id => id !== student.id));
-                        }}
-                      />
-                      <Label htmlFor={`student-${student.id}`} className="flex-1 font-normal">
-                        {student.firstName} {student.lastName} ({student.email})
-                      </Label>
-                    </div>
-                  )) : <p className="text-center text-sm text-muted-foreground">No students found.</p>}
-                </div>
-              </ScrollArea>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button onClick={handleAddStudents} disabled={isSubmitting || studentsToAdd.length === 0}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : `Add ${studentsToAdd.length} Student(s)`}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {areStudentsInClassLoading ? (
-            <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <Link href="/my-classes" className="inline-flex w-fit items-center gap-2 text-sm text-slate-400 transition hover:text-white">
+          <ArrowLeft className="h-4 w-4" />
+          Back to classes
+        </Link>
+
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">Class Detail</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{classLabel}</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            The broken Firebase import line has been removed and this page now loads and saves class data from Supabase.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading class details...
+          </div>
         ) : (
-            <div className="space-y-4">
-              {studentsInClass && studentsInClass.length > 0 ? (
-                studentsInClass.map(student => (
-                    <div key={student.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                        <div className="flex items-center gap-3">
-                           <Avatar>
-                             <AvatarImage src={student.avatarUrl} />
-                             <AvatarFallback>{getInitials(student)}</AvatarFallback>
-                           </Avatar>
-                           <div>
-                            <p className="font-medium">{student.firstName} {student.lastName}</p>
-                            <p className="text-sm text-muted-foreground">{student.email}</p>
-                           </div>
-                        </div>
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" disabled={isSubmitting}><UserX className="h-4 w-4 text-destructive" /></Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will remove {student.firstName} {student.lastName} from the class.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleRemoveStudent(student.id)} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
-                ))
-              ) : (
-                <p className="text-center text-sm text-muted-foreground py-8">No students added yet.</p>
-              )}
-            </div>
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Class info</span>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Name</span>
+                  <input value={name} onChange={(event) => setName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Grade</span>
+                  <input value={grade} onChange={(event) => setGrade(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm md:col-span-2">
+                  <span className="text-slate-300">Subject</span>
+                  <input value={subject} onChange={(event) => setSubject(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+              </div>
+
+              <button
+                onClick={handleSaveClass}
+                disabled={saving}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save class details'}
+              </button>
+            </section>
+
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <PlusCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Add assignment</span>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Assignment title</span>
+                  <input value={assignmentTitle} onChange={(event) => setAssignmentTitle(event.target.value)} placeholder="Reading task" className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Due date</span>
+                  <input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <button
+                  onClick={handleAddAssignment}
+                  disabled={saving || assignmentTitle.trim().length === 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                  {saving ? 'Saving...' : 'Add assignment'}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
-      </CardContent>
-    </Card>
-  );
-}
 
-
-export default function ClassDetailsPage() {
-  const params = useParams();
-  const classId = params.classId as string;
-
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
-  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
-  const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<User>(userProfileRef);
-  
-  const classRef = useMemoFirebase(() => (user && classId ? doc(firestore, 'classes', classId) : null), [firestore, classId, user]);
-  const { data: classData, isLoading: isClassLoading } = useDoc<Class>(classRef);
-
-  const isLoading = isUserLoading || isUserProfileLoading || isClassLoading;
-
-  const renderContent = () => {
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center py-16">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
-    }
-    
-    if (!classData || !userProfile || !user) {
-        return <Card><CardContent className="p-8 text-center text-muted-foreground">Class not found.</CardContent></Card>;
-    }
-    
-    if (userProfile.role === 'teacher' && classData.teacherId === user.uid) {
-        return <TeacherClassView classData={classData} />;
-    }
-
-    if (userProfile.role === 'student' && (classData.learnerIds ?? []).includes(user.uid)) {
-        return <StudentClassView classId={classId} userId={user.uid} />;
-    }
-
-    return <Card><CardContent className="p-8 text-center text-muted-foreground">Access denied.</CardContent></Card>;
-  }
-
-  return (
-    <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <Card>
-            <CardHeader>
-            <CardTitle className="text-2xl">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : classData?.name}</CardTitle>
-            {!isLoading && classData && (
-                <CardDescription>
-                    <Badge variant="secondary" className="mr-2">Grade {classData.grade}</Badge>
-                    {classData.subject}
-                </CardDescription>
+        <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <h2 className="text-lg font-semibold text-white">Assignments</h2>
+          <div className="mt-4 grid gap-3">
+            {assignments.length === 0 ? (
+              <p className="text-sm text-slate-400">No assignments have been created for this class yet.</p>
+            ) : (
+              assignments.map((assignment) => (
+                <div key={assignment.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium text-white">{assignment.title ?? 'Untitled assignment'}</h3>
+                      <p className="text-sm text-slate-400">{assignment.status ?? 'open'}{assignment.due_date ? ' · due ' + assignment.due_date : ''}</p>
+                    </div>
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">{assignment.status ?? 'open'}</span>
+                  </div>
+                </div>
+              ))
             )}
-            </CardHeader>
-        </Card>
-        
-        {renderContent()}
-
+          </div>
+        </section>
       </div>
-    </AppLayout>
+    </main>
   );
 }

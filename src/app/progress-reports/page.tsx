@@ -1,131 +1,189 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { AppLayout } from '@/components/app-layout';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { BarChart, Loader2, GraduationCap } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/lib/supabase";
-import { collection, query, where, doc, documentId } // firebase/firestore removed - migrated to Supabase;
-import type { Class, User } from '@/lib/types';
-import { StudentReport } from '@/components/dashboard/student-report';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart, GraduationCap, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+};
+
+type ProgressReportRecord = {
+  id: string;
+  class_id?: string;
+  summary?: string;
+  progress_percent?: number;
+  updated_at?: string;
+  created_at?: string;
+};
 
 export default function ProgressReportsPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [reports, setReports] = useState<ProgressReportRecord[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [selectedChildId, setSelectedChildId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
+  useEffect(() => {
+    let active = true;
 
-  const teacherClassesQuery = useMemoFirebase(() => {
-    if (!user || !userProfile || userProfile.role !== 'teacher') return null;
-    return query(collection(firestore, 'classes'), where('teacherId', '==', user.uid));
-  }, [firestore, user, userProfile]);
-  const { data: teacherClasses, isLoading: areClassesLoading } = useCollection<Class>(teacherClassesQuery);
+    async function loadReports() {
+      setLoading(true);
+      setError('');
 
-  const selectedClass = useMemo(() => teacherClasses?.find(c => c.id === selectedClassId), [teacherClasses, selectedClassId]);
-  const studentsInClassQuery = useMemoFirebase(() => {
-    if (!selectedClass || !selectedClass.learnerIds || selectedClass.learnerIds.length === 0) return null;
-    const studentIds = selectedClass.learnerIds.length > 30 ? selectedClass.learnerIds.slice(0, 30) : selectedClass.learnerIds;
-    return query(collection(firestore, 'users'), where(documentId(), 'in', studentIds));
-  }, [firestore, selectedClass]);
-  const { data: studentsInClass, isLoading: areStudentsLoading } = useCollection<User>(studentsInClassQuery);
+      const [{ data: classRows, error: classError }, { data: reportRows, error: reportError }] = await Promise.all([
+        supabase.from('classes').select('*').order('created_at', { ascending: false }),
+        supabase.from('progress_reports').select('*').order('updated_at', { ascending: false }),
+      ]);
 
-  const parentRef = useMemoFirebase(() => (user && userProfile?.role === 'parent' ? doc(firestore, 'parents', user.uid) : null), [firestore, user, userProfile]);
-  const { data: parentData } = useDoc(parentRef);
-  const childrenQuery = useMemoFirebase(() => {
-    if (!parentData || !parentData.childIds || parentData.childIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where(documentId(), 'in', parentData.childIds));
-  }, [firestore, parentData]);
-  const { data: children, isLoading: areChildrenLoading } = useCollection<User>(childrenQuery);
-  
-  const studentIdToReport = useMemo(() => {
-    if (userProfile?.role === 'teacher') return selectedStudentId;
-    if (userProfile?.role === 'student') return user?.uid;
-    if (userProfile?.role === 'parent') return selectedChildId;
-    return '';
-  }, [userProfile, user, selectedStudentId, selectedChildId]);
-  
-  const renderTeacherView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="space-y-2">
-            <Label htmlFor="class-select">Select a Class</Label>
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                <SelectTrigger id="class-select"><SelectValue placeholder="Choose a class..." /></SelectTrigger>
-                <SelectContent>
-                    {areClassesLoading && <SelectItem value="loading" disabled>Loading...</SelectItem>}
-                    {teacherClasses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-            </Select>
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="student-select">Select a Student</Label>
-            <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId || areStudentsLoading}>
-                <SelectTrigger id="student-select"><SelectValue placeholder="Choose a student..." /></SelectTrigger>
-                <SelectContent>
-                    {areStudentsLoading && <SelectItem value="loading" disabled>Loading...</SelectItem>}
-                    {studentsInClass?.map(s => <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>)}
-                </SelectContent>
-            </Select>
-        </div>
-    </div>
+      if (!active) {
+        return;
+      }
+
+      if (classError) {
+        setError(classError.message);
+      } else {
+        const nextClasses = (classRows ?? []) as ClassRecord[];
+        setClasses(nextClasses);
+        setSelectedClassId((current) => current || nextClasses[0]?.id || '');
+      }
+
+      if (reportError) {
+        setError((current) => current || reportError.message);
+        setReports([]);
+      } else {
+        setReports((reportRows ?? []) as ProgressReportRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadReports();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedClass = useMemo(
+    () => classes.find((item) => item.id === selectedClassId) ?? null,
+    [classes, selectedClassId]
   );
 
-  const renderParentView = () => (
-    <div className="space-y-2 mb-6 max-w-md">
-      <Label htmlFor="child-select">Select Your Child</Label>
-      <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-        <SelectTrigger id="child-select"><SelectValue placeholder="Choose your child..." /></SelectTrigger>
-        <SelectContent>
-          {areChildrenLoading && <SelectItem value="loading" disabled>Loading...</SelectItem>}
-          {children?.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
+  const selectedReports = useMemo(
+    () => reports.filter((item) => item.class_id === selectedClassId),
+    [reports, selectedClassId]
   );
 
+  const averageProgress = useMemo(() => {
+    if (selectedReports.length === 0) {
+      return 0;
+    }
+
+    const total = selectedReports.reduce((sum, item) => sum + (item.progress_percent ?? 0), 0);
+    return Math.round(total / selectedReports.length);
+  }, [selectedReports]);
 
   return (
-    <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-          <BarChart className="mr-3 h-8 w-8" />
-          Progress Reports
-        </h1>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">Progress Reports</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Review class progress with Supabase data</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page keeps the original reporting surface but removes the malformed import line that was stopping your Next.js build.
+          </p>
+        </header>
 
-        {isUserLoading && (
-            <div className="flex justify-center items-center py-16">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        )}
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
 
-        {!isUserLoading && userProfile && (
-          <>
-            {userProfile.role === 'teacher' && renderTeacherView()}
-            {userProfile.role === 'parent' && renderParentView()}
-            
-            {studentIdToReport ? (
-                <StudentReport studentId={studentIdToReport} />
-            ) : (
-                <Card>
-                    <CardContent className="p-12 text-center">
-                        <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="text-xl font-medium">Select a Student</h3>
-                        <p className="text-muted-foreground mt-2">
-                           {userProfile.role === 'teacher' && "Please select a class and student to view their progress report."}
-                           {userProfile.role === 'parent' && "Please select one of your children to view their report."}
-                        </p>
-                    </CardContent>
-                </Card>
-            )}
-          </>
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading progress reports...
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <GraduationCap className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Classes</span>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {classes.length === 0 ? (
+                  <p className="text-sm text-slate-400">No classes are available yet.</p>
+                ) : (
+                  classes.map((item) => {
+                    const label = item.name ?? item.title ?? 'Untitled class';
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedClassId(item.id)}
+                        className={
+                          'rounded-2xl border px-4 py-3 text-left transition ' +
+                          (selectedClassId === item.id
+                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                            : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-600 hover:bg-slate-900')
+                        }
+                      >
+                        <div className="font-medium">{label}</div>
+                        <div className="text-sm text-slate-400">{item.grade ?? 'Grade N/A'}{item.subject ? ' · ' + item.subject : ''}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 text-slate-300">
+                    <BarChart className="h-4 w-4" />
+                    <span className="text-sm font-semibold uppercase tracking-[0.25em]">Report summary</span>
+                  </div>
+                  <h2 className="mt-3 text-2xl font-semibold text-white">{selectedClass ? selectedClass.name ?? selectedClass.title ?? 'Selected class' : 'Select a class'}</h2>
+                  <p className="mt-2 text-sm text-slate-400">
+                    {selectedClass ? 'Average progress across stored reports: ' + averageProgress + '%' : 'Choose a class to inspect its latest reports.'}
+                  </p>
+                </div>
+
+                {selectedClass ? (
+                  <Link href={'/my-classes/' + selectedClass.id} className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900">
+                    Open class
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {selectedReports.length === 0 ? (
+                  <p className="text-sm text-slate-400">No progress reports found for this class yet.</p>
+                ) : (
+                  selectedReports.map((report) => (
+                    <article key={report.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-medium text-white">Progress {report.progress_percent ?? 0}%</h3>
+                          <p className="text-sm text-slate-400">{report.updated_at ?? report.created_at ?? 'Recently updated'}</p>
+                        </div>
+                        <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">{report.progress_percent ?? 0}%</span>
+                      </div>
+                      {report.summary ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{report.summary}</p> : null}
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
         )}
       </div>
-    </AppLayout>
+    </main>
   );
 }

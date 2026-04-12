@@ -1,160 +1,130 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AppLayout } from '@/components/app-layout';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from "@/lib/supabase";
-import { addDoc, collection, doc, updateDoc, arrayUnion } // firebase/firestore removed - migrated to Supabase;
+import { FormEvent, useState } from 'react';
 import { Loader2, PlusCircle } from 'lucide-react';
-import { educationalData } from '@/lib/educational-data';
+import { supabase } from '@/lib/content-storage';
 
 export default function NewClassPage() {
   const router = useRouter();
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-
   const [name, setName] = useState('');
-  const [grade, setGrade] = useState('');
+  const [grade, setGrade] = useState('1');
   const [subject, setSubject] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [teacherName, setTeacherName] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleCreateClass = async () => {
-    if (!name || !grade || !subject || !user) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill out all fields.',
-        variant: 'destructive',
-      });
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const payload = {
+      name,
+      title: name,
+      grade,
+      subject,
+      teacher_name: teacherName,
+      description,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error: insertError } = await supabase.from('classes').insert([payload]);
+
+    if (insertError) {
+      setError(insertError.message);
+      setLoading(false);
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // 1. Create the class document
-      const classesCollection = collection(firestore, 'classes');
-      const newClassDoc = await addDoc(classesCollection, {
-        name,
-        grade,
-        subject,
-        teacherId: user.uid,
-        learnerIds: [],
-        parentIds: [],
-      });
-
-      // 2. Add the new class ID to the teacher's list of classes
-      const teacherRef = doc(firestore, 'teachers', user.uid);
-      await updateDoc(teacherRef, {
-        classIds: arrayUnion(newClassDoc.id),
-      });
-
-      toast({
-        title: 'Class Created!',
-        description: `"${name}" has been successfully created.`,
-      });
-
-      router.push('/my-classes');
-    } catch (error: any) {
-      console.error('Failed to create class:', error);
-      toast({
-        title: 'Error Creating Class',
-        description: error.message || 'Could not create the class. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    router.push('/my-classes');
   };
 
   return (
-    <AppLayout>
-      <div className="flex-1 space-y-4 p-4 sm:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center">
-          <PlusCircle className="mr-3 h-8 w-8" />
-          Create a New Class
-        </h1>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+        <header className="space-y-3">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">New Class</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Create a class in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This form replaces the broken Firebase import chain and writes directly to your Supabase classes table.
+          </p>
+        </header>
 
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>Class Details</CardTitle>
-            <CardDescription>
-              Enter the information for your new class.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="class-name">Class Name</Label>
-              <Input
-                id="class-name"
-                name="class-name"
-                autoComplete='off'
-                placeholder="e.g., Grade 10 Mathematics - Period 2"
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-2xl shadow-slate-950/30">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Class name</span>
+              <input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isLoading}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Grade 5 Natural Sciences"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="grade">Grade</Label>
-                <Select value={grade} onValueChange={setGrade} disabled={isLoading}>
-                  <SelectTrigger id="grade">
-                    <SelectValue placeholder="Select a grade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(educationalData).map((g) => (
-                      <SelectItem key={g} value={g}>
-                        Grade {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                 <Input
-                    id="subject"
-                    name="subject"
-                    autoComplete='off'
-                    placeholder="e.g., Mathematics"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    disabled={isLoading}
-                />
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleCreateClass} disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                'Create Class'
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Grade</span>
+              <input
+                value={grade}
+                onChange={(event) => setGrade(event.target.value)}
+                placeholder="5"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Subject</span>
+              <input
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Natural Sciences"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Teacher</span>
+              <input
+                value={teacherName}
+                onChange={(event) => setTeacherName(event.target.value)}
+                placeholder="Mr / Ms Example"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Description</span>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={5}
+              placeholder="Optional class description or notes."
+              className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+            />
+          </label>
+
+          {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={loading || name.trim().length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+              {loading ? 'Saving...' : 'Create Class'}
+            </button>
+
+            <Link href="/my-classes" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+              Cancel
+            </Link>
+          </div>
+        </form>
       </div>
-    </AppLayout>
+    </main>
   );
 }

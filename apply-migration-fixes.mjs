@@ -644,6 +644,918 @@ export default function LessonStudioPage() {
 }
 `
   },
+  {
+    path: 'src/app/my-classes/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { BookOpen, Loader2, PlusCircle, Users } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+  teacher_name?: string;
+  learner_count?: number;
+  created_at?: string;
+};
+
+export default function MyClassesPage() {
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadClasses() {
+      setLoading(true);
+      setError('');
+
+      const { data, error: loadError } = await supabase
+        .from('classes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        setError(loadError.message);
+        setClasses([]);
+      } else {
+        setClasses((data ?? []) as ClassRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadClasses();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="flex flex-col gap-4 border-b border-slate-800 pb-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">My Classes</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Manage your Supabase-backed classes</h1>
+            <p className="max-w-2xl text-sm text-slate-400">
+              This page now loads classes from Supabase instead of Firebase and links through to your class detail view.
+            </p>
+          </div>
+          <Link href="/my-classes/new" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
+            <PlusCircle className="h-4 w-4" />
+            New Class
+          </Link>
+        </header>
+
+        {error ? (
+          <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div>
+        ) : null}
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading classes...
+          </div>
+        ) : classes.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-10 text-center">
+            <BookOpen className="mx-auto mb-4 h-10 w-10 text-slate-500" />
+            <h2 className="text-lg font-semibold text-white">No classes yet</h2>
+            <p className="mt-2 text-sm text-slate-400">Create your first class to start tracking learners, assignments, and progress reports.</p>
+          </div>
+        ) : (
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {classes.map((item) => {
+              const label = item.name ?? item.title ?? 'Untitled Class';
+
+              return (
+                <Link
+                  key={item.id}
+                  href={'/my-classes/' + item.id}
+                  className="group rounded-3xl border border-slate-800 bg-slate-900/60 p-5 transition hover:border-indigo-500/50 hover:bg-slate-900"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-white transition group-hover:text-indigo-200">{label}</h2>
+                      <p className="mt-1 text-sm text-slate-400">{item.subject ?? 'No subject set'}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-950 px-3 py-2 text-xs text-slate-300">{item.grade ?? 'Grade N/A'}</div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-sm text-slate-400">
+                    <Users className="h-4 w-4" />
+                    <span>{item.learner_count ?? 0} learners</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/my-classes/new/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { FormEvent, useState } from 'react';
+import { Loader2, PlusCircle } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+export default function NewClassPage() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('1');
+  const [subject, setSubject] = useState('');
+  const [teacherName, setTeacherName] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const payload = {
+      name,
+      title: name,
+      grade,
+      subject,
+      teacher_name: teacherName,
+      description,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error: insertError } = await supabase.from('classes').insert([payload]);
+
+    if (insertError) {
+      setError(insertError.message);
+      setLoading(false);
+      return;
+    }
+
+    router.push('/my-classes');
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+        <header className="space-y-3">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">New Class</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Create a class in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This form replaces the broken Firebase import chain and writes directly to your Supabase classes table.
+          </p>
+        </header>
+
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-2xl shadow-slate-950/30">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Class name</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Grade 5 Natural Sciences"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Grade</span>
+              <input
+                value={grade}
+                onChange={(event) => setGrade(event.target.value)}
+                placeholder="5"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Subject</span>
+              <input
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Natural Sciences"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Teacher</span>
+              <input
+                value={teacherName}
+                onChange={(event) => setTeacherName(event.target.value)}
+                placeholder="Mr / Ms Example"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Description</span>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={5}
+              placeholder="Optional class description or notes."
+              className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500"
+            />
+          </label>
+
+          {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={loading || name.trim().length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+              {loading ? 'Saving...' : 'Create Class'}
+            </button>
+
+            <Link href="/my-classes" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
+              Cancel
+            </Link>
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/my-classes/[classId]/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, BookOpen, ClipboardList, Loader2, Save, PlusCircle } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+  teacher_name?: string;
+  description?: string;
+};
+
+type AssignmentRecord = {
+  id: string;
+  title?: string;
+  status?: string;
+  due_date?: string;
+  created_at?: string;
+};
+
+export default function ClassDetailPage() {
+  const params = useParams<{ classId: string }>();
+  const classId = useMemo(() => {
+    const value = params?.classId;
+    return Array.isArray(value) ? value[0] : value ?? '';
+  }, [params]);
+
+  const [classData, setClassData] = useState<ClassRecord | null>(null);
+  const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [assignmentTitle, setAssignmentTitle] = useState('');
+  const [assignmentDueDate, setAssignmentDueDate] = useState('');
+
+  useEffect(() => {
+    if (!classId) {
+      setLoading(false);
+      setError('Missing class id.');
+      return;
+    }
+
+    let active = true;
+
+    async function loadClass() {
+      setLoading(true);
+      setError('');
+
+      const [{ data: classRow, error: classError }, { data: assignmentRows, error: assignmentError }] = await Promise.all([
+        supabase.from('classes').select('*').eq('id', classId).maybeSingle(),
+        supabase.from('assignments').select('*').eq('class_id', classId).order('created_at', { ascending: false }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      if (classError) {
+        setError(classError.message);
+      } else {
+        const nextClass = (classRow ?? null) as ClassRecord | null;
+        setClassData(nextClass);
+        setName(nextClass?.name ?? nextClass?.title ?? '');
+        setGrade(nextClass?.grade ?? '');
+        setSubject(nextClass?.subject ?? '');
+      }
+
+      if (assignmentError) {
+        setError((current) => current || assignmentError.message);
+        setAssignments([]);
+      } else {
+        setAssignments((assignmentRows ?? []) as AssignmentRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadClass();
+
+    return () => {
+      active = false;
+    };
+  }, [classId]);
+
+  const classLabel = classData?.name ?? classData?.title ?? 'Class details';
+
+  const handleSaveClass = async () => {
+    if (!classId) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('classes')
+      .update({ name, title: name, grade, subject })
+      .eq('id', classId);
+
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setClassData((current) =>
+        current
+          ? {
+              ...current,
+              name,
+              title: name,
+              grade,
+              subject,
+            }
+          : current
+      );
+    }
+
+    setSaving(false);
+  };
+
+  const handleAddAssignment = async () => {
+    if (!classId || assignmentTitle.trim().length === 0) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    const { data, error: insertError } = await supabase.from('assignments').insert([
+      {
+        class_id: classId,
+        title: assignmentTitle,
+        due_date: assignmentDueDate || null,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      },
+    ]).select('*');
+
+    if (insertError) {
+      setError(insertError.message);
+    } else {
+      setAssignments((current) => [
+        ...((data ?? []) as AssignmentRecord[]),
+        ...current,
+      ]);
+      setAssignmentTitle('');
+      setAssignmentDueDate('');
+    }
+
+    setSaving(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <Link href="/my-classes" className="inline-flex w-fit items-center gap-2 text-sm text-slate-400 transition hover:text-white">
+          <ArrowLeft className="h-4 w-4" />
+          Back to classes
+        </Link>
+
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">Class Detail</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{classLabel}</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            The broken Firebase import line has been removed and this page now loads and saves class data from Supabase.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading class details...
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Class info</span>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Name</span>
+                  <input value={name} onChange={(event) => setName(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Grade</span>
+                  <input value={grade} onChange={(event) => setGrade(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm md:col-span-2">
+                  <span className="text-slate-300">Subject</span>
+                  <input value={subject} onChange={(event) => setSubject(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+              </div>
+
+              <button
+                onClick={handleSaveClass}
+                disabled={saving}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save class details'}
+              </button>
+            </section>
+
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <PlusCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Add assignment</span>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Assignment title</span>
+                  <input value={assignmentTitle} onChange={(event) => setAssignmentTitle(event.target.value)} placeholder="Reading task" className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="text-slate-300">Due date</span>
+                  <input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
+                </label>
+
+                <button
+                  onClick={handleAddAssignment}
+                  disabled={saving || assignmentTitle.trim().length === 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                  {saving ? 'Saving...' : 'Add assignment'}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <h2 className="text-lg font-semibold text-white">Assignments</h2>
+          <div className="mt-4 grid gap-3">
+            {assignments.length === 0 ? (
+              <p className="text-sm text-slate-400">No assignments have been created for this class yet.</p>
+            ) : (
+              assignments.map((assignment) => (
+                <div key={assignment.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium text-white">{assignment.title ?? 'Untitled assignment'}</h3>
+                      <p className="text-sm text-slate-400">{assignment.status ?? 'open'}{assignment.due_date ? ' · due ' + assignment.due_date : ''}</p>
+                    </div>
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">{assignment.status ?? 'open'}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/ocr/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { FileText, Loader2, ScanSearch, Upload } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type OcrRecord = {
+  id: string;
+  file_name?: string;
+  extracted_text?: string;
+  status?: string;
+  created_at?: string;
+};
+
+export default function OcrPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [documentName, setDocumentName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [uploads, setUploads] = useState<OcrRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUploads() {
+      const { data, error: loadError } = await supabase
+        .from('ocr_uploads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!active) {
+        return;
+      }
+
+      if (loadError) {
+        setError(loadError.message);
+        setUploads([]);
+      } else {
+        setUploads((data ?? []) as OcrRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadUploads();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!file) {
+      setError('Please choose a file to process.');
+      return;
+    }
+
+    setProcessing(true);
+    setError('');
+    setSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentName', documentName);
+    formData.append('notes', notes);
+
+    try {
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('OCR request failed with status ' + response.status + '.');
+      }
+
+      const payload = (await response.json()) as { extractedText?: string; status?: string };
+
+      const record = {
+        file_name: documentName || file.name,
+        extracted_text: payload.extractedText ?? '',
+        status: payload.status ?? 'processed',
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabase.from('ocr_uploads').insert([record]);
+
+      if (insertError) {
+        setError(insertError.message);
+      } else {
+        setSuccess('OCR upload processed successfully.');
+        setUploads((current) => [record as OcrRecord, ...current]);
+        setFile(null);
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'OCR upload failed.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">OCR</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Upload images and store OCR output in Supabase</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            The syntax error is gone and this page now uses a clean upload flow instead of the broken Firebase-specific imports.
+          </p>
+        </header>
+
+        <form onSubmit={handleSubmit} className="grid gap-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">Document name</span>
+              <input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="Grade 4 worksheet" className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="text-slate-300">File</span>
+              <input type="file" accept="image/*,application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-500" />
+            </label>
+          </div>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-slate-300">Notes</span>
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} placeholder="Optional notes for the OCR request." className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-indigo-500" />
+          </label>
+
+          {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+          {success ? <div className="rounded-2xl border border-emerald-900/60 bg-emerald-950/40 p-4 text-sm text-emerald-200">{success}</div> : null}
+
+          <button type="submit" disabled={processing || !file} className="inline-flex w-fit items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
+            {processing ? 'Processing...' : 'Run OCR'}
+          </button>
+        </form>
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <div className="flex items-center gap-3 text-slate-300">
+            <Upload className="h-4 w-4" />
+            <h2 className="text-lg font-semibold text-white">Recent uploads</h2>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {loading ? (
+              <div className="flex items-center gap-3 text-sm text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading OCR history...
+              </div>
+            ) : uploads.length === 0 ? (
+              <p className="text-sm text-slate-400">No OCR uploads found yet.</p>
+            ) : (
+              uploads.map((item) => (
+                <article key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-medium text-white">{item.file_name ?? 'Untitled upload'}</h3>
+                      <p className="text-sm text-slate-400">{item.status ?? 'processed'}</p>
+                    </div>
+                    <FileText className="h-4 w-4 text-slate-500" />
+                  </div>
+                  {item.extracted_text ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{item.extracted_text}</p> : null}
+                </article>
+              ))
+            )}
+          </div>
+
+          <Link href="/my-classes" className="mt-5 inline-flex text-sm text-indigo-300 transition hover:text-indigo-200">
+            View classes
+          </Link>
+        </section>
+      </div>
+    </main>
+  );
+}
+`,
+  },
+  {
+    path: 'src/app/progress-reports/page.tsx',
+    content: `'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart, GraduationCap, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/content-storage';
+
+type ClassRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  grade?: string;
+  subject?: string;
+};
+
+type ProgressReportRecord = {
+  id: string;
+  class_id?: string;
+  summary?: string;
+  progress_percent?: number;
+  updated_at?: string;
+  created_at?: string;
+};
+
+export default function ProgressReportsPage() {
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [reports, setReports] = useState<ProgressReportRecord[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReports() {
+      setLoading(true);
+      setError('');
+
+      const [{ data: classRows, error: classError }, { data: reportRows, error: reportError }] = await Promise.all([
+        supabase.from('classes').select('*').order('created_at', { ascending: false }),
+        supabase.from('progress_reports').select('*').order('updated_at', { ascending: false }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      if (classError) {
+        setError(classError.message);
+      } else {
+        const nextClasses = (classRows ?? []) as ClassRecord[];
+        setClasses(nextClasses);
+        setSelectedClassId((current) => current || nextClasses[0]?.id || '');
+      }
+
+      if (reportError) {
+        setError((current) => current || reportError.message);
+        setReports([]);
+      } else {
+        setReports((reportRows ?? []) as ProgressReportRecord[]);
+      }
+
+      setLoading(false);
+    }
+
+    loadReports();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedClass = useMemo(
+    () => classes.find((item) => item.id === selectedClassId) ?? null,
+    [classes, selectedClassId]
+  );
+
+  const selectedReports = useMemo(
+    () => reports.filter((item) => item.class_id === selectedClassId),
+    [reports, selectedClassId]
+  );
+
+  const averageProgress = useMemo(() => {
+    if (selectedReports.length === 0) {
+      return 0;
+    }
+
+    const total = selectedReports.reduce((sum, item) => sum + (item.progress_percent ?? 0), 0);
+    return Math.round(total / selectedReports.length);
+  }, [selectedReports]);
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="space-y-3 border-b border-slate-800 pb-6">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-indigo-300">Progress Reports</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Review class progress with Supabase data</h1>
+          <p className="max-w-2xl text-sm text-slate-400">
+            This page keeps the original reporting surface but removes the malformed import line that was stopping your Next.js build.
+          </p>
+        </header>
+
+        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading progress reports...
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex items-center gap-3 text-slate-300">
+                <GraduationCap className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-[0.25em]">Classes</span>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {classes.length === 0 ? (
+                  <p className="text-sm text-slate-400">No classes are available yet.</p>
+                ) : (
+                  classes.map((item) => {
+                    const label = item.name ?? item.title ?? 'Untitled class';
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedClassId(item.id)}
+                        className={
+                          'rounded-2xl border px-4 py-3 text-left transition ' +
+                          (selectedClassId === item.id
+                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                            : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-600 hover:bg-slate-900')
+                        }
+                      >
+                        <div className="font-medium">{label}</div>
+                        <div className="text-sm text-slate-400">{item.grade ?? 'Grade N/A'}{item.subject ? ' · ' + item.subject : ''}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 text-slate-300">
+                    <BarChart className="h-4 w-4" />
+                    <span className="text-sm font-semibold uppercase tracking-[0.25em]">Report summary</span>
+                  </div>
+                  <h2 className="mt-3 text-2xl font-semibold text-white">{selectedClass ? selectedClass.name ?? selectedClass.title ?? 'Selected class' : 'Select a class'}</h2>
+                  <p className="mt-2 text-sm text-slate-400">
+                    {selectedClass ? 'Average progress across stored reports: ' + averageProgress + '%' : 'Choose a class to inspect its latest reports.'}
+                  </p>
+                </div>
+
+                {selectedClass ? (
+                  <Link href={'/my-classes/' + selectedClass.id} className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-indigo-500 hover:bg-slate-900">
+                    Open class
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {selectedReports.length === 0 ? (
+                  <p className="text-sm text-slate-400">No progress reports found for this class yet.</p>
+                ) : (
+                  selectedReports.map((report) => (
+                    <article key={report.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-medium text-white">Progress {report.progress_percent ?? 0}%</h3>
+                          <p className="text-sm text-slate-400">{report.updated_at ?? report.created_at ?? 'Recently updated'}</p>
+                        </div>
+                        <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">{report.progress_percent ?? 0}%</span>
+                      </div>
+                      {report.summary ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{report.summary}</p> : null}
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+`,
+  },
 ];
 
 for (const file of files) {

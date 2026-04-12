@@ -1,0 +1,35 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/**
+ * Uploads file content to Supabase Storage
+ */
+export async function uploadContent(bucket: string, path: string, file: File | Blob) {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+  if (error) {
+    console.error('Supabase upload error:', error);
+    throw new Error(`Failed to upload to Supabase: ${error.message}`);
+  }
+
+  // Get the public URL for the uploaded asset
+  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
+  return publicUrlData.publicUrl;
+}
+
+/**
+ * Deletes an asset from Supabase Storage
+ */
+export async function deleteContent(bucket: string, path: string) {
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) throw new Error(`Delete failed: ${error.message}`);
+}

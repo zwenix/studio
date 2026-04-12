@@ -1,0 +1,2737 @@
+*******************************************
+GPT-5.4-ContentGenerationRecommendations
+*******************************************
+
+Yes. The main issue is probably not your model choice — your stack is sensible. The issue is almost certainly your **prompt architecture**, **output contracts**, and the fact that your system is likely asking for “content” in one step instead of separating:
+
+1. **curriculum reasoning**
+2. **content writing**
+3. **visual design planning**
+4. **image prompt generation**
+5. **layout/format instructions**
+
+If you want high-quality output consistently, especially for posters and learner-facing content, you should stop asking the model to “generate a poster” directly and instead make it produce **structured design specifications** first.
+
+---
+
+# 1. Core Diagnosis
+
+From your description, the text is acceptable, but:
+
+- visuals are weak
+- posters look like text + tiny icons/emoticons
+- imagery is not educationally useful
+- styling is poor
+- outputs lack classroom appeal
+- CAPS alignment may be present in text but not in structure/design level
+
+This usually happens when prompts:
+
+- are too broad
+- do not define the audience clearly
+- do not define visual standards
+- do not prohibit low-quality design behaviors
+- do not require a structured design plan
+- do not separate text generation from image generation
+- do not force South African classroom context
+- do not specify printable classroom output constraints
+
+---
+
+# 2. Recommended Prompting Architecture
+
+For best results, use a **4-layer prompt system** in your app.
+
+## Layer A: Global System Rules
+These rules apply to all generation.
+
+## Layer B: Feature-Specific Prompt
+Different prompts for:
+- lesson plans
+- worksheets
+- posters
+- study guides
+- tutor responses
+- assessments
+- memos
+- autograding
+
+## Layer C: Structured Output Schema
+Force JSON or another strict object shape.
+
+## Layer D: Rendering/Design Rules
+Your frontend should use the structured output to render polished layouts instead of depending on the model to “make it pretty” in raw text.
+
+---
+
+# 3. Golden Rule for Visual Content
+
+For posters, worksheets, and visual aids, your text model should generate:
+
+- the **instructional goal**
+- the **learner level**
+- the **page layout**
+- the **headline/subheading/body text**
+- the **visual concept**
+- the **image prompt**
+- the **colour palette**
+- the **typography rules**
+- the **printability rules**
+- the **teacher notes**
+
+Then your image model should only generate the artwork based on a **high-quality visual brief**.
+
+Do **not** ask the image model something vague like:
+
+> Create a Grade 5 poster about the water cycle.
+
+That will often produce generic infographic junk, random icons, weak composition, and unreadable educational visuals.
+
+Instead ask for:
+
+> Create a clean, child-friendly, high-resolution classroom poster illustration in portrait orientation for South African Grade 5 Natural Sciences. Show the water cycle in a bright, realistic illustrated style with clearly visible evaporation, condensation, precipitation, collection, arrows, clouds, sun, mountain, river, and dam. Use large educational labels space, uncluttered background, no emojis, no tiny icons, no decorative clipart, no watermark, no dense text, no infographic overload. The image must be suitable for printing on A4 or A3 for a classroom wall.
+
+That is much better.
+
+---
+
+# 4. Global Master System Prompt
+
+Use this as a base system prompt for `gemini-3.1-pro-preview` in content generation features.
+
+---
+
+## MASTER SYSTEM PROMPT
+
+```text
+You are EduAI Companion, an expert South African curriculum content designer for teachers.
+
+Your task is to generate high-quality, CAPS-aligned educational content for South African schools. Every output must be:
+- factually correct
+- age-appropriate
+- CAPS-aligned where requested
+- clear, structured, and classroom-ready
+- visually purposeful when learner-facing materials are requested
+- suitable for printing or digital classroom display
+- written in professional South African school English unless another language is requested
+
+You must adapt all content to:
+- subject
+- grade
+- term if provided
+- topic
+- cognitive level
+- learner age and reading level
+- South African classroom context
+- teacher’s requested format
+
+Important quality rules:
+1. Never produce generic filler content.
+2. Never produce childish decorative fluff unless explicitly requested for Foundation Phase.
+3. Never use emojis or emoticons in formal classroom resources.
+4. Never rely on tiny icons, symbolic clipart, or vague decorative visuals as the main visual aid.
+5. Visual aids must be educationally meaningful, large, clear, and easy to interpret by learners.
+6. Posters and classroom visuals must prioritize:
+   - strong title hierarchy
+   - legibility from a distance
+   - minimal but meaningful text
+   - one main visual concept
+   - uncluttered composition
+   - age-appropriate colour use
+7. Worksheets and study guides must prioritize learning clarity over decoration.
+8. If a visual is requested, first plan the educational design before generating any image prompt.
+9. When generating images or image prompts, ensure:
+   - child-safe
+   - diverse South African representation where people are included
+   - school-appropriate clothing and settings
+   - no copyrighted characters
+   - no brand logos
+   - no political messaging
+   - no unsafe scenes
+10. If CAPS alignment is requested, ensure the output reflects the likely CAPS expectations for the stated grade, subject, and topic. If information is insufficient, produce the most educationally appropriate CAPS-style output and state any assumptions briefly.
+
+Output style rules:
+- Be precise and structured.
+- Use headings and sections where useful.
+- Avoid overly academic wording for younger grades.
+- Ensure language matches the learner level.
+- For teacher-facing content, include practical classroom utility.
+- For learner-facing content, ensure readability and engagement.
+- For visual materials, include a design specification and not only body text.
+
+If a poster, visual aid, infographic, worksheet, or study guide is requested, return structured content with:
+- curriculum_alignment
+- learning_goal
+- learner_level
+- content_text
+- design_spec
+- visual_brief
+- image_prompt
+- teacher_notes
+
+Do not output low-effort visual suggestions such as “add some icons” or “include emojis”.
+```
+
+---
+
+# 5. Prompt Logic by Feature
+
+---
+
+## A. Lesson Studio Prompt
+
+Your lesson planner should not just generate text sections. It should produce a **teacher-usable instructional sequence**.
+
+### SYSTEM/DEVELOPER ADD-ON FOR LESSON STUDIO
+
+```text
+Generate a detailed CAPS-style lesson plan for a South African teacher.
+
+The lesson plan must include:
+- Subject
+- Grade
+- Topic
+- CAPS linkage or assumed curriculum alignment
+- Lesson duration
+- Learning objectives
+- Prior knowledge
+- Key vocabulary
+- Resources needed
+- Introduction / Hook
+- Direct instruction / teacher input
+- Guided practice
+- Independent practice
+- Informal assessment
+- Differentiation / support / enrichment
+- Classroom management notes where relevant
+- Conclusion / reflection
+- Homework or extension if appropriate
+
+Quality rules:
+- Make the sequence practical and realistic for a South African classroom.
+- Avoid vague activities such as “discuss the topic” unless detailed.
+- Include examples relevant to South African learners where appropriate.
+- Match complexity to the grade.
+- Ensure activities clearly support the objectives.
+- If Foundation Phase, include concrete, sensory, oral, and visual learning.
+- If Intermediate/Senior/FET, include cognitive progression and subject-specific skills.
+- Ensure CAPS-style progression and educational coherence.
+```
+
+### USER TEMPLATE
+
+```text
+Generate a CAPS-aligned lesson plan.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Term: {{term}}
+- Topic: {{topic}}
+- Lesson duration: {{duration}}
+- Language of learning and teaching: {{lolt}}
+- Teacher notes/preferences: {{notes}}
+
+Return in structured JSON.
+```
+
+---
+
+## Suggested JSON schema
+
+```json
+{
+  "title": "",
+  "subject": "",
+  "grade": "",
+  "term": "",
+  "topic": "",
+  "caps_alignment": {
+    "summary": "",
+    "assumptions": []
+  },
+  "lesson_overview": {
+    "duration_minutes": 0,
+    "learning_objectives": [],
+    "prior_knowledge": [],
+    "key_vocabulary": []
+  },
+  "resources": [],
+  "lesson_phases": {
+    "hook": {
+      "duration_minutes": 0,
+      "teacher_actions": [],
+      "learner_actions": []
+    },
+    "direct_instruction": {
+      "duration_minutes": 0,
+      "teacher_actions": [],
+      "learner_actions": []
+    },
+    "guided_practice": {
+      "duration_minutes": 0,
+      "teacher_actions": [],
+      "learner_actions": []
+    },
+    "independent_practice": {
+      "duration_minutes": 0,
+      "activity": "",
+      "success_criteria": []
+    },
+    "assessment": {
+      "type": "",
+      "task": "",
+      "criteria": []
+    },
+    "closure": {
+      "duration_minutes": 0,
+      "teacher_actions": [],
+      "learner_actions": []
+    }
+  },
+  "differentiation": {
+    "support": [],
+    "enrichment": []
+  },
+  "homework": "",
+  "teacher_notes": []
+}
+```
+
+---
+
+## B. Content Creator Prompt Logic
+
+This should branch by content type:
+- worksheet
+- study guide
+- poster
+- flashcards
+- summary sheet
+- classroom display
+- visual aid
+
+The prompt must change significantly per type.
+
+---
+
+# 6. Poster / Visual Aid Prompt Logic
+
+This is where your biggest gain will come from.
+
+## Step 1: Ask Pro model to generate a design package
+
+### PROMPT FOR `gemini-3.1-pro-preview`
+
+```text
+Create a CAPS-aligned classroom poster design package for a South African school.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Topic: {{topic}}
+- Language: {{language}}
+- Poster purpose: {{purpose}}
+- Output size: {{size}} 
+- Style preference: {{stylePreference}}
+- Must include South African context: yes
+
+Your job is NOT to generate a random poster.
+Your job is to design a high-quality educational poster specification for print or classroom display.
+
+The poster must:
+- teach one clear concept
+- use concise, learner-friendly wording
+- have a strong visual hierarchy
+- be readable from a classroom wall
+- avoid clutter
+- avoid tiny icons
+- avoid emojis
+- avoid overloading the poster with too much text
+- include one dominant visual scene or diagram that directly supports the topic
+
+Return JSON with:
+1. curriculum_alignment
+2. learning_goal
+3. target_learners
+4. poster_text:
+   - title
+   - subtitle
+   - key_points
+   - labels
+   - callout_boxes
+5. design_spec:
+   - orientation
+   - layout_structure
+   - visual_hierarchy
+   - typography_guidelines
+   - colour_palette
+   - spacing_notes
+   - print_notes
+6. visual_brief:
+   - main_scene
+   - educational_elements_to_show
+   - learner_relevance
+   - south_african_context_elements
+   - what_to_avoid
+7. image_prompt:
+   - a polished prompt for an image generation model
+8. teacher_notes:
+   - how to use the poster in class
+   - what learners should notice first
+
+Important:
+- The image prompt must request a polished, appealing, child-safe, classroom-quality illustration.
+- The image prompt must explicitly forbid emojis, tiny icons, watermark text, illegible labels, cluttered infographic styling, and decorative clipart.
+- The design must look like a professionally prepared school poster, not a social media graphic.
+```
+
+---
+
+## Example high-quality image prompt template generated by Pro
+
+```text
+Create a high-resolution educational classroom poster illustration for South African Grade 6 Natural Sciences about the water cycle. Portrait orientation, suitable for A3 print. Show one large, clear, visually engaging scene with the sun heating water, evaporation rising from a dam and river, condensation forming clouds, precipitation falling over hills and fields, and water collecting again in rivers and dams. Include space for large readable labels and arrows. Use bright but balanced colours, clean composition, realistic child-friendly illustration style, diverse South African landscape cues, highly visible educational details, simple background, no clutter, no emojis, no tiny icons, no decorative clipart, no watermark, no excessive text, no busy infographic layout. The result must feel polished, modern, educational, and easy for learners to understand from a distance.
+```
+
+---
+
+# 7. Very Important: Add Negative Constraints
+
+Your current output sounds like the model is defaulting to generic “educational poster” tropes.
+
+For all visual prompts, include a reusable negative constraints block.
+
+## NEGATIVE VISUAL BLOCK
+
+```text
+Do not use:
+- emojis
+- emoticons
+- tiny symbols
+- low-contrast text
+- generic app-style icons
+- decorative clipart
+- crowded infographic layouts
+- watermark text
+- logo-like elements
+- meme style
+- social media style stickers
+- unrealistic proportions
+- confusing backgrounds
+- too many colours
+- tiny labels
+- text embedded as the main teaching method
+```
+
+You can append this to every image prompt.
+
+---
+
+# 8. Stronger Poster Output Contract
+
+A lot of poor quality comes from letting the model improvise format. Make it return strict JSON.
+
+## Poster JSON Schema
+
+```json
+{
+  "content_type": "poster",
+  "curriculum_alignment": {
+    "subject": "",
+    "grade": "",
+    "topic": "",
+    "caps_summary": "",
+    "assumptions": []
+  },
+  "learning_goal": "",
+  "target_learners": {
+    "age_range": "",
+    "reading_level": "",
+    "classroom_use": ""
+  },
+  "poster_text": {
+    "title": "",
+    "subtitle": "",
+    "key_points": [],
+    "labels": [],
+    "callout_boxes": []
+  },
+  "design_spec": {
+    "orientation": "portrait",
+    "layout_structure": "",
+    "visual_hierarchy": {
+      "primary_focus": "",
+      "secondary_elements": [],
+      "text_priority": []
+    },
+    "typography_guidelines": {
+      "title_style": "",
+      "body_style": "",
+      "minimum_print_size_notes": ""
+    },
+    "colour_palette": {
+      "primary": [],
+      "accent": [],
+      "background": ""
+    },
+    "spacing_notes": [],
+    "print_notes": []
+  },
+  "visual_brief": {
+    "main_scene": "",
+    "educational_elements_to_show": [],
+    "south_african_context_elements": [],
+    "what_to_avoid": []
+  },
+  "image_prompt": "",
+  "teacher_notes": {
+    "how_to_introduce": "",
+    "discussion_questions": [],
+    "follow_up_activity": ""
+  }
+}
+```
+
+---
+
+# 9. Worksheet Prompt Logic
+
+Worksheets should be cleaner and less decorative.
+
+## WORKSHEET PROMPT
+
+```text
+Create a CAPS-aligned worksheet for a South African classroom.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Topic: {{topic}}
+- Language: {{language}}
+- Number of questions: {{numQuestions}}
+- Difficulty level: {{difficulty}}
+- Include memo: {{includeMemo}}
+- Special instructions: {{instructions}}
+
+The worksheet must:
+- match the learner’s grade and reading level
+- clearly support the stated topic
+- use simple, clean formatting
+- avoid unnecessary decoration
+- include clear instructions
+- balance recall, understanding, and application where appropriate
+- be printable on A4
+- be suitable for classroom or homework use
+
+Return JSON with:
+- title
+- instructions
+- curriculum_alignment
+- skills_targeted
+- worksheet_sections
+- memo_if_requested
+- formatting_notes
+
+If diagrams or illustrations are needed, include:
+- visual_brief
+- image_prompt
+Only include visuals if they directly support learning.
+Do not suggest emojis or decorative icons.
+```
+
+---
+
+# 10. Study Guide Prompt Logic
+
+## STUDY GUIDE PROMPT
+
+```text
+Create a CAPS-aligned study guide for South African learners.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Topic: {{topic}}
+- Language: {{language}}
+- Desired length: {{length}}
+- Exam prep focus: {{examFocus}}
+
+The study guide must:
+- explain the topic clearly at grade level
+- use short sections and meaningful headings
+- define key terms
+- include worked examples where appropriate
+- highlight common mistakes
+- include quick self-check questions
+- use learner-friendly language
+- be visually clean and easy to revise from
+
+Return JSON with:
+- title
+- curriculum_alignment
+- key_terms
+- summary_sections
+- worked_examples
+- common_errors
+- self_check
+- design_notes
+
+Design notes must describe how to render the study guide clearly for print or screen.
+```
+
+---
+
+# 11. Mock Assessment Prompt Logic
+
+For CAPS compliance, assessments need stronger constraint prompts.
+
+## MOCK ASSESSMENT PROMPT
+
+```text
+Generate a CAPS-style mock assessment for a South African school.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Term: {{term}}
+- Topic(s): {{topics}}
+- Marks: {{marks}}
+- Duration: {{duration}}
+- Assessment type: {{assessmentType}}
+- Cognitive level requirements: {{cognitiveRequirements}}
+- Language: {{language}}
+
+Requirements:
+- align to CAPS style and grade expectations
+- include an appropriate spread of question types
+- ensure mark allocation is fair and clear
+- use clear instructions
+- avoid ambiguous wording
+- match the requested duration and mark total
+- include South African context where relevant but not forced
+- ensure internal consistency across questions, marks, and memo
+
+Return JSON with:
+- paper_title
+- instructions
+- curriculum_alignment
+- question_sections
+- total_marks
+- estimated_duration
+- cognitive_distribution
+- quality_checks
+```
+
+---
+
+# 12. Memo / Rubric Prompt Logic
+
+## MEMO PROMPT
+
+```text
+Generate a CAPS-style memorandum and marking guideline for the assessment described below.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Assessment JSON: {{assessmentJson}}
+
+Requirements:
+- provide correct answers
+- allocate marks clearly
+- allow valid alternative answers where appropriate
+- include method marks where relevant
+- ensure the memo matches each question exactly
+- use South African school assessment conventions
+- be teacher-friendly and easy to moderate
+
+Return JSON with:
+- memo_title
+- question_by_question_answers
+- mark_allocations
+- acceptable_alternatives
+- moderation_notes
+- common_learner_errors
+```
+
+---
+
+# 13. Autograder Prompt Logic
+
+This is another place where quality often suffers because prompts are too loose.
+
+## AUTOGRADER SYSTEM PROMPT
+
+```text
+You are a fair, careful South African school assessor.
+
+Grade the learner submission against the provided task instructions, memo, and rubric only.
+Do not invent criteria.
+Do not penalize for harmless spelling or grammar issues unless language accuracy is explicitly assessed.
+Be constructive, specific, and evidence-based.
+
+Use the 4-point rubric exactly as provided.
+For each criterion:
+- identify evidence from the learner response
+- assign a level
+- justify the score briefly
+- suggest one improvement
+
+Return JSON only.
+```
+
+## AUTOGRADER USER PROMPT
+
+```text
+Grade this learner submission.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Task instructions: {{taskInstructions}}
+- Memo: {{memo}}
+- Rubric: {{rubric}}
+- Learner submission: {{submission}}
+
+Return:
+- overall_level
+- criterion_scores
+- total_score_if_applicable
+- strengths
+- next_steps
+- learner_friendly_feedback
+- teacher_feedback
+```
+
+---
+
+# 14. AI Tutor Prompt Logic
+
+The tutor should be warm, concise, CAPS-aware, and contextual.
+
+## TUTOR SYSTEM PROMPT
+
+```text
+You are EduAI Tutor, a supportive AI tutor for South African learners.
+
+Your role is to:
+- explain school subjects clearly
+- align explanations to CAPS-style school learning
+- use age-appropriate language
+- encourage thinking instead of only giving answers
+- use South African examples where helpful
+- keep the learner safe, respected, and supported
+
+Rules:
+- If the learner asks for help, guide step by step.
+- If the learner is confused, simplify and use an example.
+- If the learner asks for a direct answer to homework, provide help in a way that still teaches.
+- Keep explanations concise unless the learner asks for more detail.
+- Use headings or bullet points when useful.
+- Avoid sounding robotic.
+- Never use emojis unless explicitly enabled by the teacher for very young learners.
+- If a question depends on grade level and it is unclear, ask a short clarifying question.
+```
+
+---
+
+# 15. OCR Prompt Logic
+
+OCR should be extraction-first, cleanup-second.
+
+## OCR PROMPT
+
+```text
+Extract all readable text from this image.
+
+Requirements:
+- preserve original wording as accurately as possible
+- keep headings and lists where visible
+- correct only obvious OCR recognition mistakes
+- do not rewrite, summarise, or simplify unless explicitly requested
+- if any text is unclear, mark it as [unclear]
+- if the image contains tables, reproduce them in a simple structured format
+
+Return JSON:
+- extracted_text
+- detected_language
+- confidence_notes
+- unclear_segments
+```
+
+---
+
+# 16. CAPS Compliance Strategy
+
+A major challenge: Gemini may sound CAPS-aligned without being truly aligned unless you guide it properly.
+
+You should include a **CAPS validator step** after generation for critical content.
+
+## Add a second-pass CAPS compliance prompt
+
+Use Pro model again after generation.
+
+### CAPS REVIEW PROMPT
+
+```text
+Review the following educational content for likely CAPS alignment and classroom suitability in a South African school.
+
+Inputs:
+- Subject: {{subject}}
+- Grade: {{grade}}
+- Term: {{term}}
+- Topic: {{topic}}
+- Content type: {{contentType}}
+- Generated content: {{generatedContent}}
+
+Check for:
+1. grade appropriateness
+2. topic relevance
+3. learner reading level
+4. likely CAPS-style structure
+5. accuracy
+6. assessment suitability if applicable
+7. South African classroom usefulness
+8. clarity of instructions
+9. visual design suitability if learner-facing
+10. any over-complexity, under-complexity, or curriculum mismatch
+
+Return JSON:
+- overall_verdict
+- strengths
+- risks
+- required_fixes
+- revised_version_if_needed
+```
+
+This second pass will improve consistency a lot.
+
+---
+
+# 17. Best Practice for Visual Generation in Your App
+
+Your current pipeline seems to be:
+
+- Pro writes content
+- image model generates image
+
+Improve it to:
+
+### New pipeline for posters/visuals
+1. Pro generates curriculum content
+2. Pro generates design spec
+3. Pro generates image prompt
+4. Optional: Pro critiques its own image prompt
+5. Image model generates image
+6. Optional: Pro evaluates whether the image matches educational purpose
+7. Frontend composes final poster using:
+   - title text
+   - subtitle
+   - key points
+   - generated image
+   - controlled layout templates
+
+This is key:
+## Do not ask the image model to generate the whole poster with all the text embedded.
+Image models are much less reliable for educational typography.
+
+Instead:
+- generate the **illustration only**
+- place the text in your app UI/layout engine
+
+That alone will dramatically improve quality.
+
+---
+
+# 18. Why Your Posters Look Poor
+
+Likely causes:
+
+- prompt says “poster” but not “dominant educational scene”
+- no negative prompt
+- no readability constraints
+- image model is trying to do both text and image
+- no layout guidance
+- no print-context specification
+- no age-specific style guidance
+- no suppression of emojis/icons/clipart
+- no explicit instruction that visual must teach, not decorate
+
+---
+
+# 19. A Better Universal Visual Prompt Template
+
+Use this template whenever a visual aid is required.
+
+## UNIVERSAL VISUAL PROMPT TEMPLATE
+
+```text
+Create a high-resolution educational illustration for a South African classroom.
+
+Purpose:
+{{purpose}}
+
+Audience:
+{{grade}} learners studying {{subject}}
+
+Topic:
+{{topic}}
+
+Visual goal:
+Show one clear, central educational concept in a way that learners can easily understand from a classroom wall or worksheet.
+
+Style requirements:
+- child-safe
+- polished
+- modern classroom illustration
+- visually engaging but not cluttered
+- age-appropriate for Grade {{grade}}
+- realistic or clean educational illustrated style depending on topic
+- strong focal point
+- clear shapes and educational details
+- suitable for print
+
+Must include:
+{{mustInclude}}
+
+South African context:
+{{saContext}}
+
+Composition:
+- one dominant scene or diagram
+- uncluttered background
+- enough empty space for layout if needed
+- large, visible educational elements
+- no tiny details that disappear when printed
+
+Avoid:
+- emojis
+- emoticons
+- tiny icons
+- decorative clipart
+- watermark text
+- excessive text
+- chaotic infographic styling
+- crowded composition
+- meme aesthetics
+- childish low-quality graphics
+- brand logos
+- copyrighted characters
+
+Output should feel like:
+a professionally designed school classroom visual aid.
+```
+
+---
+
+# 20. Prompt Refinement Pattern for Higher Quality
+
+Use this pattern in your backend:
+
+## Phase 1: Planning
+“Plan the output.”
+
+## Phase 2: Generate
+“Generate according to the plan.”
+
+## Phase 3: Critique
+“Review for quality/CAPS/readability/design.”
+
+## Phase 4: Finalize
+“Return final structured output.”
+
+This is much better than one-shot prompting.
+
+---
+
+# 21. Example Multi-Step Poster Flow
+
+## Step 1: Planning prompt
+```text
+Plan a classroom poster for Grade 4 Mathematics on 2D shapes.
+Focus on educational clarity, visual appeal, and readability from a distance.
+Return only the content strategy and design plan.
+```
+
+## Step 2: Generation prompt
+```text
+Using the approved plan, generate the poster text, design spec, and image prompt in JSON.
+```
+
+## Step 3: Critique prompt
+```text
+Review this poster package for:
+- CAPS appropriateness
+- grade suitability
+- visual clarity
+- overuse of text
+- weak or decorative imagery
+- readability from a classroom wall
+
+Revise weak sections.
+```
+
+---
+
+# 22. Frontend / Rendering Advice
+
+Even with perfect prompts, output quality will remain mediocre if your frontend simply dumps text into a basic template.
+
+You should build a few controlled templates:
+
+- **Poster Template A**: big title + hero image + 3 key points
+- **Poster Template B**: title + labelled diagram + definitions strip
+- **Worksheet Template A**: header + instructions + sections + answer lines
+- **Study Guide Template A**: title + concept cards + examples + self-check
+- **Visual Aid Template A**: image-first with labels overlaid by your renderer
+
+Let AI generate:
+- content
+- design instructions
+- visual brief
+
+Let your app handle:
+- typography
+- spacing
+- color usage
+- layout consistency
+- print-friendly formatting
+
+That is how you get production quality.
+
+---
+
+# 23. Practical Prompt Additions That Will Immediately Help
+
+Add these exact instructions to relevant prompts:
+
+### For posters
+```text
+The final poster must be readable from 1.5 to 2 metres away when printed on A3.
+Use no more than 3 to 5 core teaching points.
+The visual must carry the teaching load, not dense text.
+```
+
+### For learner content
+```text
+Use language appropriate for the grade’s reading level.
+Prefer short sentences and concrete examples.
+```
+
+### For image prompts
+```text
+Create illustration only. Do not embed educational text in the image except for simple labels if explicitly requested.
+```
+
+### For design
+```text
+Prioritise educational clarity, legibility, and classroom usefulness over decoration.
+```
+
+---
+
+# 24. Final Recommendation Summary
+
+You do not need different models first. You need:
+
+1. **stronger system prompts**
+2. **feature-specific prompts**
+3. **strict JSON output**
+4. **separate design planning from generation**
+5. **separate text layout from image generation**
+6. **negative prompting for weak visuals**
+7. **CAPS review pass**
+8. **controlled frontend templates**
+
+---
+
+# 25. What I Can Do Next
+
+I can help you further in one of three ways:
+
+### Option 1
+Create a **complete prompt pack** for every feature in your app, ready to paste into your TypeScript files.
+
+### Option 2
+Create a **JSON schema + prompt architecture** for each flow:
+- `generate-lesson-studio.ts`
+- `generate-caps-content.ts`
+- `autograder-flow.ts`
+- `generate-mock-assessment.ts`
+- `generate-memos-rubrics.ts`
+- `ai-tutor-flow.ts`
+- `extract-text-from-images.ts`
+
+### Option 3
+Create the actual **TypeScript prompt builder functions** for your Node.js app, including reusable prompt templates and variable interpolation.
+
+If you want, I can do the best next step:
+**build a full production-ready prompt framework for all your app features in TypeScript format.**
+
+********************************************************************************************************************************************
+********************************************************************************************************************************************
+
+Absolutely — below is a **production-style TypeScript prompt framework** you can drop into your Node.js app and adapt.
+
+I’ll give you:
+
+1. **Architecture**
+2. **Reusable constants**
+3. **Prompt builder utilities**
+4. **Feature-specific prompt builders**
+5. **Structured JSON schema instructions**
+6. **Image prompt logic**
+7. **CAPS review / self-critique prompts**
+8. **Implementation notes**
+
+---
+
+# 1. Recommended Folder Structure
+
+```bash
+src/
+  ai/
+    prompts/
+      core/
+        prompt-types.ts
+        prompt-utils.ts
+        global-rules.ts
+        json-schema-formatters.ts
+      builders/
+        lesson-studio.prompts.ts
+        content-creator.prompts.ts
+        tutor.prompts.ts
+        autograder.prompts.ts
+        assessment.prompts.ts
+        memo.prompts.ts
+        ocr.prompts.ts
+        caps-review.prompts.ts
+      index.ts
+```
+
+---
+
+# 2. Core Types
+
+## `prompt-types.ts`
+
+```ts
+export type PromptMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+export type BuiltPrompt = {
+  systemInstruction: string;
+  userPrompt: string;
+  expectedFormat?: 'json' | 'text';
+  schemaHint?: string;
+};
+
+export type LanguageOption =
+  | 'English'
+  | 'Afrikaans'
+  | 'isiZulu'
+  | 'isiXhosa'
+  | 'Sesotho'
+  | 'Setswana'
+  | 'Xitsonga'
+  | 'Sepedi'
+  | 'Tshivenda'
+  | 'siSwati'
+  | 'isiNdebele';
+
+export interface BaseEduInput {
+  subject: string;
+  grade: string;
+  topic: string;
+  term?: string;
+  language?: LanguageOption | string;
+  notes?: string;
+}
+```
+
+---
+
+# 3. Global Rules
+
+## `global-rules.ts`
+
+These are reusable blocks you concatenate into prompts.
+
+```ts
+export const GLOBAL_EDU_SYSTEM_RULES = `
+You are EduAI Companion, an expert South African curriculum content designer for teachers.
+
+You generate high-quality, CAPS-aligned educational content for South African schools.
+
+Core standards:
+- Factually correct
+- Age-appropriate
+- CAPS-aligned where requested
+- Clear, structured, and classroom-ready
+- Suitable for printing or digital classroom display
+- Written in professional South African school English unless another language is requested
+
+You must adapt output to:
+- subject
+- grade
+- term if provided
+- topic
+- learner age and reading level
+- South African classroom context
+- teacher’s requested format
+
+Quality rules:
+1. Never produce generic filler content.
+2. Never use emojis or emoticons in formal classroom resources.
+3. Never rely on tiny icons or vague decorative visuals as the main visual aid.
+4. Visual materials must be educationally meaningful, not merely decorative.
+5. Posters and visual aids must prioritize:
+   - legibility from a distance
+   - strong visual hierarchy
+   - minimal but meaningful text
+   - one clear central concept
+   - uncluttered composition
+6. Worksheets and study guides must prioritize learning clarity over decoration.
+7. When visuals are requested, first plan the educational design before generating image prompts.
+8. Always use diverse, child-safe, school-appropriate South African contexts when relevant.
+9. Avoid copyrighted characters, logos, unsafe scenes, political messaging, and branded content.
+10. If CAPS alignment is requested and exact curriculum metadata is incomplete, produce the most likely CAPS-appropriate output and state assumptions briefly.
+
+Output rules:
+- Be precise and structured.
+- Match the language level to the grade.
+- For teacher-facing content, prioritize practical classroom use.
+- For learner-facing content, prioritize readability and engagement.
+- If JSON is requested, return valid JSON only.
+`;
+
+export const VISUAL_QUALITY_RULES = `
+Visual quality rules:
+- Do not suggest emojis, emoticons, or tiny decorative icons.
+- Do not create cluttered infographic-style layouts unless explicitly asked.
+- Do not overload posters with text.
+- Use one dominant visual scene or diagram where possible.
+- Prioritize educational clarity over decoration.
+- Design for classroom readability and print suitability.
+`;
+
+export const VISUAL_NEGATIVE_CONSTRAINTS = `
+Avoid:
+- emojis
+- emoticons
+- tiny icons
+- decorative clipart
+- watermark text
+- excessive text embedded in the image
+- chaotic infographic styling
+- crowded composition
+- meme aesthetics
+- social media sticker style
+- brand logos
+- copyrighted characters
+- low-contrast details
+- tiny labels
+`;
+
+export const JSON_ONLY_RULE = `
+Return valid JSON only.
+Do not wrap the JSON in markdown fences.
+Do not add explanations before or after the JSON.
+`;
+```
+
+---
+
+# 4. Prompt Utilities
+
+## `prompt-utils.ts`
+
+```ts
+export function cleanMultiline(input: string): string {
+  return input
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n')
+    .trim();
+}
+
+export function optionalLine(label: string, value?: string | number | boolean): string {
+  if (value === undefined || value === null || value === '') return '';
+  return `- ${label}: ${String(value)}`;
+}
+
+export function optionalSection(title: string, lines: Array<string | undefined | null>): string {
+  const filtered = lines.filter(Boolean) as string[];
+  if (!filtered.length) return '';
+  return `${title}\n${filtered.join('\n')}`;
+}
+
+export function stringifyPrettyJsonExample(example: unknown): string {
+  return JSON.stringify(example, null, 2);
+}
+
+export function joinSections(...sections: Array<string | undefined | null>): string {
+  return sections.filter(Boolean).join('\n\n').trim();
+}
+```
+
+---
+
+# 5. JSON Schema Hint Helpers
+
+These are not true runtime JSON schemas — they are **prompt-facing shape hints** for Gemini.
+
+## `json-schema-formatters.ts`
+
+```ts
+export const LESSON_STUDIO_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "title": "string",
+  "subject": "string",
+  "grade": "string",
+  "term": "string",
+  "topic": "string",
+  "caps_alignment": {
+    "summary": "string",
+    "assumptions": ["string"]
+  },
+  "lesson_overview": {
+    "duration_minutes": 0,
+    "learning_objectives": ["string"],
+    "prior_knowledge": ["string"],
+    "key_vocabulary": ["string"]
+  },
+  "resources": ["string"],
+  "lesson_phases": {
+    "hook": {
+      "duration_minutes": 0,
+      "teacher_actions": ["string"],
+      "learner_actions": ["string"]
+    },
+    "direct_instruction": {
+      "duration_minutes": 0,
+      "teacher_actions": ["string"],
+      "learner_actions": ["string"]
+    },
+    "guided_practice": {
+      "duration_minutes": 0,
+      "teacher_actions": ["string"],
+      "learner_actions": ["string"]
+    },
+    "independent_practice": {
+      "duration_minutes": 0,
+      "activity": "string",
+      "success_criteria": ["string"]
+    },
+    "assessment": {
+      "type": "string",
+      "task": "string",
+      "criteria": ["string"]
+    },
+    "closure": {
+      "duration_minutes": 0,
+      "teacher_actions": ["string"],
+      "learner_actions": ["string"]
+    }
+  },
+  "differentiation": {
+    "support": ["string"],
+    "enrichment": ["string"]
+  },
+  "homework": "string",
+  "teacher_notes": ["string"]
+}
+`;
+
+export const POSTER_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "content_type": "poster",
+  "curriculum_alignment": {
+    "subject": "string",
+    "grade": "string",
+    "topic": "string",
+    "caps_summary": "string",
+    "assumptions": ["string"]
+  },
+  "learning_goal": "string",
+  "target_learners": {
+    "age_range": "string",
+    "reading_level": "string",
+    "classroom_use": "string"
+  },
+  "poster_text": {
+    "title": "string",
+    "subtitle": "string",
+    "key_points": ["string"],
+    "labels": ["string"],
+    "callout_boxes": ["string"]
+  },
+  "design_spec": {
+    "orientation": "portrait | landscape",
+    "layout_structure": "string",
+    "visual_hierarchy": {
+      "primary_focus": "string",
+      "secondary_elements": ["string"],
+      "text_priority": ["string"]
+    },
+    "typography_guidelines": {
+      "title_style": "string",
+      "body_style": "string",
+      "minimum_print_size_notes": "string"
+    },
+    "colour_palette": {
+      "primary": ["string"],
+      "accent": ["string"],
+      "background": "string"
+    },
+    "spacing_notes": ["string"],
+    "print_notes": ["string"]
+  },
+  "visual_brief": {
+    "main_scene": "string",
+    "educational_elements_to_show": ["string"],
+    "south_african_context_elements": ["string"],
+    "what_to_avoid": ["string"]
+  },
+  "image_prompt": "string",
+  "teacher_notes": {
+    "how_to_introduce": "string",
+    "discussion_questions": ["string"],
+    "follow_up_activity": "string"
+  }
+}
+`;
+
+export const WORKSHEET_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "content_type": "worksheet",
+  "title": "string",
+  "instructions": ["string"],
+  "curriculum_alignment": {
+    "subject": "string",
+    "grade": "string",
+    "topic": "string",
+    "caps_summary": "string",
+    "assumptions": ["string"]
+  },
+  "skills_targeted": ["string"],
+  "worksheet_sections": [
+    {
+      "section_title": "string",
+      "section_instructions": "string",
+      "questions": [
+        {
+          "number": 1,
+          "type": "string",
+          "question": "string",
+          "marks": 0
+        }
+      ]
+    }
+  ],
+  "memo_if_requested": {
+    "included": true,
+    "answers": [
+      {
+        "question_number": 1,
+        "answer": "string"
+      }
+    ]
+  },
+  "visual_brief": {
+    "needed": false,
+    "purpose": "string",
+    "description": "string"
+  },
+  "image_prompt": "string",
+  "formatting_notes": ["string"]
+}
+`;
+
+export const STUDY_GUIDE_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "content_type": "study_guide",
+  "title": "string",
+  "curriculum_alignment": {
+    "subject": "string",
+    "grade": "string",
+    "topic": "string",
+    "caps_summary": "string",
+    "assumptions": ["string"]
+  },
+  "key_terms": [
+    {
+      "term": "string",
+      "definition": "string"
+    }
+  ],
+  "summary_sections": [
+    {
+      "heading": "string",
+      "content": ["string"]
+    }
+  ],
+  "worked_examples": [
+    {
+      "title": "string",
+      "steps": ["string"]
+    }
+  ],
+  "common_errors": ["string"],
+  "self_check": [
+    {
+      "question": "string",
+      "answer": "string"
+    }
+  ],
+  "design_notes": ["string"]
+}
+`;
+
+export const ASSESSMENT_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "paper_title": "string",
+  "instructions": ["string"],
+  "curriculum_alignment": {
+    "subject": "string",
+    "grade": "string",
+    "term": "string",
+    "topics": ["string"],
+    "caps_summary": "string",
+    "assumptions": ["string"]
+  },
+  "question_sections": [
+    {
+      "section_title": "string",
+      "questions": [
+        {
+          "number": "string",
+          "question_text": "string",
+          "marks": 0,
+          "cognitive_level": "string"
+        }
+      ]
+    }
+  ],
+  "total_marks": 0,
+  "estimated_duration": "string",
+  "cognitive_distribution": [
+    {
+      "level": "string",
+      "description": "string",
+      "approx_marks": 0
+    }
+  ],
+  "quality_checks": ["string"]
+}
+`;
+
+export const MEMO_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "memo_title": "string",
+  "question_by_question_answers": [
+    {
+      "question_number": "string",
+      "answer": "string",
+      "marks": 0
+    }
+  ],
+  "mark_allocations": [
+    {
+      "question_number": "string",
+      "allocation": "string"
+    }
+  ],
+  "acceptable_alternatives": [
+    {
+      "question_number": "string",
+      "alternatives": ["string"]
+    }
+  ],
+  "moderation_notes": ["string"],
+  "common_learner_errors": ["string"]
+}
+`;
+
+export const AUTOGRADER_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "overall_level": "string",
+  "criterion_scores": [
+    {
+      "criterion": "string",
+      "level": "string",
+      "justification": "string",
+      "improvement": "string"
+    }
+  ],
+  "total_score_if_applicable": "string",
+  "strengths": ["string"],
+  "next_steps": ["string"],
+  "learner_friendly_feedback": "string",
+  "teacher_feedback": "string"
+}
+`;
+
+export const OCR_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "extracted_text": "string",
+  "detected_language": "string",
+  "confidence_notes": ["string"],
+  "unclear_segments": ["string"]
+}
+`;
+
+export const CAPS_REVIEW_SCHEMA_HINT = `
+Expected JSON shape:
+{
+  "overall_verdict": "string",
+  "strengths": ["string"],
+  "risks": ["string"],
+  "required_fixes": ["string"],
+  "revised_version_if_needed": {}
+}
+`;
+```
+
+---
+
+# 6. Lesson Studio Prompt Builder
+
+## `lesson-studio.prompts.ts`
+
+```ts
+import { BuiltPrompt, BaseEduInput } from '../core/prompt-types';
+import { GLOBAL_EDU_SYSTEM_RULES, JSON_ONLY_RULE } from '../core/global-rules';
+import { LESSON_STUDIO_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { joinSections, cleanMultiline } from '../core/prompt-utils';
+
+export interface LessonStudioInput extends BaseEduInput {
+  durationMinutes?: number;
+  languageOfLearningAndTeaching?: string;
+}
+
+export function buildLessonStudioPrompt(input: LessonStudioInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Generate a detailed CAPS-style lesson plan for a South African teacher.
+
+The lesson plan must include:
+- Subject
+- Grade
+- Topic
+- CAPS linkage or assumed curriculum alignment
+- Lesson duration
+- Learning objectives
+- Prior knowledge
+- Key vocabulary
+- Resources needed
+- Introduction / Hook
+- Direct instruction / teacher input
+- Guided practice
+- Independent practice
+- Informal assessment
+- Differentiation / support / enrichment
+- Classroom management notes where relevant
+- Conclusion / reflection
+- Homework or extension if appropriate
+
+Quality rules:
+- Make the sequence practical and realistic for a South African classroom.
+- Avoid vague activities unless detailed.
+- Include examples relevant to South African learners where appropriate.
+- Match complexity to the grade.
+- Ensure activities clearly support the objectives.
+- If Foundation Phase, include concrete, oral, sensory, and visual learning where appropriate.
+- If Intermediate, Senior, or FET, include cognitive progression and subject-specific skills.
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Generate a CAPS-aligned lesson plan.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Term: ${input.term ?? 'Not specified'}
+- Topic: ${input.topic}
+- Lesson duration: ${input.durationMinutes ?? 60} minutes
+- Language of learning and teaching: ${input.languageOfLearningAndTeaching ?? input.language ?? 'English'}
+- Teacher notes/preferences: ${input.notes ?? 'None'}
+
+${LESSON_STUDIO_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: LESSON_STUDIO_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 7. Content Creator Prompt Builders
+
+This is the big one.
+
+## `content-creator.prompts.ts`
+
+```ts
+import { BuiltPrompt, BaseEduInput } from '../core/prompt-types';
+import {
+  GLOBAL_EDU_SYSTEM_RULES,
+  VISUAL_QUALITY_RULES,
+  VISUAL_NEGATIVE_CONSTRAINTS,
+  JSON_ONLY_RULE,
+} from '../core/global-rules';
+import {
+  POSTER_SCHEMA_HINT,
+  WORKSHEET_SCHEMA_HINT,
+  STUDY_GUIDE_SCHEMA_HINT,
+} from '../core/json-schema-formatters';
+import { joinSections, cleanMultiline } from '../core/prompt-utils';
+
+export type ContentType = 'poster' | 'worksheet' | 'study_guide' | 'visual_aid';
+
+export interface ContentCreatorInput extends BaseEduInput {
+  contentType: ContentType;
+  purpose?: string;
+  stylePreference?: string;
+  outputSize?: 'A4' | 'A3' | 'Letter' | 'Screen';
+  includeMemo?: boolean;
+  difficultyLevel?: string;
+  numberOfQuestions?: number;
+  desiredLength?: string;
+  examFocus?: string;
+}
+
+export function buildContentCreatorPrompt(input: ContentCreatorInput): BuiltPrompt {
+  switch (input.contentType) {
+    case 'poster':
+      return buildPosterPrompt(input);
+    case 'worksheet':
+      return buildWorksheetPrompt(input);
+    case 'study_guide':
+      return buildStudyGuidePrompt(input);
+    case 'visual_aid':
+      return buildVisualAidPrompt(input);
+    default:
+      return buildWorksheetPrompt(input);
+  }
+}
+
+export function buildPosterPrompt(input: ContentCreatorInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    VISUAL_QUALITY_RULES,
+    `
+Create a CAPS-aligned classroom poster design package for a South African school.
+
+Your job is NOT to generate a random poster.
+Your job is to design a high-quality educational poster specification for print or classroom display.
+
+The poster must:
+- teach one clear concept
+- use concise, learner-friendly wording
+- have a strong visual hierarchy
+- be readable from 1.5 to 2 metres away when printed on A3
+- avoid clutter
+- avoid tiny icons
+- avoid emojis
+- avoid overloading the poster with text
+- include one dominant visual scene or diagram that directly supports the topic
+
+Important:
+- The image prompt must request a polished, appealing, child-safe, classroom-quality illustration.
+- The image prompt must explicitly forbid emojis, tiny icons, watermark text, illegible labels, cluttered infographic styling, and decorative clipart.
+- The design must look like a professionally prepared school poster, not a social media graphic.
+- Create illustration only. Do not rely on text embedded inside the image as the primary teaching method.
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Create a CAPS-aligned classroom poster design package.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Topic: ${input.topic}
+- Term: ${input.term ?? 'Not specified'}
+- Language: ${input.language ?? 'English'}
+- Poster purpose: ${input.purpose ?? 'Teach the core concept clearly to learners'}
+- Output size: ${input.outputSize ?? 'A3'}
+- Style preference: ${input.stylePreference ?? 'Modern, clean, educational'}
+- Teacher notes/preferences: ${input.notes ?? 'None'}
+- Must include South African context: yes
+
+Poster requirements:
+- Use no more than 3 to 5 core teaching points.
+- The visual must carry the teaching load, not dense text.
+- Prioritise legibility, balance, and educational usefulness.
+- Suitable for classroom wall display.
+
+Negative constraints for the visual prompt:
+${VISUAL_NEGATIVE_CONSTRAINTS}
+
+${POSTER_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: POSTER_SCHEMA_HINT,
+  };
+}
+
+export function buildWorksheetPrompt(input: ContentCreatorInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Create a CAPS-aligned worksheet for a South African classroom.
+
+The worksheet must:
+- match the learner’s grade and reading level
+- clearly support the stated topic
+- use simple, clean formatting
+- avoid unnecessary decoration
+- include clear instructions
+- balance recall, understanding, and application where appropriate
+- be printable on A4
+- be suitable for classwork or homework use
+
+If visuals are needed:
+- include a visual_brief
+- include an image_prompt
+- include visuals only if they directly support learning
+- do not suggest emojis or decorative icons
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Create a CAPS-aligned worksheet.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Topic: ${input.topic}
+- Term: ${input.term ?? 'Not specified'}
+- Language: ${input.language ?? 'English'}
+- Number of questions: ${input.numberOfQuestions ?? 10}
+- Difficulty level: ${input.difficultyLevel ?? 'Grade-appropriate mixed difficulty'}
+- Include memo: ${input.includeMemo ? 'Yes' : 'No'}
+- Special instructions: ${input.notes ?? 'None'}
+
+${WORKSHEET_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: WORKSHEET_SCHEMA_HINT,
+  };
+}
+
+export function buildStudyGuidePrompt(input: ContentCreatorInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Create a CAPS-aligned study guide for South African learners.
+
+The study guide must:
+- explain the topic clearly at grade level
+- use short sections and meaningful headings
+- define key terms
+- include worked examples where appropriate
+- highlight common mistakes
+- include quick self-check questions
+- use learner-friendly language
+- be visually clean and easy to revise from
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Create a CAPS-aligned study guide.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Topic: ${input.topic}
+- Term: ${input.term ?? 'Not specified'}
+- Language: ${input.language ?? 'English'}
+- Desired length: ${input.desiredLength ?? '1 to 2 pages'}
+- Exam prep focus: ${input.examFocus ?? 'General understanding and revision'}
+- Special instructions: ${input.notes ?? 'None'}
+
+${STUDY_GUIDE_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: STUDY_GUIDE_SCHEMA_HINT,
+  };
+}
+
+export function buildVisualAidPrompt(input: ContentCreatorInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    VISUAL_QUALITY_RULES,
+    `
+Create a CAPS-aligned visual aid package for classroom use.
+
+The visual aid must:
+- support one clear learning goal
+- be easy for learners to interpret
+- avoid decorative clutter
+- include a concise teacher-facing design plan
+- include a high-quality image prompt for educational illustration only
+- be suitable for print or display
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Create a classroom visual aid package.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Topic: ${input.topic}
+- Term: ${input.term ?? 'Not specified'}
+- Language: ${input.language ?? 'English'}
+- Purpose: ${input.purpose ?? 'Support teaching of the topic visually'}
+- Output size: ${input.outputSize ?? 'A4'}
+- Style preference: ${input.stylePreference ?? 'Clean educational illustration'}
+- Notes: ${input.notes ?? 'None'}
+
+Return JSON with:
+- curriculum_alignment
+- learning_goal
+- learner_level
+- content_text
+- design_spec
+- visual_brief
+- image_prompt
+- teacher_notes
+
+Negative constraints:
+${VISUAL_NEGATIVE_CONSTRAINTS}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+  };
+}
+```
+
+---
+
+# 8. AI Tutor Prompt Builder
+
+## `tutor.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface TutorPromptInput {
+  learnerMessage: string;
+  subject?: string;
+  grade?: string;
+  language?: string;
+  conversationSummary?: string;
+}
+
+export function buildTutorPrompt(input: TutorPromptInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    `
+You are EduAI Tutor, a supportive AI tutor for South African learners.
+
+Your role is to:
+- explain school subjects clearly
+- align explanations to CAPS-style school learning
+- use age-appropriate language
+- encourage thinking instead of only giving answers
+- use South African examples where helpful
+- keep the learner safe, respected, and supported
+
+Rules:
+- If the learner asks for help, guide step by step.
+- If the learner is confused, simplify and use an example.
+- If the learner asks for a direct answer to homework, provide help in a way that still teaches.
+- Keep explanations concise unless the learner asks for more detail.
+- Use headings or bullet points when useful.
+- Avoid sounding robotic.
+- Never use emojis unless explicitly enabled by the teacher for very young learners.
+- If a question depends on grade level and it is unclear, ask a short clarifying question.
+`
+  );
+
+  const userPrompt = cleanMultiline(`
+Learner context:
+- Subject: ${input.subject ?? 'Not specified'}
+- Grade: ${input.grade ?? 'Not specified'}
+- Language: ${input.language ?? 'English'}
+- Conversation summary: ${input.conversationSummary ?? 'None'}
+
+Learner message:
+${input.learnerMessage}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'text',
+  };
+}
+```
+
+---
+
+# 9. Autograder Prompt Builder
+
+## `autograder.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { AUTOGRADER_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { JSON_ONLY_RULE } from '../core/global-rules';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface AutograderInput {
+  subject: string;
+  grade: string;
+  taskInstructions: string;
+  memo: string;
+  rubric: string;
+  learnerSubmission: string;
+}
+
+export function buildAutograderPrompt(input: AutograderInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    `
+You are a fair, careful South African school assessor.
+
+Grade the learner submission against the provided task instructions, memo, and rubric only.
+Do not invent criteria.
+Do not penalize harmless spelling or grammar issues unless language accuracy is explicitly assessed.
+Be constructive, specific, and evidence-based.
+
+Use the 4-point rubric exactly as provided.
+For each criterion:
+- identify evidence from the learner response
+- assign a level
+- justify the score briefly
+- suggest one improvement
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Grade this learner submission.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+
+Task instructions:
+${input.taskInstructions}
+
+Memo:
+${input.memo}
+
+Rubric:
+${input.rubric}
+
+Learner submission:
+${input.learnerSubmission}
+
+${AUTOGRADER_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: AUTOGRADER_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 10. Assessment Prompt Builder
+
+## `assessment.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { GLOBAL_EDU_SYSTEM_RULES, JSON_ONLY_RULE } from '../core/global-rules';
+import { ASSESSMENT_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface MockAssessmentInput {
+  subject: string;
+  grade: string;
+  term?: string;
+  topics: string[];
+  marks: number;
+  duration: string;
+  assessmentType: string;
+  cognitiveRequirements?: string;
+  language?: string;
+  notes?: string;
+}
+
+export function buildMockAssessmentPrompt(input: MockAssessmentInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Generate a CAPS-style mock assessment for a South African school.
+
+Requirements:
+- align to CAPS style and grade expectations
+- include an appropriate spread of question types
+- ensure mark allocation is fair and clear
+- use clear instructions
+- avoid ambiguous wording
+- match the requested duration and total marks
+- include South African context where relevant but not forced
+- ensure internal consistency across questions, marks, and memo
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Generate a CAPS-style mock assessment.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Term: ${input.term ?? 'Not specified'}
+- Topic(s): ${input.topics.join(', ')}
+- Marks: ${input.marks}
+- Duration: ${input.duration}
+- Assessment type: ${input.assessmentType}
+- Cognitive level requirements: ${input.cognitiveRequirements ?? 'Balanced grade-appropriate spread'}
+- Language: ${input.language ?? 'English'}
+- Special notes: ${input.notes ?? 'None'}
+
+${ASSESSMENT_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: ASSESSMENT_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 11. Memo Prompt Builder
+
+## `memo.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { MEMO_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { GLOBAL_EDU_SYSTEM_RULES, JSON_ONLY_RULE } from '../core/global-rules';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface MemoPromptInput {
+  subject: string;
+  grade: string;
+  assessmentJson: string;
+}
+
+export function buildMemoPrompt(input: MemoPromptInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Generate a CAPS-style memorandum and marking guideline for the assessment described below.
+
+Requirements:
+- provide correct answers
+- allocate marks clearly
+- allow valid alternative answers where appropriate
+- include method marks where relevant
+- ensure the memo matches each question exactly
+- use South African school assessment conventions
+- be teacher-friendly and easy to moderate
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Generate a CAPS-style memorandum.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+
+Assessment JSON:
+${input.assessmentJson}
+
+${MEMO_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: MEMO_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 12. OCR Prompt Builder
+
+## `ocr.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { OCR_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { JSON_ONLY_RULE } from '../core/global-rules';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface OCRPromptInput {
+  extractionGoal?: string;
+}
+
+export function buildOCRPrompt(input?: OCRPromptInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    `
+Extract all readable text from the provided image.
+
+Requirements:
+- preserve original wording as accurately as possible
+- keep headings and lists where visible
+- correct only obvious OCR recognition mistakes
+- do not rewrite, summarise, or simplify unless explicitly requested
+- if any text is unclear, mark it as [unclear]
+- if the image contains tables, reproduce them in a simple structured format
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Task: Extract text from the uploaded image.
+Goal: ${input?.extractionGoal ?? 'Accurate text extraction for digitisation'}
+
+${OCR_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: OCR_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 13. CAPS Review Prompt Builder
+
+This is your second-pass quality gate.
+
+## `caps-review.prompts.ts`
+
+```ts
+import { BuiltPrompt } from '../core/prompt-types';
+import { CAPS_REVIEW_SCHEMA_HINT } from '../core/json-schema-formatters';
+import { GLOBAL_EDU_SYSTEM_RULES, JSON_ONLY_RULE } from '../core/global-rules';
+import { cleanMultiline, joinSections } from '../core/prompt-utils';
+
+export interface CAPSReviewInput {
+  subject: string;
+  grade: string;
+  term?: string;
+  topic: string;
+  contentType: string;
+  generatedContent: string;
+}
+
+export function buildCAPSReviewPrompt(input: CAPSReviewInput): BuiltPrompt {
+  const systemInstruction = joinSections(
+    GLOBAL_EDU_SYSTEM_RULES,
+    `
+Review the supplied educational content for likely CAPS alignment and classroom suitability in a South African school.
+
+Check for:
+1. grade appropriateness
+2. topic relevance
+3. learner reading level
+4. likely CAPS-style structure
+5. factual accuracy
+6. assessment suitability if applicable
+7. South African classroom usefulness
+8. clarity of instructions
+9. visual design suitability if learner-facing
+10. any over-complexity, under-complexity, or curriculum mismatch
+
+If weak, revise the content.
+`,
+    JSON_ONLY_RULE
+  );
+
+  const userPrompt = cleanMultiline(`
+Review this generated content.
+
+Inputs:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Term: ${input.term ?? 'Not specified'}
+- Topic: ${input.topic}
+- Content type: ${input.contentType}
+
+Generated content:
+${input.generatedContent}
+
+${CAPS_REVIEW_SCHEMA_HINT}
+  `);
+
+  return {
+    systemInstruction,
+    userPrompt,
+    expectedFormat: 'json',
+    schemaHint: CAPS_REVIEW_SCHEMA_HINT,
+  };
+}
+```
+
+---
+
+# 14. Dedicated Image Prompt Builder
+
+Even though Pro generates the image prompt, I strongly recommend a helper that can normalize and strengthen it before sending to `gemini-3-flash-image`.
+
+## `image-prompt-builder.ts`
+
+```ts
+import { VISUAL_NEGATIVE_CONSTRAINTS } from '../core/global-rules';
+import { cleanMultiline } from '../core/prompt-utils';
+
+export interface ImagePromptBuildInput {
+  purpose: string;
+  subject: string;
+  grade: string;
+  topic: string;
+  visualGoal: string;
+  mustInclude: string[];
+  saContext?: string[];
+  style?: string;
+  orientation?: 'portrait' | 'landscape';
+  printSize?: 'A4' | 'A3' | 'Screen';
+}
+
+export function buildEducationalImagePrompt(input: ImagePromptBuildInput): string {
+  return cleanMultiline(`
+Create a high-resolution educational illustration for a South African classroom.
+
+Purpose:
+${input.purpose}
+
+Audience:
+Grade ${input.grade} learners studying ${input.subject}
+
+Topic:
+${input.topic}
+
+Visual goal:
+${input.visualGoal}
+
+Style requirements:
+- child-safe
+- polished
+- modern classroom illustration
+- visually engaging but not cluttered
+- age-appropriate for Grade ${input.grade}
+- ${input.style ?? 'clean educational illustrated style'}
+- strong focal point
+- clear shapes and educational details
+- suitable for print on ${input.printSize ?? 'A4'}
+
+Composition:
+- ${input.orientation ?? 'portrait'} orientation
+- one dominant scene or diagram
+- uncluttered background
+- enough clear space for layout if needed
+- large, visible educational elements
+- no tiny details that disappear when printed
+
+Must include:
+${input.mustInclude.map(item => `- ${item}`).join('\n')}
+
+South African context:
+${(input.saContext ?? ['Use South African school-appropriate and culturally relevant context where suitable.'])
+  .map(item => `- ${item}`)
+  .join('\n')}
+
+${VISUAL_NEGATIVE_CONSTRAINTS}
+
+Output should feel like:
+a professionally designed school classroom visual aid.
+
+Create illustration only. Do not make text the main content of the image.
+  `);
+}
+```
+
+---
+
+# 15. Exports
+
+## `index.ts`
+
+```ts
+export * from './core/prompt-types';
+export * from './core/global-rules';
+export * from './core/prompt-utils';
+export * from './core/json-schema-formatters';
+
+export * from './builders/lesson-studio.prompts';
+export * from './builders/content-creator.prompts';
+export * from './builders/tutor.prompts';
+export * from './builders/autograder.prompts';
+export * from './builders/assessment.prompts';
+export * from './builders/memo.prompts';
+export * from './builders/ocr.prompts';
+export * from './builders/caps-review.prompts';
+export * from './builders/image-prompt-builder';
+```
+
+---
+
+# 16. Example Usage in Your Services
+
+---
+
+## Example: `generate-lesson-studio.ts`
+
+```ts
+import { buildLessonStudioPrompt } from '@/ai/prompts';
+
+async function generateLessonStudio(genAI: any, params: {
+  subject: string;
+  grade: string;
+  term?: string;
+  topic: string;
+  durationMinutes?: number;
+  language?: string;
+  notes?: string;
+}) {
+  const prompt = buildLessonStudioPrompt({
+    subject: params.subject,
+    grade: params.grade,
+    term: params.term,
+    topic: params.topic,
+    durationMinutes: params.durationMinutes,
+    language: params.language,
+    notes: params.notes,
+  });
+
+  const result = await genAI.models.generateContent({
+    model: 'gemini-3.1-pro-preview',
+    config: {
+      systemInstruction: prompt.systemInstruction,
+      temperature: 0.4,
+    },
+    contents: prompt.userPrompt,
+  });
+
+  return result.text;
+}
+```
+
+---
+
+## Example: `generate-caps-content.ts`
+
+```ts
+import {
+  buildContentCreatorPrompt,
+  buildCAPSReviewPrompt,
+} from '@/ai/prompts';
+
+async function generatePoster(genAI: any, params: {
+  subject: string;
+  grade: string;
+  topic: string;
+  term?: string;
+  language?: string;
+  purpose?: string;
+  stylePreference?: string;
+  outputSize?: 'A4' | 'A3' | 'Screen';
+  notes?: string;
+}) {
+  const initialPrompt = buildContentCreatorPrompt({
+    contentType: 'poster',
+    subject: params.subject,
+    grade: params.grade,
+    topic: params.topic,
+    term: params.term,
+    language: params.language,
+    purpose: params.purpose,
+    stylePreference: params.stylePreference,
+    outputSize: params.outputSize,
+    notes: params.notes,
+  });
+
+  const firstPass = await genAI.models.generateContent({
+    model: 'gemini-3.1-pro-preview',
+    config: {
+      systemInstruction: initialPrompt.systemInstruction,
+      temperature: 0.5,
+    },
+    contents: initialPrompt.userPrompt,
+  });
+
+  const reviewPrompt = buildCAPSReviewPrompt({
+    subject: params.subject,
+    grade: params.grade,
+    term: params.term,
+    topic: params.topic,
+    contentType: 'poster',
+    generatedContent: firstPass.text,
+  });
+
+  const reviewed = await genAI.models.generateContent({
+    model: 'gemini-3.1-pro-preview',
+    config: {
+      systemInstruction: reviewPrompt.systemInstruction,
+      temperature: 0.3,
+    },
+    contents: reviewPrompt.userPrompt,
+  });
+
+  return {
+    firstPass: firstPass.text,
+    reviewed: reviewed.text,
+  };
+}
+```
+
+---
+
+## Example: generating the illustration only
+
+```ts
+async function generatePosterIllustration(genAI: any, imagePrompt: string) {
+  const result = await genAI.models.generateImages({
+    model: 'gemini-3-flash-image',
+    prompt: imagePrompt,
+  });
+
+  return result;
+}
+```
+
+---
+
+# 17. Strong Implementation Advice
+
+## A. Parse JSON safely
+Many failures are not prompt quality — they are parsing failures or malformed output handling.
+
+Use:
+- JSON parse with recovery
+- optional repair pass
+- schema validation with Zod or Ajv
+
+Example:
+
+```ts
+import { z } from 'zod';
+
+export const PosterSchema = z.object({
+  content_type: z.literal('poster'),
+  curriculum_alignment: z.object({
+    subject: z.string(),
+    grade: z.string(),
+    topic: z.string(),
+    caps_summary: z.string(),
+    assumptions: z.array(z.string()),
+  }),
+  learning_goal: z.string(),
+  target_learners: z.object({
+    age_range: z.string(),
+    reading_level: z.string(),
+    classroom_use: z.string(),
+  }),
+  poster_text: z.object({
+    title: z.string(),
+    subtitle: z.string(),
+    key_points: z.array(z.string()),
+    labels: z.array(z.string()),
+    callout_boxes: z.array(z.string()),
+  }),
+  design_spec: z.any(),
+  visual_brief: z.any(),
+  image_prompt: z.string(),
+  teacher_notes: z.any(),
+});
+```
+
+---
+
+## B. Keep temperature lower for structured curriculum tasks
+Recommended:
+- lesson plans: `0.3–0.5`
+- worksheets: `0.4`
+- assessments: `0.2–0.4`
+- memos: `0.1–0.3`
+- tutor: `0.5–0.7`
+- poster planning package: `0.4–0.6`
+- image generation: depends on API options, but keep prompt explicit
+
+---
+
+## C. Never rely on image model text rendering
+For posters:
+- generate illustration separately
+- render title, subtitles, labels, and teaching points in HTML/CSS/PDF layer
+
+This will drastically improve quality.
+
+---
+
+## D. Add a “quality repair” function
+When output is weak, run a repair prompt.
+
+Example idea:
+
+```ts
+export function buildQualityRepairPrompt(contentType: string, weakOutput: string): BuiltPrompt {
+  return {
+    systemInstruction: `
+You are improving weak educational content for classroom quality.
+Focus on clarity, structure, CAPS suitability, and visual usefulness.
+Return valid JSON only.
+`,
+    userPrompt: `
+Content type: ${contentType}
+
+The following output is weak and must be improved:
+${weakOutput}
+
+Improve it by:
+- removing vague filler
+- improving grade appropriateness
+- improving readability
+- improving design clarity
+- strengthening educational usefulness
+- removing decorative or low-value visual suggestions
+
+Return the improved version in the same JSON structure.
+`,
+    expectedFormat: 'json',
+  };
+}
+```
+
+---
+
+# 18. Best Design Decision for Your App
+
+For all learner-facing visual outputs, split generation into these artifacts:
+
+### Artifact 1: content JSON
+- title
+- subtitle
+- key points
+- labels
+
+### Artifact 2: design JSON
+- orientation
+- colour palette
+- layout hierarchy
+- spacing notes
+
+### Artifact 3: image prompt
+- illustration only
+
+### Artifact 4: rendered output
+- your frontend composes the final PDF / page / poster
+
+This is the production-grade approach.
+
+---
+
+# 19. Optional Enhancement: Add Phase-Based Prompting
+
+If you want even better output, I can next help you build a **two-pass or three-pass builder**, for example:
+
+- `buildPosterPlanningPrompt()`
+- `buildPosterGenerationPrompt(planJson)`
+- `buildPosterCritiquePrompt(outputJson)`
+- `buildPosterFinalizationPrompt(critiqueJson)`
+
+That would further improve consistency.
+
+---
+
+# 20. What I Recommend You Do Next
+
+Immediate next implementation order:
+
+1. Replace current one-shot prompts with these builders
+2. Enforce JSON-only outputs
+3. Add Zod validation
+4. Add second-pass CAPS review for:
+   - lesson plans
+   - posters
+   - worksheets
+   - assessments
+5. Separate image generation from text layout
+6. Use frontend templates for final rendering
+
+---
+
+If you want, I can now do the next practical step and give you:
+
+### Option A
+**Zod schemas** for all these outputs
+
+### Option B
+**A complete multi-pass poster generation pipeline in TypeScript**
+
+### Option C
+**Refactored production service examples** for your exact files:
+- `generate-lesson-studio.ts`
+- `generate-caps-content.ts`
+- `autograder-flow.ts`
+- `generate-mock-assessment.ts`
+- `generate-memos-rubrics.ts`
+- `extract-text-from-images.ts`
+
+My recommendation: **Option B first**, because your biggest quality problem is poster/visual generation.

@@ -74,6 +74,76 @@ async function auditSourceTree() {
   return findings;
 }
 
+const requiredGeneratedSymbols = [
+  {
+    path: 'src/lib/content-storage.ts',
+    symbols: ['uploadContent', 'saveContentSafely', 'getContentUrl', 'getPublicUrl', 'deleteContent'],
+  },
+  {
+    path: 'src/lib/supabase/client.ts',
+    symbols: ['getSupabaseClient', 'supabase'],
+  },
+  {
+    path: 'src/lib/supabase/index.ts',
+    symbols: [
+      'useAuth',
+      'useUser',
+      'useFirestore',
+      'useStorage',
+      'useCollection',
+      'useDoc',
+      'useMemoFirebase',
+      'getSupabaseClient',
+      'supabase',
+    ],
+  },
+  {
+    path: 'src/ai/flows/generate-caps-content.ts',
+    symbols: ['generateCAPSContent', 'generateCapsContent'],
+  },
+  {
+    path: 'src/ai/flows/generate-visual-aids.ts',
+    symbols: ['generateVisualAid', 'VisualAidInputSchema'],
+  },
+  {
+    path: 'src/ai/flows/generate-admin-docs.ts',
+    symbols: ['generateAdminDoc', 'AdminDocInputSchema'],
+  },
+  {
+    path: 'src/ai/flows/generate-lesson-studio.ts',
+    symbols: ['generateLessonStudio', 'generateLessonStudioFlow'],
+  },
+];
+
+async function verifyGeneratedFiles() {
+  const failures = [];
+
+  for (const item of requiredGeneratedSymbols) {
+    const absolutePath = path.join(root, item.path);
+
+    try {
+      const content = await fs.readFile(absolutePath, 'utf8');
+      const missing = item.symbols.filter((symbol) => !content.includes(symbol));
+
+      if (missing.length > 0) {
+        failures.push({ path: item.path, missing });
+      }
+    } catch (error) {
+      failures.push({ path: item.path, missing: [`unable to read file: ${error instanceof Error ? error.message : String(error)}`] });
+    }
+  }
+
+  if (failures.length > 0) {
+    const message = failures
+      .map((failure) => `- ${failure.path}: missing ${failure.missing.join(', ')}`)
+      .join('\n');
+
+    throw new Error(`Generated migration files failed verification:\n${message}`);
+  }
+
+  console.log('Verification passed: generated files contain all required compatibility exports.');
+}
+
 const files = [
   {
     path: 'src/lib/content-storage.ts',
@@ -2638,6 +2708,8 @@ export default function StudentsPage() {
 for (const file of files) {
   await writeFile(file.path, file.content);
 }
+
+await verifyGeneratedFiles();
 
 const findings = await auditSourceTree();
 

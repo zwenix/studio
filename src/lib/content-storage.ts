@@ -1,110 +1,111 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+/**
+ * Content Storage Utility
+ *
+ * Solves the Firestore 1 MB per-document limit by transparently routing
+ * large HTML content to Supabase Storage (5 TB per object — effectively unlimited).
+ *
+ * Strategy:
+ *  • Content < INLINE_THRESHOLD  → stored directly in the DB field (fast, no extra read)
+ *  • Content ≥ INLINE_THRESHOLD  → uploaded to Supabase Storage as a .html file;
+ *                                   DB stores the public URL in `contentStorageUrl`
+ *                                   and an empty string in `content`.
+ *
+ * On read, callers check `contentStorageUrl`. If set, they fetch the HTML from that URL.
+ * This guarantees 100 % content integrity — nothing is ever truncated.
+ */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+import { createClient } from '@supabase/supabase-js';
 
-type UploadOptions = {
-  cacheControl?: string;
-  upsert?: boolean;
-  contentType?: string;
-};
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-type UploadInput = File | Blob | ArrayBuffer | string;
+const BUCKET_NAME = 'generated-content';
 
-let supabaseInstance: SupabaseClient | null = null;
+/** Maximum bytes stored inline in a DB field. 700 KB leaves ample room for
+ *  other fields (memo, rubric, metadata) within the 1 MB document limit. */
+const INLINE_THRESHOLD_BYTES = 700 * 1024; // 700 KB
 
-function getSupabaseClient(): SupabaseClient {
-  if (supabaseInstance) {
-    return supabaseInstance;
-  }
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
-  }
-
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-  return supabaseInstance;
+/** Result returned by saveContentSafely */
+export interface SaveResult {
+  /** HTML to store in the DB `content` field.
+   *  Empty string when the HTML was routed to Supabase Storage. */
+  inlineContent: string;
+  /** Supabase Storage public URL, or undefined when content fit inline. */
+  contentStorageUrl: string | undefined;
+  /** True when the content was routed to Supabase Storage. */
+  usedStorage: boolean;
+  /** Actual content byte size (informational). */
+  byteSize: number;
 }
 
-function createLazyProxy<T extends object>(getTarget: () => T): T {
-  const handler: ProxyHandler<T> = {
-    get(_target, prop, receiver) {
-      const target = getTarget();
-      const value = Reflect.get(target as object, prop, receiver);
-
-      if (typeof value === 'function') {
-        return value.bind(target);
-      }
-
-      return value;
-    },
-  };
-
-  return new Proxy({} as T, handler);
-}
-
-function toBlob(file: UploadInput): Blob {
-  if (typeof file === 'string') {
-    return new Blob([file], { type: 'text/plain' });
-  }
-
-  if (file instanceof Blob) {
-    return file;
-  }
-
-  return new Blob([file]);
-}
-
-export const supabase = createLazyProxy(getSupabaseClient) as SupabaseClient;
-export const storage = createLazyProxy(() => getSupabaseClient().storage) as SupabaseClient['storage'];
-
-export async function uploadContent(
-  bucket: string,
-  path: string,
-  file: UploadInput,
-  options: UploadOptions = {}
-): Promise<string> {
-  const client = getSupabaseClient();
-  const blob = toBlob(file);
-  const { error } = await client.storage.from(bucket).upload(path, blob, {
-    cacheControl: options.cacheControl ?? '3600',
-    upsert: options.upsert ?? true,
-    contentType: options.contentType || blob.type || undefined,
-  });
-
-  if (error) {
-    throw new Error('Failed to upload to Supabase Storage: ' + error.message);
-  }
-
-  const { data } = client.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-}
-
+/**
+ * Decide whether to save HTML content inline or upload it to
+ * Supabase Storage, then return the results for the caller to persist.
+ *
+ * @param html         The full HTML string to save.
+ * @param storagePath  Supabase Storage path, e.g. `{uid}/{timestamp}.html`.
+ */
 export async function saveContentSafely(
-  bucket: string,
-  path: string,
-  file: UploadInput,
-  options: UploadOptions = {}
-): Promise<string> {
-  return uploadContent(bucket, path, file, options);
-}
+  html: string,
+  storagePath: string,
+): Promise<SaveResult> {
+  const encoder = new TextEncoder();
+  const byteSize = encoder.encode(html).length;
 
-export function getContentUrl(bucket: string, path: string): string {
-  const client = getSupabaseClient();
-  const { data } = client.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-}
+  if (byteSize <= INLINE_THRESHOLD_BYTES) {
+    return {
+      inlineContent: html,
+      contentStorageUrl: undefined,
+      usedStorage: false,
+      byteSize,
+    };
+  }
 
-export const getPublicUrl = getContentUrl;
-
-export async function deleteContent(bucket: string, pathOrPaths: string | string[]): Promise<void> {
-  const client = getSupabaseClient();
-  const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
-  const { error } = await client.storage.from(bucket).remove(paths);
+  // Content is too large — upload to Supabase Storage.
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(storagePath, html, {
+      contentType: 'text/html; charset=utf-8',
+      upsert: true,
+    });
 
   if (error) {
-    throw new Error('Delete failed: ' + error.message);
+    console.error('[content-storage] Upload failed:', error);
+    throw new Error(`Storage upload failed: ${error.message}`);
   }
+
+  const { data: urlData } = supabase.storage
+    .from(BUCKET_NAME)
+    .getPublicUrl(data.path);
+
+  return {
+    inlineContent: '',
+    contentStorageUrl: urlData.publicUrl,
+    usedStorage: true,
+    byteSize,
+  };
 }
 
-export default supabase;
+/**
+ * Given a document that may have either inline HTML or a Storage URL,
+ * return the full HTML string. Call this whenever you need to render or export content.
+ *
+ * - If `contentStorageUrl` is present → fetches from Supabase Storage (network request).
+ * - Otherwise → returns `inlineContent` immediately (no network request).
+ */
+export async function resolveContent(
+  inlineContent: string,
+  contentStorageUrl: string | undefined,
+): Promise<string> {
+  if (!contentStorageUrl) return inlineContent;
+
+  try {
+    const response = await fetch(contentStorageUrl);
+    if (!response.ok) throw new Error(`Storage fetch failed: ${response.status}`);
+    return await response.text();
+  } catch (err) {
+    console.error('[resolveContent] Failed to fetch from Supabase Storage:', err);
+    return inlineContent || '<p style="color:red;">Content temporarily unavailable. Please try again.</p>';
+  }
+}

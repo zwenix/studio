@@ -1,9 +1,10 @@
 'use client';
 
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/lib/supabase";
+import { useUser } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import type { User as UserProfile } from '@/lib/types';
 
 const publicPaths = ['/', '/login', '/signup'];
@@ -11,16 +12,46 @@ const roleSelectionPath = '/role-selection';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
 
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  // Fetch user profile from Supabase whenever auth user changes
+  useEffect(() => {
+    if (!user) {
+      setUserProfile(null);
+      setIsProfileLoading(false);
+      return;
+    }
+
+    setIsProfileLoading(true);
+    const supabase = getSupabaseClient();
+
+    supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.uid)
+      .single()
+      .then(({ data, error }) => {
+        if (error && error.code !== 'PGRST116') {
+          console.error('AuthGuard: error fetching profile', error.message);
+        }
+        // Normalise snake_case → camelCase
+        if (data) {
+          setUserProfile({
+            ...data,
+            firstName: data.first_name ?? data.firstName ?? '',
+            lastName:  data.last_name  ?? data.lastName  ?? '',
+            avatarUrl: data.avatar_url ?? data.avatarUrl,
+          } as UserProfile);
+        } else {
+          setUserProfile(null);
+        }
+        setIsProfileLoading(false);
+      });
+  }, [user]);
 
   const isLoading = isUserLoading || (!!user && isProfileLoading);
 
@@ -37,7 +68,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         router.push(roleSelectionPath);
         return;
       }
-      
       if (userProfile && (publicPaths.includes(pathname) || pathname === roleSelectionPath)) {
         router.push('/dashboard');
         return;
@@ -52,7 +82,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (!user && !publicPaths.includes(pathname)) return null;
   if (user && !userProfile && pathname !== roleSelectionPath) return null;
 

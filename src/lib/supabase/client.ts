@@ -1,20 +1,40 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-let client: SupabaseClient | null = null;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
+let instance: SupabaseClient | null = null;
+
+/**
+ * Get the singleton Supabase browser client.
+ * Uses createBrowserClient from @supabase/ssr which stores auth
+ * state in cookies (readable by middleware) instead of localStorage.
+ */
 export function getSupabaseClient(): SupabaseClient {
-  if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  if (instance) return instance;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase environment variables. ' +
+      'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
     );
   }
-  return client;
+
+  instance = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return instance;
 }
 
-// Ensure backward compatibility for components expecting 'createClient'
-export const createClient = () => getSupabaseClient();
+/**
+ * Alias for getSupabaseClient — used by components like
+ * Grade1EnglishGenerator that import { createClient }.
+ */
+export function createClient(): SupabaseClient {
+  return getSupabaseClient();
+}
 
-// Keep default/supabase exports if used elsewhere
-export const supabase = getSupabaseClient();
+/**
+ * Default export: pre-initialised Supabase client instance.
+ */
+const supabase = getSupabaseClient();
+export default supabase;

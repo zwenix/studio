@@ -36,5 +36,37 @@ export function createClient(): SupabaseClient {
 /**
  * Default export: pre-initialised Supabase client instance.
  */
-const supabase = getSupabaseClient();
 export default supabase;
+
+
+/**
+ * React hook to get current Supabase user
+ * Fixes: useUser is not a function error
+ */
+import { useEffect, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
+
+export function useUser() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  return { user, loading }
+}

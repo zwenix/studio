@@ -1,173 +1,90 @@
 'use client';
-
+import { useState } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GraduationCap, Loader2, School, Shield, Sparkles, Star, Users, type LucideIcon } from 'lucide-react';
-import { supabase } from '@/lib/content-storage';
-
-type Role = 'teacher' | 'student' | 'parent' | 'admin';
-
-type RoleOption = {
-  value: Role;
-  title: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-const ROLE_OPTIONS: RoleOption[] = [
-  {
-    value: 'teacher',
-    title: 'Teacher',
-    description: 'Create lessons, manage classes, and track learner progress.',
-    icon: GraduationCap,
-  },
-  {
-    value: 'student',
-    title: 'Student',
-    description: 'View class material, assignments, and class updates.',
-    icon: School,
-  },
-  {
-    value: 'parent',
-    title: 'Parent',
-    description: 'Follow learner progress and school communication.',
-    icon: Users,
-  },
-  {
-    value: 'admin',
-    title: 'Admin',
-    description: 'Oversee settings, approvals, and the school workspace.',
-    icon: Shield,
-  },
-];
-
-export default function RoleSelectionPage() {
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { getSupabaseClient } from '@/lib/supabase/client';
+import { Loader2, Star } from 'lucide-react';
+import Image from 'next/image';
+export default function LoginPage() {
+  const [email,     setEmail]     = useState('');
+  const [password,  setPassword]  = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogle,  setIsGoogle]  = useState(false);
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<Role>('teacher');
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [checkingUser, setCheckingUser] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadUser() {
-      const { data, error: userError } = await supabase.auth.getUser();
-
-      if (!active) {
-        return;
-      }
-
-      if (userError) {
-        setError(userError.message);
-      }
-
-      setEmail(data.user?.email ?? '');
-      setCheckingUser(false);
-    }
-
-    loadUser();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const handleContinue = async () => {
-    setLoading(true);
-    setError('');
-
-    const { data, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !data.user) {
-      setError('Please sign in before choosing a role.');
-      setLoading(false);
+  const { toast } = useToast();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
+      setIsLoading(false);
       return;
     }
-
-    const payload = {
-      id: data.user.id,
-      email: data.user.email ?? email,
-      role: selectedRole,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error: upsertError } = await supabase.from('profiles').upsert([payload]);
-
-    if (upsertError) {
-      setError(upsertError.message);
-    } else {
-      router.push('/');
-    }
-
-    setLoading(false);
+    // router.replace + router.refresh forces middleware to re-evaluate
+    // the new auth cookie set by createBrowserClient
+    router.replace('/dashboard');
+    router.refresh();
   };
-
+  const handleGoogle = async () => {
+    setIsGoogle(true);
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options:  { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      toast({ title: 'Google Login Failed', description: error.message, variant: 'destructive' });
+      setIsGoogle(false);
+    }
+  };
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <header className="space-y-3 border-b border-slate-800 pb-6">
-          <div className="flex items-center gap-2 text-sm text-indigo-300">
-            <Sparkles className="h-4 w-4" />
-            <span>Role setup</span>
-            <Star className="h-4 w-4" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
+      <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
+      <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 bg-indigo-950 text-white">
+        <CardHeader className="text-center pb-2">
+          <div className="flex justify-center mb-4">
+            <Image src="https://i.ibb.co/tTc5gG5k/eduai-company-logo2-preview-177246762158 0-2-preview-177247315 3046.png"
+              alt="EduAI" width={48} height={72} priority style={{ width: 'auto', height: '72px' }} />
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight">Choose your workspace role</h1>
-          <p className="max-w-2xl text-sm text-slate-400">
-            This replaces the broken Firebase write path and saves the selected role directly to Supabase.
-          </p>
-          {email ? <p className="text-sm text-slate-300">Signed in as {email}</p> : null}
-        </header>
-
-        {error ? <div className="rounded-2xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-200">{error}</div> : null}
-
-        <section className="grid gap-3 md:grid-cols-2">
-          {ROLE_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const active = selectedRole === option.value;
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setSelectedRole(option.value)}
-                className={
-                  'rounded-3xl border p-5 text-left transition ' +
-                  (active
-                    ? 'border-indigo-500 bg-indigo-500/10'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-600')
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="h-5 w-5 text-indigo-300" />
-                  <div>
-                    <h2 className="font-semibold text-white">{option.title}</h2>
-                    <p className="text-sm text-slate-400">{option.description}</p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </section>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={loading || checkingUser}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-            {checkingUser ? 'Checking sign in...' : 'Save role'}
-          </button>
-
-          <Link href="/signup" className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-900">
-            Back to sign up
-          </Link>
-        </div>
-      </div>
-    </main>
+          <CardTitle className="text-3xl font-patrick-hand text-white">Welcome Back!</CardTitle>
+          <CardDescription className="text-indigo-200">Login to continue your adventure.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleLogin} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email" className="text-indigo-100">Email</Label>
+              <Input id="email" type="email" autoComplete="username" required
+                value={email} onChange={e => setEmail(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password" className="text-indigo-100">Password</Label>
+              <Input id="password" type="password" autoComplete="current-password" required
+                value={password} onChange={e => setPassword(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40" />
+            </div>
+            <Button type="submit" disabled={isLoading || isGoogle}
+              className="w-full rounded-full h-12 font-bold bg-yellow-400 text-indigo-950 hover:bg-yellow-300">
+              {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
+            </Button>
+          </form>
+          <Button variant="outline" onClick={handleGoogle} disabled={isLoading || isGoogle}
+            className="w-full rounded-full h-12 font-bold border-yellow-400/20 bg-yellow-400/10 text-yellow-400">
+            {isGoogle ? <Loader2 className="animate-spin mr-2" /> : null}
+            Sign in with Google
+          </Button>
+          <div className="text-center text-sm text-indigo-200">
+            No account? <Link href="/signup" className="underline font-bold text-yellow-400">Sign up</Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

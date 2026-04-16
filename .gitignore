@@ -45,6 +45,11 @@ firebase-debug.log
 firestore-debug.log
 .env*.local
 
-/docs/*
+./docs/migration bak files/*
+./docs/*
+./docs/
+.docs/*
+docs/
+docs/*
 # Local environment variables
 .env.local

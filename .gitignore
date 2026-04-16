@@ -47,3 +47,5 @@ firestore-debug.log
 
 /docs
 ./docs/serviceAccountKey.json
+# Local environment variables
+.env.local

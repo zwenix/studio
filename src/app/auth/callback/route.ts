@@ -1,42 +1,24 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextRequest, NextResponse } from 'next/server';
+// FIX: OAuth / magic-link callback handler was missing entirely.
+// Without this, Supabase email-confirmation and OAuth redirects returned 404.
+
+import { NextResponse, type NextRequest } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
+
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/dashboard';
 
   if (code) {
-    // Create the redirect response FIRST, then bind cookie writes to it.
-    // This ensures auth cookies are included in the redirect response.
-    const response = NextResponse.redirect(`${origin}${next}`);
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
-
+    const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-
     if (!error) {
-      return response;
+      // Redirect to the 'next' param or dashboard
+      return NextResponse.redirect(`${origin}${next}`);
     }
-
-    console.error('OAuth code exchange error:', error.message);
   }
 
-  // Redirect back to login on error
-  return NextResponse.redirect(`${origin}/login?error=oauth_error`);
+  // Something went wrong — redirect to login with error flag
+  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
 }

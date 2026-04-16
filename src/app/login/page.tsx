@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Loader2, Star } from 'lucide-react';
 import Image from 'next/image';
-
 export default function LoginPage() {
   const [email,     setEmail]     = useState('');
   const [password,  setPassword]  = useState('');
@@ -19,26 +17,21 @@ export default function LoginPage() {
   const [isGoogle,  setIsGoogle]  = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     const supabase = getSupabaseClient();
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-
     if (error) {
       toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
       setIsLoading(false);
       return;
     }
-
     // router.replace + router.refresh forces middleware to re-evaluate
     // the new auth cookie set by createBrowserClient
     router.replace('/dashboard');
     router.refresh();
   };
-
   const handleGoogle = async () => {
     setIsGoogle(true);
     const supabase = getSupabaseClient();
@@ -51,14 +44,13 @@ export default function LoginPage() {
       setIsGoogle(false);
     }
   };
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-blue-500 p-6 relative overflow-hidden">
       <Star className="absolute top-10 left-10 w-8 h-8 text-yellow-300 animate-pulse opacity-20" />
       <Card className="w-full max-w-sm relative z-10 shadow-2xl rounded-[2.5rem] border border-white/10 bg-indigo-950 text-white">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <Image src="https://i.ibb.co/tTc5gG5k/eduai-company-logo2-preview-1772467621580-2-preview-1772473153046.png"
+            <Image src="https://i.ibb.co/tTc5gG5k/eduai-company-logo2-preview-177246762158 0-2-preview-177247315 3046.png"
               alt="EduAI" width={48} height={72} priority style={{ width: 'auto', height: '72px' }} />
           </div>
           <CardTitle className="text-3xl font-patrick-hand text-white">Welcome Back!</CardTitle>

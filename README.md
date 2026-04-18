@@ -60,14 +60,16 @@ To get this project running locally, follow these steps.
 - Node.js (v20 or later recommended)
 - `npm` or a compatible package manager
 - A Firebase project with Firestore and Authentication enabled.
-- A Google AI Gemini API key.
+- GROQ API KEY
 
 ### 1. Set Up Environment Variables
 
 Create a `.env` file in the root of your project and add your Gemini API key:
 
 ```
-GEMINI_API_KEY=YOUR_API_KEY_HERE
+GROQ_API_KEY=YOUR_API_KEY_HERE
+ANTHROPIC_API_KEY=YOUR_API_KEY_HERE
+```
 ```
 
 ### 2. Install Dependencies

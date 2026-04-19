@@ -1,7 +1,7 @@
 // src/ai/flows/general-content.ts
-import { defineFlow } from '@genkit-ai/flow';
-import { geminiProLatest } from '@genkit-ai/googleai';
-import { groqLlama31_70b } from '@genkit-ai/groq';
+import { defineFlow } from '@genkit-ai/core';
+import { geminiProLatest } from '@genkit-ai/core';
+import { groqLlama31_70b } from '@genkit-ai/core';
 import { z } from 'zod';
 
 export const generateGeneralContent = defineFlow(

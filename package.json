@@ -13,7 +13,8 @@
     "typecheck": "node --max-old-space-size=4096 ./node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.88.0",
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@genkit-ai/core": "^1.32.0",
     "@google-cloud/text-to-speech": "^6.4.0",
     "@hookform/resolvers": "4.1.3",
     "@radix-ui/react-accordion": "1.2.3",
@@ -49,6 +50,7 @@
     "jspdf": "2.5.1",
     "lucide-react": "0.395.0",
     "next": "14.2.35",
+    "openai": "^4.38.0",
     "pexels": "^1.4.0",
     "react": "18.2.0",
     "react-day-picker": "9.11.3",

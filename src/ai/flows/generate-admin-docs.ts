@@ -81,3 +81,7 @@ export async function generateAdminDoc(input: { docType: string; schoolContext: 
 
 export const generateAdminDocs = generateAdminDoc;
 export default generateAdminDoc;
+
+// ─── Named type aliases for content-creator-client.tsx ───────────────────────
+export type AdminDocInput  = { docType: string; schoolContext: string; specificDetails: string; };
+export type AdminDocOutput = { provider: string; content: string; };

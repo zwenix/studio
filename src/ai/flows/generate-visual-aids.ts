@@ -81,3 +81,7 @@ export async function generateVisualAid(input: { topic: string; targetAudience: 
 
 export const generateVisualAids = generateVisualAid;
 export default generateVisualAid;
+
+// ─── Named type aliases for content-creator-client.tsx ───────────────────────
+export type VisualAidInput  = { topic: string; targetAudience: string; format: string; };
+export type VisualAidOutput = { provider: string; content: string; };

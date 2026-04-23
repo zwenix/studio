@@ -101,3 +101,26 @@ export async function generateCAPSContent(input: CAPSInput) {
 
 export const generateCapsContent = generateCAPSContent;
 export default generateCAPSContent;
+
+// ─── Backward-compat type aliases ────────────────────────────────────────────
+// content-creator-client.tsx imports these names.
+export type GenerateCAPSContentInput = CAPSInput & {
+  subject:                string;
+  topic:                  string;
+  contentType?:           string;
+  category?:              string;
+  term?:                  string;
+  language?:              string;
+  learnerProfile?:        string;
+  objective?:             string;
+  additionalInstructions?: string;
+  teacherName?:           string;
+  signatureUrl?:          string;
+};
+
+export type GenerateCAPSContentOutput = {
+  provider: string;
+  content:  string;
+  memo?:    string;
+  rubric?:  string;
+};

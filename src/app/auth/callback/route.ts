@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // FIX: OAuth / magic-link callback handler was missing entirely.
 // Without this, Supabase email-confirmation and OAuth redirects returned 404.
 

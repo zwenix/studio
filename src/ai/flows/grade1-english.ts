@@ -1,38 +1,38 @@
 'use server';
+/**
+ * Grade 1 English Material Generator
+ * Migrated from Genkit ai.defineFlow → direct Anthropic + Groq via @/lib/ai.
+ * All CAPS prompts and output shape preserved verbatim.
+ */
 
-import { z } from 'genkit';   // ← FIXED: was 'zod' — ai.defineFlow requires Genkit's z
-import { ai } from '@/genkit';
+import { generateJSON } from '@/lib/ai';
 
-export const generateGrade1English = ai.defineFlow(
-  {
-    name: 'generateGrade1English',
-    inputSchema: z.object({
-      materialType: z.enum([
-        'phonicsBook',
-        'readingComprehensionA',
-        'spellingTr',
-        'displayPack',
-        'improvementTracker',
-        'handwritingSheet',
-        'abcBooklet',
-        'classroomLabels',
-      ]),
-      userId: z.string(),
-    }),
-    outputSchema: z.object({
-      title: z.string(),
-      content: z.string(),
-      description: z.string(),
-      assessmentCriteria: z.string(),
-      successIndicators: z.array(z.string()),
-    }),
-  },
-  async ({ materialType, userId }) => {
-    const capsPrompt = `You are an expert South African Foundation Phase English teacher.
+export type Grade1EnglishMaterialType =
+  | 'phonicsBook'
+  | 'readingComprehensionA'
+  | 'spellingTr'
+  | 'displayPack'
+  | 'improvementTracker'
+  | 'handwritingSheet'
+  | 'abcBooklet'
+  | 'classroomLabels';
+
+export type Grade1EnglishInput = {
+  materialType: Grade1EnglishMaterialType;
+  userId:       string;
+};
+
+export type Grade1EnglishOutput = {
+  title:              string;
+  content:            string;
+  description:        string;
+  assessmentCriteria: string;
+  successIndicators:  string[];
+};
+
+const SYSTEM_PROMPT = `You are an expert South African Foundation Phase English teacher.
 
 Generate **CAPS-aligned Grade 1 English materials** with clear assessment criteria.
-
-**Material Type:** ${materialType}
 
 **CAPS Assessment Requirements (Must Include):**
 - Informal assessment through observation
@@ -48,57 +48,30 @@ Generate **CAPS-aligned Grade 1 English materials** with clear assessment criter
 - Teacher's Pet style (colourful, fun, simple)
 - Include space for drawing, cutting, pasting where appropriate
 - Generate content in **beautifully formatted HTML**. Do NOT use markdown. Do NOT use plain text.
-- Use clean, semantic HTML with appropriate tags (e.g., <h1>, <p>, <ul>, <strong>, <em>, <table>) for formatting.
-- Add emoji descriptions or simple visual cues within the HTML where appropriate.
-- ALL HTML must use ONLY inline CSS styles — no class names, no external CSS.
 
-Return ONLY valid JSON in this exact structure (no markdown, no code fences):
+Return ONLY a JSON object with these exact keys:
 {
   "title": "string",
-  "content": "string (full HTML content with activities and ALL inline CSS)",
+  "content": "string (HTML)",
   "description": "string",
-  "assessmentCriteria": "string (detailed CAPS assessment guidance for teachers in HTML format)",
-  "successIndicators": ["observable success criteria 1", "success criteria 2", "..."]
-}`;
+  "assessmentCriteria": "string",
+  "successIndicators": ["string", ...]
+}
+No code fences. No extra text.`;
 
-    let result;
-    try {
-      result = await ai.generate({
-        model: 'googleai/gemini-3.1-pro-preview',
-        prompt: capsPrompt,
-        config: {
-          temperature: 0.65,
-          maxOutputTokens: 5000,
-        },
-      });
-    } catch (err) {
-      console.warn('Gemini 3.1 Pro failed for Grade 1 English, falling back to Flash...');
-      result = await ai.generate({
-        model: 'googleai/gemini-3-flash-preview',
-        prompt: capsPrompt,
-        config: {
-          temperature: 0.7,
-          maxOutputTokens: 4200,
-        },
-      });
-    }
+export async function generateGrade1English(
+  input: Grade1EnglishInput
+): Promise<Grade1EnglishOutput> {
+  const userPrompt = `Material Type: ${input.materialType}
 
-    if (!result.text) throw new Error('Grade 1 English generation returned empty text.');
+Generate a complete, classroom-ready Grade 1 English resource of this type.
+Include all CAPS requirements listed in your instructions.
+The HTML content must be beautiful, colourful, and immediately printable.`;
 
-    // Robust JSON parsing — strip markdown fences if present
-    let cleanText = result.text.trim();
-    if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
-    else if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
-    if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
+  return generateJSON<Grade1EnglishOutput>(userPrompt, SYSTEM_PROMPT, {
+    maxTokens:   6144,
+    temperature: 0.7,
+  });
+}
 
-    const output = JSON.parse(cleanText.trim());
-
-    return {
-      title: output.title || 'Grade 1 English Material',
-      content: output.content || '',
-      description: output.description || '',
-      assessmentCriteria: output.assessmentCriteria || '',
-      successIndicators: output.successIndicators || [],
-    };
-  }
-);
+export default generateGrade1English;
